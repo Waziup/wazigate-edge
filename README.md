@@ -1,6 +1,6 @@
-# Waziup API Server
+# Waziup Edge Server *for Waziup Gateway*
 
-The API Server connects the WaziApps through the API with the backend services.
+The edge server provides basic endpoints do retrieve, upload and change device, sensor and actuator data.
 
 You can use REST and MQTT on all endpoints.
 

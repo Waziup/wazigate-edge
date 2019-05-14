@@ -10,7 +10,13 @@ import (
 	"github.com/globalsign/mgo/bson"
 )
 
-const timeLayout = "2006-01-02T15:04:05-0700"
+const TimeFormat = time.RFC3339 // "2006-01-02T15:04:05-0700"
+
+// Value is one datapoint
+type Value struct {
+	Value interface{} `json:"value" bson:"value"`
+	Time  time.Time   `json:"time" bson:"time"`
+}
 
 // SensorValue represents a Waziup sensor data value
 type SensorValue struct {
@@ -20,7 +26,7 @@ type SensorValue struct {
 	SensorID string        `json:"sensorId" bson:"sensorId"`
 }
 
-// SensorValue represents a Waziup actuator data value
+// ActuatorValue represents a Waziup actuator data value
 type ActuatorValue struct {
 	ID         bson.ObjectId `json:"id" bson:"_id"`
 	Value      interface{}   `json:"value" bson:"value"`
@@ -37,22 +43,47 @@ type Query struct {
 
 ////////////////////
 
-func getReqValue(req *http.Request) (interface{}, error) {
+func getReqValue(req *http.Request) (Value, error) {
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		return nil, err
+		return Value{}, err
 	}
-	var value interface{}
-	return value, json.Unmarshal(body, &value)
+	val := Value{
+		Value: nil,
+		Time:  time.Now(),
+	}
+	err = json.Unmarshal(body, &val)
+	if err != nil {
+		err := json.Unmarshal(body, &val.Value)
+		if err != nil {
+			return val, err
+		}
+		return val, nil
+	}
+	return val, nil
 }
 
-func getReqValues(req *http.Request) ([]interface{}, error) {
+func getReqValues(req *http.Request) ([]Value, error) {
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		return nil, err
 	}
-	var values []interface{}
-	return values, json.Unmarshal(body, &values)
+	var values []Value
+	err = json.Unmarshal(body, &values)
+	if err != nil {
+		var plains []interface{}
+		err := json.Unmarshal(body, &values)
+		if err != nil {
+			return nil, err
+		}
+		values = make([]Value, len(plains))
+		now := time.Now()
+		for i, plain := range plains {
+			values[i].Time = now
+			values[i].Value = plain
+		}
+	}
+	return values, nil
 }
 
 ////////////////////
@@ -65,14 +96,14 @@ func (query *Query) from(req *http.Request) string {
 	q := req.URL.Query()
 
 	if param = q.Get("from"); param != "" {
-		query.From, err = time.Parse(timeLayout, param)
+		query.From, err = time.Parse(TimeFormat, param)
 		if err != nil {
 			return "Query ?from=.. is mal formatted."
 		}
 	}
 
 	if param = q.Get("to"); param != "" {
-		query.To, err = time.Parse(timeLayout, param)
+		query.To, err = time.Parse(TimeFormat, param)
 		if err != nil {
 			return "Query ?to=.. is mal formatted."
 		}
@@ -86,6 +117,15 @@ func (query *Query) from(req *http.Request) string {
 	}
 
 	return ""
+}
+
+////////////////////
+
+func newID(t time.Time) bson.ObjectId {
+	id := []byte(bson.NewObjectId())
+	timeId := []byte(bson.NewObjectIdWithTime(t))
+	copy(id[:4], timeId[:4])
+	return bson.ObjectId(id)
 }
 
 ////////////////////

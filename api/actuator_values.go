@@ -71,18 +71,29 @@ func PostActuatorValues(resp http.ResponseWriter, req *http.Request, params rout
 
 func getLastActuatorValue(resp http.ResponseWriter, deviceID string, actuatorID string) {
 
-	if DBActuatorValues == nil {
+	if DBDevices == nil {
 		http.Error(resp, "Database unavailable.", http.StatusServiceUnavailable)
 		return
 	}
 
-	var value ActuatorValue
-	err := DBActuatorValues.Find(bson.M{"deviceID": deviceID, "actuatorID": actuatorID}).Sort("-_id").One(&value)
-	if err != nil {
+	var device Device
+	err := DBDevices.Find(bson.M{
+		"_id": deviceID,
+	}).Select(bson.M{
+		"actuators": bson.M{
+			"$elemMatch": bson.M{
+				"id": actuatorID,
+			},
+		},
+	}).One(&device)
+
+	if err != nil || len(device.Actuators) == 0 {
 		http.Error(resp, "null", http.StatusNotFound)
 		return
 	}
-	data, _ := json.Marshal(value.Value)
+
+	value := device.Actuators[0].Value
+	data, _ := json.Marshal(value)
 	resp.Write(data)
 }
 
@@ -94,7 +105,7 @@ func getActuatorValues(resp http.ResponseWriter, deviceID string, actuatorID str
 	}
 
 	var value ActuatorValue
-	iter := DBActuatorValues.Find(bson.M{"deviceID": deviceID, "actuatorID": actuatorID}).Iter()
+	iter := DBActuatorValues.Find(bson.M{"deviceId": deviceID, "actuatorId": actuatorID}).Iter()
 	serveIter(resp, iter, &value)
 }
 
@@ -102,7 +113,7 @@ func getActuatorValues(resp http.ResponseWriter, deviceID string, actuatorID str
 
 func postActuatorValue(resp http.ResponseWriter, req *http.Request, deviceID string, actuatorID string) {
 
-	plainValue, err := getReqValue(req)
+	val, err := getReqValue(req)
 	if err != nil {
 		http.Error(resp, "Bad Request - "+err.Error(), http.StatusBadRequest)
 		return
@@ -113,21 +124,27 @@ func postActuatorValue(resp http.ResponseWriter, req *http.Request, deviceID str
 		return
 	}
 
-	err = DBActuatorValues.Insert(&ActuatorValue{
-		Value:      plainValue,
+	value := ActuatorValue{
+		ID:         newID(val.Time),
+		Value:      val.Value,
 		DeviceID:   deviceID,
 		ActuatorID: actuatorID,
-	})
+	}
+	err = DBActuatorValues.Insert(&value)
 
 	if err != nil {
 		http.Error(resp, "Database Error - "+err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	resp.Write([]byte{'"'})
+	resp.Write([]byte(value.ID.Hex()))
+	resp.Write([]byte{'"'})
 }
 
 func postActuatorValues(resp http.ResponseWriter, req *http.Request, deviceID string, actuatorID string) {
 
-	plainValues, err := getReqValues(req)
+	vals, err := getReqValues(req)
 	if err != nil {
 		http.Error(resp, "Bad Request - "+err.Error(), http.StatusBadRequest)
 		return
@@ -138,15 +155,16 @@ func postActuatorValues(resp http.ResponseWriter, req *http.Request, deviceID st
 		return
 	}
 
-	values := make([]ActuatorValue, len(plainValues))
-	for i, plainValue := range plainValues {
-		values[i].DeviceID = deviceID
-		values[i].ActuatorID = actuatorID
-		values[i].Value = plainValue
-	}
+	values := make([]ActuatorValue, len(vals))
+	interf := make([]interface{}, len(vals))
 
-	interf := make([]interface{}, len(plainValues))
-	for i := 0; i < len(plainValues); i++ {
+	for i, v := range vals {
+		values[i] = ActuatorValue{
+			ID:         newID(v.Time),
+			DeviceID:   deviceID,
+			ActuatorID: actuatorID,
+			Value:      v.Value,
+		}
 		interf[i] = values[i]
 	}
 
@@ -156,4 +174,6 @@ func postActuatorValues(resp http.ResponseWriter, req *http.Request, deviceID st
 		http.Error(resp, "Database Error - "+err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	resp.Write([]byte("true"))
 }

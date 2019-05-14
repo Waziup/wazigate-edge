@@ -3,7 +3,9 @@ package api
 import (
 	"encoding/json"
 	"io/ioutil"
+	"log"
 	"net/http"
+	"time"
 
 	"github.com/globalsign/mgo/bson"
 	routing "github.com/julienschmidt/httprouter"
@@ -11,8 +13,9 @@ import (
 
 // Sensor represents a Waziup sensor
 type Sensor struct {
-	ID    string      `json:"id" bson:"-"`
+	ID    string      `json:"id" bson:"id"`
 	Name  string      `json:"name" bson:"name"`
+	Time  time.Time   `json:"time" bson:"time"`
 	Value interface{} `json:"value" bson:"value"`
 }
 
@@ -74,17 +77,22 @@ func getDeviceSensor(resp http.ResponseWriter, deviceID string, sensorID string)
 	}
 
 	var device Device
-	err := DBDevices.Find(bson.M{"_id": deviceID}).Select(bson.M{"sensors": sensorID}).One(&device)
-	if err != nil {
+	err := DBDevices.Find(bson.M{
+		"_id": deviceID,
+	}).Select(bson.M{
+		"sensors": bson.M{
+			"$elemMatch": bson.M{
+				"id": sensorID,
+			},
+		},
+	}).One(&device)
+
+	if err != nil || len(device.Sensors) == 0 {
 		http.Error(resp, "null", http.StatusNotFound)
 		return
 	}
-	sensor := device.Sensors[sensorID]
-	if sensor == nil {
-		http.Error(resp, "null", http.StatusNotFound)
-		return
-	}
-	sensor.ID = sensorID
+
+	sensor := device.Sensors[0]
 	data, _ := json.Marshal(sensor)
 	resp.Write(data)
 }
@@ -102,30 +110,30 @@ func getDeviceSensors(resp http.ResponseWriter, deviceID string) {
 		http.Error(resp, "null", http.StatusNotFound)
 		return
 	}
-	sensors := device.Sensors
-	for id, sensor := range sensors {
-		sensor.ID = id
-	}
-	data, _ := json.Marshal(sensors)
+
+	data, _ := json.Marshal(device.Sensors)
 	resp.Write(data)
 }
 
 func postDeviceSensor(resp http.ResponseWriter, req *http.Request, deviceID string) {
+	var err error
 
 	if DBDevices == nil {
 		http.Error(resp, "Database unavailable.", http.StatusServiceUnavailable)
 		return
 	}
 
-	sensor, err := getReqSensor(req)
+	var sensor Sensor
+	if err = getReqSensor(req, &sensor); err != nil {
+		http.Error(resp, "Bad Request: "+err.Error(), http.StatusBadRequest)
+		return
+	}
 
 	err = DBDevices.Update(bson.M{
 		"_id": deviceID,
 	}, bson.M{
-		"sensors": bson.M{
-			"$set": bson.M{
-				sensor.ID: sensor,
-			},
+		"$push": bson.M{
+			"sensors": &sensor,
 		},
 	})
 	if err != nil {
@@ -133,8 +141,12 @@ func postDeviceSensor(resp http.ResponseWriter, req *http.Request, deviceID stri
 		return
 	}
 
-	resp.Header().Set("Content-Type", "text/plain")
+	log.Printf("[DB   ] created sensor %s/%s\n", deviceID, sensor.ID)
+
+	resp.Header().Set("Content-Type", "application/json")
+	resp.Write([]byte{'"'})
 	resp.Write([]byte(sensor.ID))
+	resp.Write([]byte{'"'})
 }
 
 func deleteDeviceSensor(resp http.ResponseWriter, deviceID string, sensorID string) {
@@ -147,11 +159,13 @@ func deleteDeviceSensor(resp http.ResponseWriter, deviceID string, sensorID stri
 	err1 := DBDevices.Update(bson.M{
 		"_id": deviceID,
 	}, bson.M{
-		"sensors": bson.M{
-			"$unset": sensorID,
+		"$pull": bson.M{
+			"sensors": bson.M{
+				"id": sensorID,
+			},
 		},
 	})
-	err2 := DBSensorValues.Remove(bson.M{
+	info, err2 := DBSensorValues.RemoveAll(bson.M{
 		"deviceId": deviceID,
 		"sensorId": sensorID,
 	})
@@ -164,22 +178,27 @@ func deleteDeviceSensor(resp http.ResponseWriter, deviceID string, sensorID stri
 		http.Error(resp, "Database Error: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	log.Printf("[DB   ] removed sensor %s/%s\n", deviceID, sensorID)
+	log.Printf("[DB   ] removed %d values from %s/%s\n", info.Removed, deviceID, sensorID)
+
+	resp.Write([]byte("true"))
 }
 
 ////////////////////
 
-func getReqSensor(req *http.Request) (*Sensor, error) {
-	var sensor Sensor
+func getReqSensor(req *http.Request, sensor *Sensor) error {
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		return nil, err
+		return err
 	}
+	sensor.Time = time.Now()
 	err = json.Unmarshal(body, &sensor)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if sensor.ID == "" {
 		sensor.ID = bson.NewObjectId().String()
 	}
-	return &sensor, nil
+	return nil
 }

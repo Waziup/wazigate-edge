@@ -71,30 +71,41 @@ func PostSensorValues(resp http.ResponseWriter, req *http.Request, params routin
 
 func getLastSensorValue(resp http.ResponseWriter, deviceID string, sensorID string) {
 
-	if DBActuatorValues == nil {
+	if DBDevices == nil {
 		http.Error(resp, "Database unavailable.", http.StatusServiceUnavailable)
 		return
 	}
 
-	var value SensorValue
-	err := DBActuatorValues.Find(bson.M{"deviceID": deviceID, "sensorID": sensorID}).Sort("-_id").One(&value)
-	if err != nil {
+	var device Device
+	err := DBDevices.Find(bson.M{
+		"_id": deviceID,
+	}).Select(bson.M{
+		"sensors": bson.M{
+			"$elemMatch": bson.M{
+				"id": sensorID,
+			},
+		},
+	}).One(&device)
+
+	if err != nil || len(device.Sensors) == 0 {
 		http.Error(resp, "null", http.StatusNotFound)
 		return
 	}
-	data, _ := json.Marshal(value.Value)
+
+	value := device.Sensors[0].Value
+	data, _ := json.Marshal(value)
 	resp.Write(data)
 }
 
 func getSensorValues(resp http.ResponseWriter, deviceID string, sensorID string, query *Query) {
 
-	if DBActuatorValues == nil {
+	if DBSensorValues == nil {
 		http.Error(resp, "Database unavailable.", http.StatusServiceUnavailable)
 		return
 	}
 
 	var value SensorValue
-	iter := DBActuatorValues.Find(bson.M{"deviceID": deviceID, "sensorID": sensorID}).Iter()
+	iter := DBSensorValues.Find(bson.M{"deviceId": deviceID, "sensorId": sensorID}).Iter()
 	serveIter(resp, iter, &value)
 }
 
@@ -102,58 +113,67 @@ func getSensorValues(resp http.ResponseWriter, deviceID string, sensorID string,
 
 func postSensorValue(resp http.ResponseWriter, req *http.Request, deviceID string, sensorID string) {
 
-	plainValue, err := getReqValue(req)
+	val, err := getReqValue(req)
 	if err != nil {
 		http.Error(resp, "Bad Request - "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if DBActuatorValues == nil {
+	if DBSensorValues == nil {
 		http.Error(resp, "Database unavailable.", http.StatusServiceUnavailable)
 		return
 	}
 
-	err = DBActuatorValues.Insert(&SensorValue{
-		Value:    plainValue,
+	value := SensorValue{
+		ID:       newID(val.Time),
+		Value:    val.Value,
 		DeviceID: deviceID,
 		SensorID: sensorID,
-	})
+	}
+	err = DBSensorValues.Insert(&value)
 
 	if err != nil {
 		http.Error(resp, "Database Error - "+err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	resp.Write([]byte{'"'})
+	resp.Write([]byte(value.ID.Hex()))
+	resp.Write([]byte{'"'})
 }
 
 func postSensorValues(resp http.ResponseWriter, req *http.Request, deviceID string, sensorID string) {
 
-	plainValues, err := getReqValues(req)
+	vals, err := getReqValues(req)
 	if err != nil {
 		http.Error(resp, "Bad Request - "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if DBActuatorValues == nil {
+	if DBSensorValues == nil {
 		http.Error(resp, "Database unavailable.", http.StatusServiceUnavailable)
 		return
 	}
 
-	values := make([]SensorValue, len(plainValues))
-	for i, plainValue := range plainValues {
-		values[i].DeviceID = deviceID
-		values[i].SensorID = sensorID
-		values[i].Value = plainValue
-	}
+	values := make([]SensorValue, len(vals))
+	interf := make([]interface{}, len(vals))
 
-	interf := make([]interface{}, len(plainValues))
-	for i := 0; i < len(plainValues); i++ {
+	for i, v := range vals {
+		values[i] = SensorValue{
+			ID:       newID(v.Time),
+			DeviceID: deviceID,
+			SensorID: sensorID,
+			Value:    v.Value,
+		}
 		interf[i] = values[i]
 	}
 
-	err = DBActuatorValues.Insert(interf...)
+	err = DBSensorValues.Insert(interf...)
 
 	if err != nil {
 		http.Error(resp, "Database Error - "+err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	resp.Write([]byte("true"))
 }

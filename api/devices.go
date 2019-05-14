@@ -3,8 +3,11 @@ package api
 import (
 	"encoding/json"
 	"io/ioutil"
+	"log"
 	"net/http"
+	"time"
 
+	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	routing "github.com/julienschmidt/httprouter"
 )
@@ -13,10 +16,10 @@ import (
 
 // Device represents a Waziup Device
 type Device struct {
-	Name      string               `json:"name" bson:"name"`
-	ID        string               `json:"id" bson:"_id"`
-	Sensors   map[string]*Sensor   `json:"sensors" bson:"sensors"`
-	Actuators map[string]*Actuator `json:"actuators" bson:"actuators"`
+	Name      string      `json:"name" bson:"name"`
+	ID        string      `json:"id" bson:"_id"`
+	Sensors   []*Sensor   `json:"sensors" bson:"sensors"`
+	Actuators []*Actuator `json:"actuators" bson:"actuators"`
 }
 
 ////////////////////
@@ -88,22 +91,44 @@ func getDevice(resp http.ResponseWriter, deviceID string) {
 ////////////////////
 
 func postDevice(resp http.ResponseWriter, req *http.Request) {
+	var err error
 
 	if DBDevices == nil {
 		http.Error(resp, "Database unavailable.", http.StatusServiceUnavailable)
 		return
 	}
 
-	device, err := getReqDevice(req)
+	var device Device
+	if err = getReqDevice(req, &device); err != nil {
+		http.Error(resp, "Bad Request: "+err.Error(), http.StatusBadRequest)
+		return
+	}
 
-	err = DBDevices.Insert(device)
+	err = DBDevices.Insert(&device)
 	if err != nil {
 		http.Error(resp, "Database error: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	resp.Header().Set("Content-Type", "text/plain")
+	if len(device.Sensors) != 0 && DBSensorValues != nil {
+		sensors := make([]interface{}, len(device.Sensors))
+		for i, sensor := range device.Sensors {
+			sensors[i] = &SensorValue{
+				ID:       newID(sensor.Time),
+				DeviceID: device.ID,
+				SensorID: sensor.ID,
+				Value:    sensor.Value,
+			}
+		}
+		DBSensorValues.Insert(sensors...)
+	}
+
+	log.Printf("[DB   ] created device %s\n", device.ID)
+
+	resp.Header().Set("Content-Type", "application/json")
+	resp.Write([]byte{'"'})
 	resp.Write([]byte(device.ID))
+	resp.Write([]byte{'"'})
 }
 
 ////////////////////
@@ -115,37 +140,55 @@ func deleteDevice(resp http.ResponseWriter, deviceID string) {
 		return
 	}
 
-	err1 := DBDevices.RemoveId(deviceID)
-	err2 := DBSensorValues.Remove(bson.M{"deviceId": deviceID})
-	err3 := DBActuatorValues.Remove(bson.M{"deviceId": deviceID})
+	err := DBDevices.RemoveId(deviceID)
+	info1, _ := DBSensorValues.RemoveAll(bson.M{"deviceId": deviceID})
+	info2, _ := DBActuatorValues.RemoveAll(bson.M{"deviceId": deviceID})
+	log.Printf("[DB   ] removed device %s\n", deviceID)
+	log.Printf("[DB   ] removed %d values from %s/* sensors\n", info1.Removed, deviceID)
+	log.Printf("[DB   ] removed %d values from %s/* actuators\n", info2.Removed, deviceID)
 
-	if err1 != nil || err2 != nil || err3 != nil {
-		err := err1
-		if err == nil {
-			err = err2
+	if err != nil {
+		if err == mgo.ErrNotFound {
+			http.Error(resp, "null", http.StatusNotFound)
+			return
 		}
-		if err == nil {
-			err = err3
-		}
+
 		http.Error(resp, "Database Error: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	resp.Write([]byte("null"))
 }
 
 ////////////////////
 
-func getReqDevice(req *http.Request) (*Device, error) {
-	var device Device
+func getReqDevice(req *http.Request, device *Device) error {
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	err = json.Unmarshal(body, &device)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if device.ID == "" {
-		device.ID = bson.NewObjectId().String()
+		device.ID = bson.NewObjectId().Hex()
 	}
-	return &device, nil
+	now := time.Now()
+	var noTime time.Time
+	if device.Sensors != nil {
+		for _, sensor := range device.Sensors {
+			if sensor.Time == noTime {
+				sensor.Time = now
+			}
+		}
+	}
+	if device.Actuators != nil {
+		for _, sensor := range device.Actuators {
+			if sensor.Time == noTime {
+				sensor.Time = now
+			}
+		}
+	}
+	return nil
 }

@@ -145,14 +145,12 @@ func Serve(resp http.ResponseWriter, req *http.Request) {
 		router.ServeHTTP(&wrapper, req)
 	}
 
-	/*
-		log.Printf("[%s] (%s) %d %s \"%s\"\n",
-			req.Header.Get("X-Tag"),
-			req.RemoteAddr,
-			wrapper.status,
-			req.Method,
-			req.RequestURI)
-	*/
+	log.Printf("[%s] %s %d %s %q\n",
+		req.Header.Get("X-Tag"),
+		req.RemoteAddr,
+		wrapper.status,
+		req.Method,
+		req.RequestURI)
 
 	if cbuf, ok := req.Body.(*tools.ClosingBuffer); ok {
 		// log.Printf("[DEBUG] Body: %s\n", cbuf.Bytes())

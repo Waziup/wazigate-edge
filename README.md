@@ -47,3 +47,165 @@ cd waziup-edge
 docker build --tag=waziup-edge .
 docker run -p 4000:80 waziup-edge
 ```
+
+# Examples
+
+... with JavaScript and [fetch](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch).
+
+### create a new device
+
+```javascript
+var resp = await fetch("/devices", {
+    method: "POST",
+    headers: {
+		'Content-Type': 'application/json'
+	},
+    body: JSON.stringify({
+        // id: "5cde6d034b9f61" // let the server choose an id
+        name: "My Device 1",    // readable device name
+        sensors: [{             // sensors list:
+			id: "6f840f0b1",       // sensor id (hardware id)
+			name: "My Sensor 1",   // readable name
+        }, {
+			id: "df34b9f612",
+			name: "My Sensor 2",
+        }],
+        actuators: [{           // actuators list:
+			id: "40f034",
+			name: "My Actuator 1",
+        }],
+    })
+});
+// the device id will be returned
+var deviceId = await resp.json();
+alert(`new device.id: ${deviceId}`);
+```
+
+### delete a device
+
+```javascript
+var deviceId = "5cde6d034b9f610ff8373bdb";
+fetch(`/devices/${deviceId}`, {
+    method: "DELETE",
+});
+```
+
+### list all devices
+
+```javascript
+var resp = await await fetch("/devices");
+var devices = await resp.json();
+console.log(devices);
+```
+
+### create a new sensor *or actuator*
+
+```javascript
+var deviceId = "5cde6d034b9f610ff8373bdb";
+await fetch(`/devices/${deviceId}/sensors`, {
+    method: "POST",
+    headers: {
+		'Content-Type': 'application/json'
+	},
+    body: JSON.stringify({
+        id: "0ff8373bd",       // sensor id (hardware id)
+        name: "My Sensor 3",   // readable name
+    })
+});
+```
+
+The same goes for actuators. Just replace `sensors` with `actuators`.
+
+### list all sensors *or actuators*
+
+```javascript
+var deviceId = "5cde6c194b9f610ff8373bda";
+var resp = await await fetch(`/devices/${deviceId}/sensors`);
+var sensors = await resp.json();
+console.log(sensors);
+```
+
+### delete a sensor *or actuator*
+
+```javascript
+var sensorId = "0ff8373bd";
+var deviceId = "5cde6d034b9f610ff8373bdb";
+fetch(`/devices/${deviceId}/sensors/${sensorId}`, {
+    method: "DELETE",
+});
+```
+
+### upload a sensor *or actuator* value
+
+```javascript
+var sensorId = "0ff8373bd";
+var deviceId = "5cde6d034b9f610ff8373bdb";
+
+var value = 42; // numeric value
+// or
+var value = "Temp45%23"; // string value
+// or
+var value = {lat: 52, long: 7}; // complex value
+// or
+var value = {
+  time: new Date(),  // value at specific time
+  value: 42          // value
+};
+
+fetch(`/devices/${deviceId}/sensors/${sensorId}/value`, {
+  method: "POST",
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify(value)
+});
+```
+
+### upload multiple sensor *or actuator* values
+
+```javascript
+var sensorId = "0ff8373bd";
+var deviceId = "5cde6d034b9f610ff8373bdb";
+
+var values = [42, 45, 47]; // values array
+// or
+var values = ["a", 0x0b, "cde"]; // ...
+// or
+var values = [
+  { // values with timestamp
+    time: new Date(),
+    value: 42,
+  }, {
+    time: new Date(),
+    value: 43,
+  }
+]
+
+fetch(`/devices/${deviceId}/sensors/${sensorId}/values`, {
+  method: "POST",
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify(values)
+});
+```
+
+### get the last sensor *or actuator* value
+
+```javascript
+var sensorId = "0ff8373bd";
+var deviceId = "5cde6d034b9f610ff8373bdb";
+var resp = await await fetch(`/devices/${deviceId}/sensors/${sensorId}/value`);
+var value = await resp.json();
+console.log(value);
+```
+
+### get multiple sensor *or actuator* values
+
+```javascript
+var sensorId = "0ff8373bd";
+var deviceId = "5cde6d034b9f610ff8373bdb";
+var resp = await await fetch(`/devices/${deviceId}/sensors/${sensorId}/values`);
+var values = await resp.json();
+console.log(values);
+```

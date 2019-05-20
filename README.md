@@ -81,6 +81,11 @@ var deviceId = await resp.json();
 alert(`new device.id: ${deviceId}`);
 ```
 
+Console output will be like:
+```
+new device.id: 5cde6d034b9f610ff8373bdb
+```
+
 ### delete a device
 
 ```javascript
@@ -208,4 +213,84 @@ var deviceId = "5cde6d034b9f610ff8373bdb";
 var resp = await await fetch(`/devices/${deviceId}/sensors/${sensorId}/values`);
 var values = await resp.json();
 console.log(values);
+```
+
+### add a Waziup Cloud for synchronization
+
+```javascript
+fetch(`/clouds`, {
+  method: "POST",
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    url: "api.waziup.io:1883", // mqtt port must be included
+    paused: true, // default false
+    credentials: {
+      username: "myUsername",
+      token: "myPassword"
+    }
+  })
+});
+// the cloud id will be returned
+var cloudId = await resp.json();
+alert(`new cloud.id: ${cloudId}`);
+```
+
+Console output will be like:
+```
+new cloud.id: 5ce2793d4b9f612a04a7951d
+```
+
+### list all configured clouds
+
+```javascript
+var resp = await await fetch("/clouds");
+var clouds = await resp.json();
+console.log(clouds);
+```
+
+Output will be like:
+```json
+{
+  "5ce2793d4b9f612a04a7951d": {
+    "id": "5ce2793d4b9f612a04a7951d",
+    "paused": true,
+    "url": "api.waziup.io:1883",
+    "config": {},
+    "credentials": {
+      "username": "myUsername",
+      "token": "myPassword"
+    }
+  }
+}
+```
+
+### pause & resume cloud synchronization
+
+```javascript
+var cloudId = "5ce2793d4b9f612a04a7951d";
+fetch(`/clouds/${cloudId}/paused`, {
+  method: "POST",
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify(false) // or true
+});
+```
+
+### change cloud credentials (username and password)
+
+```javascript
+var cloudId = "5ce2793d4b9f612a04a7951d";
+fetch(`/clouds/${cloudId}/credentials`, {
+  method: "POST",
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    username: "myNewUserName",
+    token: "myNewPassword",
+  })
+});
 ```

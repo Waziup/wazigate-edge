@@ -1,13 +1,15 @@
 package main
 
 import (
-	api "github.com/Waziup/waziup-edge/api"
+	"github.com/Waziup/waziup-edge/api"
 	routing "github.com/julienschmidt/httprouter"
 )
 
 var router = routing.New()
 
 func init() {
+
+	api.Downstream = mqttServer
 
 	// Device Endpoints
 
@@ -67,4 +69,15 @@ func init() {
 
 	router.POST("/actuators/:actuator_id/value", api.PostSensorValue)
 	router.POST("/actuators/:actuator_id/values", api.PostSensorValues)
+
+	// Clouds configuration
+
+	router.GET("/clouds", api.GetClouds)
+	router.POST("/clouds", api.PostClouds)
+	router.GET("/clouds/:cloud_id", api.GetCloud)
+	router.DELETE("/clouds/:cloud_id", api.DeleteCloud)
+	router.POST("/clouds/:cloud_id/paused", api.PostCloudPaused)
+	router.POST("/clouds/:cloud_id/credentials", api.PostCloudCredentials)
+	router.POST("/clouds/:cloud_id/config", api.PostCloudConfig)
+
 }

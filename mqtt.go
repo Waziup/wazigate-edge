@@ -7,7 +7,10 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
+	"strings"
 
+	"github.com/Waziup/waziup-edge/api"
 	"github.com/Waziup/waziup-edge/mqtt"
 	"github.com/Waziup/waziup-edge/tools"
 )
@@ -51,6 +54,14 @@ func (server *MQTTServer) Publish(client *mqtt.Client, msg *mqtt.Message) error 
 		server.Server.Publish(client, msg)
 	}
 
+	// Forward data to
+	if strings.Contains(msg.Topic, "/sensors/") || strings.HasSuffix(msg.Topic, "/sensors") {
+		pkt := mqtt.Publish(msg)
+		for _, cloud := range api.Clouds {
+			cloud.Client.WritePacket(pkt)
+		}
+	}
+
 	return nil
 }
 
@@ -90,12 +101,17 @@ var mqttServer = &MQTTServer{mqtt.NewServer()}
 
 func ListenAndServerMQTT() {
 
-	listener, err := net.Listen("tcp", ":1883")
+	addr := os.Getenv("WAZIUP_MQTT_ADDR")
+	if addr == "" {
+		addr = ":1883"
+	}
+
+	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		log.Fatalln("[MQTT ] Error:\n", err)
 	}
 
-	log.Println("[MQTT ] MQTT Server at \":1883\".")
+	log.Printf("[MQTT ] MQTT Server at %q.", addr)
 	go func() {
 		mqtt.Serve(listener, mqttServer)
 	}()
@@ -103,12 +119,17 @@ func ListenAndServerMQTT() {
 
 func ListenAndServeMQTTTLS(config *tls.Config) {
 
-	listener, err := tls.Listen("tcp", ":8883", config)
+	addr := os.Getenv("WAZIUP_MQTTS_ADDR")
+	if addr == "" {
+		addr = ":8883"
+	}
+
+	listener, err := tls.Listen("tcp", addr, config)
 	if err != nil {
 		log.Fatalln("[MQTTS] Error:\n", err)
 	}
 
-	log.Println("[MQTTS] MQTT (with TLS) Server at \":8883\".")
+	log.Printf("[MQTTS] MQTT (with TLS) Server at %q.", addr)
 	go func() {
 		mqtt.Serve(listener, mqttServer)
 	}()

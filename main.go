@@ -62,6 +62,8 @@ func main() {
 
 	log.Printf("[     ] Local device id is %q.\n", api.GetLocalID())
 
+	api.ReadCloudConfig()
+
 	////////////////////
 
 	if *tlsCert != "" && *tlsKey != "" {

@@ -8,10 +8,11 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"time"
 
-	"github.com/gorilla/websocket"
 	"github.com/Waziup/waziup-edge/mqtt"
+	"github.com/gorilla/websocket"
 )
 
 var upgrader = websocket.Upgrader{
@@ -145,13 +146,18 @@ func ListenAndServeHTTP() {
 		Handler: http.HandlerFunc(ServeHTTP),
 	}
 
-	listener, err := net.Listen("tcp", ":80")
+	addr := os.Getenv("WAZIUP_HTTP_ADDR")
+	if addr == "" {
+		addr = ":80"
+	}
+
+	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		log.Fatalln("[HTTP] Error:\n", err)
 	}
 
-	log.Println("[HTTP ] HTTP Server at \":80\". Use \"http://\".")
-	log.Println("[WS   ] MQTT via WebSocket Server at \":80\". Use \"ws://\".")
+	log.Printf("[HTTP ] HTTP Server at %q. Use \"http://\".", addr)
+	log.Printf("[WS   ] MQTT via WebSocket Server at%q. Use \"ws://\".", addr)
 
 	notifyDeamon()
 	err = srv.Serve(listener)
@@ -163,21 +169,26 @@ func ListenAndServeHTTP() {
 
 func ListenAndServeHTTPS(cfg *tls.Config) {
 
+	addr := os.Getenv("WAZIUP_HTTPS_ADDR")
+	if addr == "" {
+		addr = ":443"
+	}
+
 	srv := &http.Server{
-		Addr:         ":443",
+		Addr:         addr,
 		Handler:      http.HandlerFunc(ServeHTTPS),
 		TLSConfig:    cfg,
 		ReadTimeout:  time.Minute,
 		WriteTimeout: time.Minute,
 	}
 
-	listener, err := tls.Listen("tcp", ":443", cfg)
+	listener, err := tls.Listen("tcp", addr, cfg)
 	if err != nil {
 		log.Fatalln("[HTTPS] Error:\n", err)
 	}
 
-	log.Println("[HTTPS] HTTPS Server at \":443\". Use \"https://\".")
-	log.Println("[WSS  ] MQTT via WebSocket Server at \":443\".  Use \"wss://\".")
+	log.Printf("[HTTPS] HTTPS Server at %q. Use \"https://\".", addr)
+	log.Printf("[WSS  ] MQTT via WebSocket Server at %q.  Use \"wss://\".", addr)
 	go func() {
 		err = srv.Serve(listener) // will block
 		if err != nil {

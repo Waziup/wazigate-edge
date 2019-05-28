@@ -128,15 +128,21 @@ func Serve(resp http.ResponseWriter, req *http.Request) {
 		}
 	}
 
+	size := 0
+
 	if req.Method == http.MethodPut || req.Method == http.MethodPost {
 
 		body, err := ioutil.ReadAll(req.Body)
+		size = len(body)
+
 		req.Body.Close()
 		if err != nil {
 			http.Error(resp, "400 Bad Request", http.StatusBadRequest)
 			return
 		}
-		req.Body = &tools.ClosingBuffer{bytes.NewBuffer(body)}
+		req.Body = &tools.ClosingBuffer{
+			Buffer: bytes.NewBuffer(body),
+		}
 	}
 
 	if req.Method == "PUBLISH" {
@@ -147,12 +153,13 @@ func Serve(resp http.ResponseWriter, req *http.Request) {
 		router.ServeHTTP(&wrapper, req)
 	}
 
-	log.Printf("[%s] %s %d %s %q\n",
+	log.Printf("[%s] %s %d %s %q s:%d\n",
 		req.Header.Get("X-Tag"),
 		req.RemoteAddr,
 		wrapper.status,
 		req.Method,
-		req.RequestURI)
+		req.RequestURI,
+		size)
 
 	if cbuf, ok := req.Body.(*tools.ClosingBuffer); ok {
 		// log.Printf("[DEBUG] Body: %s\n", cbuf.Bytes())

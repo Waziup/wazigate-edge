@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"io"
+	"log"
 	"net"
 	"strings"
 )
@@ -202,14 +203,16 @@ RUN:
 					sigServed: make(chan struct{}),
 				}
 
-				if client.connect(conn.packet, conn.stream) == nil {
-
-					client.sysall = NewSubscription(client, 0)
-					server.Topics.Subscribe([]string{"$SYS", "all"}, client.sysall)
-
-					go client.serveWriter(conn.stream)
-					go client.serveReader(conn.stream)
+				if err := client.connect(conn.packet, conn.stream); err != nil {
+					log.Println("[MQTT ] Err", err)
+					continue
 				}
+
+				client.sysall = NewSubscription(client, 0)
+				server.Topics.Subscribe([]string{"$SYS", "all"}, client.sysall)
+
+				go client.serveWriter(conn.stream)
+				go client.serveReader(conn.stream)
 
 			} else {
 
@@ -277,7 +280,6 @@ func ServeConn(stream io.ReadWriteCloser, server Server) {
 	}
 
 	if connect, ok := packet.(*ConnectPacket); ok {
-
 		server.PreConnect(stream, connect, server)
 	} else {
 

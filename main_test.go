@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"io/ioutil"
@@ -8,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -43,7 +45,7 @@ var device1 = &api.Device{
 	}, */
 }
 
-func TestWaziupEdge(t *testing.T) {
+func TestRestAPI(t *testing.T) {
 
 	if testing.Short() {
 		t.Skip("skipping full test in short mode.")
@@ -106,6 +108,46 @@ func TestWaziupEdge(t *testing.T) {
 
 	t.Log("Test: check if there are no devics right now")
 	get(t, "/devices", http.StatusOK, []*api.Device{})
+}
+
+func TestMQTTAPI(t *testing.T) {
+
+	if testing.Short() {
+		t.Skip("skipping full test in short mode.")
+	}
+
+	t.Log("Test: insert one device")
+	post(t, "/devices", device1, http.StatusOK, nil)
+
+	defer delete(t, "/devices/"+device1.ID, 0, nil)
+
+	t.Log("Test: subscribe to topic")
+	sensor := device1.Sensors[0]
+	cmd, subs := subscribe(t, "devices/"+device1.ID+"/sensors/"+sensor.ID+"/value")
+	defer cmd.Process.Kill()
+
+	time.Sleep(2 * time.Second)
+
+	post(t, "/devices/"+device1.ID+"/sensors/"+sensor.ID+"/value", "Hello :)", http.StatusOK, nil)
+	post(t, "/devices/"+device1.ID+"/sensors/"+sensor.ID+"/value", 465, http.StatusOK, nil)
+
+	line, err := subs.ReadString('\n')
+	line = strings.TrimSpace(line)
+	if err != nil || line != "\"Hello :)\"" {
+		t.Fatalf("expected \"Hello :)\", got %v (%v)", line, err)
+	}
+	line, err = subs.ReadString('\n')
+	line = strings.TrimSpace(line)
+	if err != nil || line != "465" {
+		t.Fatalf("expected 465, got %v (%v)", line, err)
+	}
+
+	publish(t, "devices/"+device1.ID+"/sensors/"+sensor.ID+"/value", "\"WooHoo\"")
+	line, err = subs.ReadString('\n')
+	line = strings.TrimSpace(line)
+	if err != nil || line != "\"WooHoo\"" {
+		t.Fatalf("expected \"WooHoo\", got %v (%v)", line, err)
+	}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -248,8 +290,8 @@ func runMongoBackground(t *testing.T) *exec.Cmd {
 }
 
 func runEdgeBackground(t *testing.T) *exec.Cmd {
-	t.Log("$ waziup-edge.exe")
-	edge := exec.Command("waziup-edge.exe")
+	t.Log("$ waziup-edge")
+	edge := exec.Command("waziup-edge")
 	edge.Stdout = os.Stdout
 	edge.Stderr = os.Stderr
 	err := edge.Start()
@@ -257,4 +299,28 @@ func runEdgeBackground(t *testing.T) *exec.Cmd {
 		t.Fatalf("waziup-edge.exe is required for this test.\n%v", err)
 	}
 	return edge
+}
+
+func subscribe(t *testing.T, topic string) (*exec.Cmd, *bufio.Reader) {
+	t.Log("SUBSCRIBE", topic)
+	subscriber := exec.Command("mosquitto_sub", "--protocol-version", "mqttv31", "--topic", topic)
+	out, err := subscriber.StdoutPipe()
+	if err != nil {
+		t.Fatal("mosquitto_sub StdoutPipe", err)
+	}
+	err = subscriber.Start()
+	if err != nil {
+		t.Fatal("mosquitto_sub", err)
+	}
+	return subscriber, bufio.NewReader(out)
+}
+
+func publish(t *testing.T, topic string, msg string) {
+	t.Log("PUBLISH", topic, msg)
+	publisher := exec.Command("mosquitto_pub", "--protocol-version", "mqttv31", "--topic", topic, "-q", "1", "-m", msg)
+	err := publisher.Run()
+	if err != nil {
+		out, _ := publisher.CombinedOutput()
+		t.Fatal("mosquitto_pub", err, out)
+	}
 }

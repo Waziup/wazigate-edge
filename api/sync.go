@@ -27,7 +27,6 @@ func (cloud *Cloud) endSync() {
 
 func (cloud *Cloud) beginSync(counter int) {
 
-	upstream = mqtt.NewQueue(cloud.ID)
 	nretry := 0
 
 	for !cloud.Paused {
@@ -62,7 +61,7 @@ func (cloud *Cloud) beginSync(counter int) {
 		}
 
 		log.Printf("[UP   ] Connected.\n")
-		upstream.ServeWriter(client)
+		cloud.Queue.ServeWriter(client)
 
 		if DBDevices != nil {
 			var device Device

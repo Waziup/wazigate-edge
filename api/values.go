@@ -2,11 +2,11 @@ package api
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"net/http"
 	"strconv"
 	"time"
 
+	"github.com/Waziup/waziup-edge/tools"
 	"github.com/globalsign/mgo/bson"
 )
 
@@ -44,7 +44,7 @@ type Query struct {
 ////////////////////
 
 func getReqValue(req *http.Request) (Value, error) {
-	body, err := ioutil.ReadAll(req.Body)
+	body, err := tools.ReadAll(req.Body)
 	if err != nil {
 		return Value{}, err
 	}
@@ -64,7 +64,7 @@ func getReqValue(req *http.Request) (Value, error) {
 }
 
 func getReqValues(req *http.Request) ([]Value, error) {
-	body, err := ioutil.ReadAll(req.Body)
+	body, err := tools.ReadAll(req.Body)
 	if err != nil {
 		return nil, err
 	}

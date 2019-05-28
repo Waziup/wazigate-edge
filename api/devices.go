@@ -2,11 +2,11 @@ package api
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"time"
 
+	"github.com/Waziup/waziup-edge/tools"
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	routing "github.com/julienschmidt/httprouter"
@@ -163,7 +163,7 @@ func deleteDevice(resp http.ResponseWriter, deviceID string) {
 ////////////////////
 
 func getReqDevice(req *http.Request, device *Device) error {
-	body, err := ioutil.ReadAll(req.Body)
+	body, err := tools.ReadAll(req.Body)
 	if err != nil {
 		return err
 	}

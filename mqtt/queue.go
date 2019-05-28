@@ -3,6 +3,7 @@ package mqtt
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"sync"
 )
 
@@ -28,6 +29,25 @@ type Queue struct {
 	sigFlushed chan error
 
 	writeLock sync.Mutex
+}
+
+// MarshalJSON implements json.Marshaler
+func (q *Queue) MarshalJSON() ([]byte, error) {
+	q.writeLock.Lock()
+	size := strconv.Itoa(q.size)
+	q.writeLock.Unlock()
+	return []byte(size), nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler
+func (q *Queue) UnmarshalJSON([]byte) error {
+	// we do not unmarshal Queue
+	return nil
+}
+
+// DeleteQueue removes saved packets from this queue.
+func DeleteQueue(id string) error {
+	return os.Remove("session/" + id + ".tmp")
 }
 
 // NewQueue crates a new Packet-Queue that must be named uniquely with the id.

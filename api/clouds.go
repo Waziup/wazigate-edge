@@ -30,6 +30,7 @@ type Cloud struct {
 
 	counter int
 	Client  *mqtt.Client `json:"-"`
+	Queue   *mqtt.Queue  `json:"queue"`
 }
 
 // Clouds lists all clouds that we synchronize.
@@ -53,6 +54,7 @@ func ReadCloudConfig() error {
 		if err == nil {
 			log.Printf("[CLOUD] %d clouds from config:", len(Clouds))
 			for _, cloud := range Clouds {
+				cloud.Queue = mqtt.NewQueue(cloud.ID)
 				log.Printf("[CLOUD] %q %q (pause:%v)", cloud.ID, cloud.URL, cloud.Paused)
 				if !cloud.Paused {
 					cloud.counter++
@@ -116,6 +118,8 @@ func PostClouds(resp http.ResponseWriter, req *http.Request, params routing.Para
 		http.Error(resp, "Bad Request: A cloud with that ID already exists.", http.StatusBadRequest)
 		return
 	}
+	mqtt.DeleteQueue(cloud.ID)
+	cloud.Queue = mqtt.NewQueue(cloud.ID)
 	Clouds[cloud.ID] = cloud
 	log.Printf("[CLOUD] Created %q: %q", cloud.ID, cloud.URL)
 

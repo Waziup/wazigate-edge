@@ -58,7 +58,7 @@ func (server *MQTTServer) Publish(client *mqtt.Client, msg *mqtt.Message) error 
 	if strings.Contains(msg.Topic, "/sensors/") || strings.HasSuffix(msg.Topic, "/sensors") {
 		pkt := mqtt.Publish(msg)
 		for _, cloud := range api.Clouds {
-			cloud.Client.WritePacket(pkt)
+			cloud.Queue.WritePacket(pkt)
 		}
 	}
 
@@ -113,7 +113,7 @@ func ListenAndServerMQTT() {
 
 	log.Printf("[MQTT ] MQTT Server at %q.", addr)
 	go func() {
-		mqtt.Serve(listener, mqttServer)
+		log.Fatal(mqtt.Serve(listener, mqttServer))
 	}()
 }
 
@@ -131,7 +131,7 @@ func ListenAndServeMQTTTLS(config *tls.Config) {
 
 	log.Printf("[MQTTS] MQTT (with TLS) Server at %q.", addr)
 	go func() {
-		mqtt.Serve(listener, mqttServer)
+		log.Fatal(mqtt.Serve(listener, mqttServer))
 	}()
 }
 

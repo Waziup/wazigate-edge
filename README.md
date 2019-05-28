@@ -166,6 +166,9 @@ fetch(`/devices/${deviceId}/sensors/${sensorId}/value`, {
 });
 ```
 
+
+
+
 ### upload multiple sensor *or actuator* values
 
 ```javascript
@@ -294,3 +297,55 @@ fetch(`/clouds/${cloudId}/credentials`, {
   })
 });
 ```
+
+# Use MQTT!
+
+With MQTT you can publish values for the sensor, which is more efficient than the REST interface.
+You will need a MQTT client like [Eclipse Mosquitto](https://mosquitto.org/man/mosquitto_sub-1.html) (commandline) or
+[HiveMQ MQTT Websocket Client](http://www.hivemq.com/demos/websocket-client/). For the following examples we will use the HiveMQ Client.
+
+Subscriptions are especially usefull if you want to listen for changes and want to get notified when new sensor values arrive. They will be triggered by both Publishes (via MQTT) and Post (via REST).
+
+Connect to your Waziup Gateway using the connection settings:
+
+
+* Host: Gateway IP
+* Port: 80 (for in-browser MQTT via Websocket) or default 1883
+* Client: (any)
+* MQTT Version: 3.1
+
+You can now publish and subscribe topics like sensor-values or actuator-values.
+
+To make a new subscription, click "Add New Topic Subscription" and enter a valid
+topic, like the values-topic from an **existing sensor**. If you have completed the previous examples, you could use `devices/5cd92df34b9f6126f840f0b1/sensors/6f840f0b1/value`.
+
+Remember that messages must be valid JSON, so enquote strings like `"my string"`.
+
+
+![Hive MQTT Websocket Client](assets/hive_mqtt.png)
+See http://www.hivemq.com/demos/websocket-client/.
+
+Equivalent mosquitto calls looks like:
+
+```bash
+# Publish Values
+mosquitto_pub \
+  -t "devices/5cd92df34b9f6126f840f0b1/sensors/df34b9f612/value" \
+  -V "mqttv31" \
+  -m 456
+
+# Subscribe to topics:
+mosquitto_sub \
+  -t "devices/5cd92df34b9f6126f840f0b1/sensors/df34b9f612/value" \
+  -V "mqttv31"
+```
+
+Mosquitto is available for both Linux and Windows.
+
+There are a few things to keep in mind when using MQTT:
+
+* Use port 80 when using MQTT via REST in your browser and port 1883 otherwise. Most clients will have these ports already configured.
+* Topics are equivalent to URLs from the REST API. You can use any url as topic and vice versa.
+* Subscriptions will be triggered by both Publishes (via MQTT) and Post (via REST).
+* Topics do not start with a slash '/'.
+* Use only valid JSON objects as payload!

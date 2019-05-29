@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"sync"
 
 	"github.com/globalsign/mgo/bson"
@@ -40,12 +41,20 @@ var Clouds map[string]*Cloud
 // CloudsMutex guards Clouds.
 var CloudsMutex sync.RWMutex
 
+func getCloudsFile() string {
+	cloudsFile := os.Getenv("WAZIUP_CLOUDS_FILE")
+	if cloudsFile == "" {
+		return "clouds.json"
+	}
+	return cloudsFile
+}
+
 // ReadCloudConfig reads clouds.json into the current configuration.
 func ReadCloudConfig() error {
 	CloudsMutex.Lock()
 	defer CloudsMutex.Unlock()
 
-	config, err := ioutil.ReadFile("clouds.json")
+	config, err := ioutil.ReadFile(getCloudsFile())
 	if err == nil {
 		for _, cloud := range Clouds {
 			cloud.endSync()
@@ -78,7 +87,7 @@ func WriteCloudConfig() error {
 	defer CloudsMutex.RUnlock()
 
 	data, _ := json.Marshal(Clouds)
-	err := ioutil.WriteFile("clouds.json", data, 0666)
+	err := ioutil.WriteFile(getCloudsFile(), data, 0666)
 
 	if err != nil {
 		log.Println("[CLOUD] Can not write config:", err)

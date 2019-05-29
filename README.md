@@ -349,3 +349,40 @@ There are a few things to keep in mind when using MQTT:
 * Subscriptions will be triggered by both Publishes (via MQTT) and Post (via REST).
 * Topics do not start with a slash '/'.
 * Use only valid JSON objects as payload!
+
+# Configuration
+
+**Env Variables**
+
+```
+WAZIUP_HTTP_ADDR  = :80      HTTP Listen Address
+WAZIUP_HTTPS_ADDR = :443     HTTPS Listen Address
+WAZIUP_MQTT_ADDR  = :1883    MQTT Listen Address
+WAZIUP_MQTTS_ADDR = :8883    MQTTS Listen Address
+
+WAZIUP_TLS_CRT =             TLS Cert File (.crt)
+WAZIUP_TLS_KEY =             TLS Key File (.key)
+
+WAZIUP_MONGO = localhost:27017     MongoDB Address
+
+WAZIUP_CLOUDS_FILE = clouds.json    Clouds Config File
+```
+
+Note that MQTT via Websocket is available together with the REST API on HTTP and HTTPS. To disable serving static files of *www*, use -www "" (an empty string).
+
+**Commandline Arguments**
+
+```
+-crt     TLS Cert File (.crt)
+-key     TLS Key File (.key)
+-www     HTTP files root, default "/var/www"
+-db      MongoDB address, default "localhost:27017"
+```
+Commandline arguments override env variables!
+Secure connections will only be used if -crt and -key are present.
+
+**Config Files**
+
+```
+clouds.json   Saves /clouds setttings
+```

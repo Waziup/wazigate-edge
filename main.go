@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/Waziup/waziup-edge/api"
@@ -21,12 +22,23 @@ func main() {
 	// Remove date and time from logs
 	log.SetFlags(log.Flags() &^ (log.Ldate | log.Ltime))
 
-	tlsCert := flag.String("crt", "", "TLS Cert File (.crt)")
-	tlsKey := flag.String("key", "", "TLS Key File (.key)")
+	tlsCertStr := os.Getenv("WAZIUP_TLS_CRT")
+	tlsKeyStr := os.Getenv("WAZIUP_TLS_KEY")
 
-	www := flag.String("www", "/var/www", "HTTP files root")
+	tlsCert := flag.String("crt", tlsCertStr, "TLS Cert File (.crt)")
+	tlsKey := flag.String("key", tlsKeyStr, "TLS Key File (.key)")
 
-	dbAddr := flag.String("db", "localhost:27017", "MongoDB address.")
+	wwwStr, ok := os.LookupEnv("WAZIUP_WWW")
+	if !ok {
+		wwwStr = "/var/www"
+	}
+	www := flag.String("www", wwwStr, "HTTP files root")
+
+	dbAddrStr, ok := os.LookupEnv("WAZIUP_MONGO")
+	if !ok {
+		dbAddrStr = "localhost:27017"
+	}
+	dbAddr := flag.String("db", dbAddrStr, "MongoDB address")
 
 	flag.Parse()
 

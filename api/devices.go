@@ -111,16 +111,33 @@ func postDevice(resp http.ResponseWriter, req *http.Request) {
 	}
 
 	if len(device.Sensors) != 0 && DBSensorValues != nil {
-		sensors := make([]interface{}, len(device.Sensors))
-		for i, sensor := range device.Sensors {
-			sensors[i] = &SensorValue{
-				ID:       newID(sensor.Time),
-				DeviceID: device.ID,
-				SensorID: sensor.ID,
-				Value:    sensor.Value,
+		sensors := make([]interface{}, 0, len(device.Sensors))
+		for _, sensor := range device.Sensors {
+			if sensor.Value != nil {
+				sensors = append(sensors, &SensorValue{
+					ID:       newID(sensor.Time),
+					DeviceID: device.ID,
+					SensorID: sensor.ID,
+					Value:    sensor.Value,
+				})
 			}
 		}
 		DBSensorValues.Insert(sensors...)
+	}
+
+	if len(device.Actuators) != 0 && DBActuatorValues != nil {
+		actuators := make([]interface{}, 0, len(device.Actuators))
+		for _, actuator := range device.Actuators {
+			if actuator.Value != nil {
+				actuators = append(actuators, &ActuatorValue{
+					ID:         newID(actuator.Time),
+					DeviceID:   device.ID,
+					ActuatorID: actuator.ID,
+					Value:      actuator.Value,
+				})
+			}
+		}
+		DBActuatorValues.Insert(actuators...)
 	}
 
 	log.Printf("[DB   ] created device %s\n", device.ID)

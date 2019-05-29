@@ -65,6 +65,7 @@ func main() {
 		log.Println("[DB   ] MongoDB client error:\n", err)
 	} else {
 
+		db.SetSafe(&mgo.Safe{})
 		api.DBSensorValues = db.DB("waziup").C("sensor_values")
 		api.DBActuatorValues = db.DB("waziup").C("actuator_values")
 		api.DBDevices = db.DB("waziup").C("devices")

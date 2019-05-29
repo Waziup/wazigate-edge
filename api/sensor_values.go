@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 
 	routing "github.com/julienschmidt/httprouter"
@@ -119,7 +120,7 @@ func postSensorValue(resp http.ResponseWriter, req *http.Request, deviceID strin
 		return
 	}
 
-	if DBSensorValues == nil {
+	if DBSensorValues == nil || DBDevices == nil {
 		http.Error(resp, "Database unavailable.", http.StatusServiceUnavailable)
 		return
 	}
@@ -130,6 +131,26 @@ func postSensorValue(resp http.ResponseWriter, req *http.Request, deviceID strin
 		DeviceID: deviceID,
 		SensorID: sensorID,
 	}
+
+	err = DBDevices.Update(bson.M{
+		"_id":        deviceID,
+		"sensors.id": sensorID,
+	}, bson.M{
+		"$set": bson.M{
+			"sensors.$.value": val.Value,
+			"sensors.$.time":  val.Time,
+		},
+	})
+
+	if err != nil {
+		if err == mgo.ErrNotFound {
+			http.Error(resp, "Device or sensor not found.", http.StatusNotFound)
+			return
+		}
+		http.Error(resp, "Database Error - "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	err = DBSensorValues.Insert(&value)
 
 	if err != nil {
@@ -150,29 +171,51 @@ func postSensorValues(resp http.ResponseWriter, req *http.Request, deviceID stri
 		return
 	}
 
-	if DBSensorValues == nil {
+	if DBSensorValues == nil || DBDevices == nil {
 		http.Error(resp, "Database unavailable.", http.StatusServiceUnavailable)
 		return
 	}
 
-	values := make([]SensorValue, len(vals))
-	interf := make([]interface{}, len(vals))
+	if len(vals) != 0 {
+		values := make([]SensorValue, len(vals))
+		interf := make([]interface{}, len(vals))
 
-	for i, v := range vals {
-		values[i] = SensorValue{
-			ID:       newID(v.Time),
-			DeviceID: deviceID,
-			SensorID: sensorID,
-			Value:    v.Value,
+		for i, v := range vals {
+			values[i] = SensorValue{
+				ID:       newID(v.Time),
+				DeviceID: deviceID,
+				SensorID: sensorID,
+				Value:    v.Value,
+			}
+			interf[i] = values[i]
 		}
-		interf[i] = values[i]
-	}
 
-	err = DBSensorValues.Insert(interf...)
+		val := vals[len(vals)-1]
 
-	if err != nil {
-		http.Error(resp, "Database Error - "+err.Error(), http.StatusInternalServerError)
-		return
+		err := DBDevices.Update(bson.M{
+			"_id":        deviceID,
+			"sensors.id": sensorID,
+		}, bson.M{
+			"$set": bson.M{
+				"sensors.$.value": val.Value,
+				"sensors.$.time":  val.Time,
+			},
+		})
+
+		if err != nil {
+			if err == mgo.ErrNotFound {
+				http.Error(resp, "Device or sensor not found.", http.StatusNotFound)
+				return
+			}
+			http.Error(resp, "Database Error - "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		err = DBSensorValues.Insert(interf...)
+		if err != nil {
+			http.Error(resp, "Database Error - "+err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	resp.Write([]byte("true"))

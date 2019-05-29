@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 
 	routing "github.com/julienschmidt/httprouter"
@@ -119,7 +120,7 @@ func postActuatorValue(resp http.ResponseWriter, req *http.Request, deviceID str
 		return
 	}
 
-	if DBActuatorValues == nil {
+	if DBActuatorValues == nil || DBDevices == nil {
 		http.Error(resp, "Database unavailable.", http.StatusServiceUnavailable)
 		return
 	}
@@ -130,6 +131,26 @@ func postActuatorValue(resp http.ResponseWriter, req *http.Request, deviceID str
 		DeviceID:   deviceID,
 		ActuatorID: actuatorID,
 	}
+
+	err = DBDevices.Update(bson.M{
+		"_id":          deviceID,
+		"actuators.id": actuatorID,
+	}, bson.M{
+		"$set": bson.M{
+			"actuators.$.value": val.Value,
+			"actuators.$.time":  val.Time,
+		},
+	})
+
+	if err != nil {
+		if err == mgo.ErrNotFound {
+			http.Error(resp, "Device or actuator not found.", http.StatusNotFound)
+			return
+		}
+		http.Error(resp, "Database Error - "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	err = DBActuatorValues.Insert(&value)
 
 	if err != nil {
@@ -150,29 +171,51 @@ func postActuatorValues(resp http.ResponseWriter, req *http.Request, deviceID st
 		return
 	}
 
-	if DBActuatorValues == nil {
+	if DBActuatorValues == nil || DBDevices == nil {
 		http.Error(resp, "Database unavailable.", http.StatusServiceUnavailable)
 		return
 	}
 
-	values := make([]ActuatorValue, len(vals))
-	interf := make([]interface{}, len(vals))
+	if len(vals) != 0 {
+		values := make([]ActuatorValue, len(vals))
+		interf := make([]interface{}, len(vals))
 
-	for i, v := range vals {
-		values[i] = ActuatorValue{
-			ID:         newID(v.Time),
-			DeviceID:   deviceID,
-			ActuatorID: actuatorID,
-			Value:      v.Value,
+		for i, v := range vals {
+			values[i] = ActuatorValue{
+				ID:         newID(v.Time),
+				DeviceID:   deviceID,
+				ActuatorID: actuatorID,
+				Value:      v.Value,
+			}
+			interf[i] = values[i]
 		}
-		interf[i] = values[i]
-	}
 
-	err = DBActuatorValues.Insert(interf...)
+		val := vals[len(vals)-1]
 
-	if err != nil {
-		http.Error(resp, "Database Error - "+err.Error(), http.StatusInternalServerError)
-		return
+		err := DBDevices.Update(bson.M{
+			"_id":          deviceID,
+			"actuators.id": actuatorID,
+		}, bson.M{
+			"$set": bson.M{
+				"actuators.$.value": val.Value,
+				"actuators.$.time":  val.Time,
+			},
+		})
+
+		if err != nil {
+			if err == mgo.ErrNotFound {
+				http.Error(resp, "Device or actuator not found.", http.StatusNotFound)
+				return
+			}
+			http.Error(resp, "Database Error - "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		err = DBActuatorValues.Insert(interf...)
+		if err != nil {
+			http.Error(resp, "Database Error - "+err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	resp.Write([]byte("true"))

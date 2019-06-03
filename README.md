@@ -227,7 +227,7 @@ fetch(`/clouds`, {
     'Content-Type': 'application/json'
   },
   body: JSON.stringify({
-    url: "api.waziup.io/api/v2", // mqtt port must be included
+    url: "api.waziup.io/api/v2",
     paused: true, // default false
     credentials: {
       username: "myUsername",

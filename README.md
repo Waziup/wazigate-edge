@@ -259,8 +259,7 @@ Output will be like:
   "5ce2793d4b9f612a04a7951d": {
     "id": "5ce2793d4b9f612a04a7951d",
     "paused": true,
-    "url": "api.waziup.io:1883",
-    "config": {},
+    "url": "api.waziup.io/api/v2",
     "credentials": {
       "username": "myUsername",
       "token": "myPassword"
@@ -295,6 +294,19 @@ fetch(`/clouds/${cloudId}/credentials`, {
     username: "myNewUserName",
     token: "myNewPassword",
   })
+});
+```
+
+### change the cloud url
+
+```javascript
+var cloudId = "5ce2793d4b9f612a04a7951d";
+fetch(`/clouds/${cloudId}/url`, {
+  method: "POST",
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify("waziup.myserver.com")
 });
 ```
 

@@ -20,6 +20,7 @@ type Device struct {
 	ID        string      `json:"id" bson:"_id"`
 	Sensors   []*Sensor   `json:"sensors" bson:"sensors"`
 	Actuators []*Actuator `json:"actuators" bson:"actuators"`
+	Modified  time.Time   `json:"modified" bson:"modified"`
 }
 
 ////////////////////
@@ -66,6 +67,18 @@ func DeleteDevice(resp http.ResponseWriter, req *http.Request, params routing.Pa
 func DeleteCurrentDevice(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
 	deleteDevice(resp, GetLocalID())
+}
+
+// PostDeviceName implements POST /devices/{deviceID}/name
+func PostDeviceName(resp http.ResponseWriter, req *http.Request, params routing.Params) {
+
+	postDeviceName(resp, req, params.ByName("device_id"))
+}
+
+// PostCurrentDeviceName implements POST /device/name
+func PostCurrentDeviceName(resp http.ResponseWriter, req *http.Request, params routing.Params) {
+
+	postDeviceName(resp, req, GetLocalID())
 }
 
 ////////////////////
@@ -150,6 +163,47 @@ func postDevice(resp http.ResponseWriter, req *http.Request) {
 
 ////////////////////
 
+func postDeviceName(resp http.ResponseWriter, req *http.Request, deviceID string) {
+	body, err := tools.ReadAll(req.Body)
+	if err != nil {
+		http.Error(resp, "Bad Request: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	var name string
+	err = json.Unmarshal(body, &name)
+	if err != nil {
+		http.Error(resp, "Bad Request: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if DBDevices == nil {
+		http.Error(resp, "Database unavailable.", http.StatusServiceUnavailable)
+		return
+	}
+
+	err = DBDevices.Update(bson.M{
+		"_id":        deviceID,
+	}, bson.M{
+		"$set": bson.M{
+			"modified": time.Now(),
+			"name":     name,
+		},
+	})
+
+	if err != nil {
+		if err == mgo.ErrNotFound {
+			http.Error(resp, "Device not found.", http.StatusNotFound)
+			return
+		}
+		http.Error(resp, "Database Error - "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	resp.Write([]byte("true"))
+}
+
+////////////////////
+
 func deleteDevice(resp http.ResponseWriter, deviceID string) {
 
 	if DBDevices == nil || DBSensorValues == nil || DBActuatorValues == nil {
@@ -192,18 +246,21 @@ func getReqDevice(req *http.Request, device *Device) error {
 		device.ID = bson.NewObjectId().Hex()
 	}
 	now := time.Now()
+	device.Modified = now
 	var noTime time.Time
 	if device.Sensors != nil {
 		for _, sensor := range device.Sensors {
+			sensor.Modified = now
 			if sensor.Time == noTime {
 				sensor.Time = now
 			}
 		}
 	}
 	if device.Actuators != nil {
-		for _, sensor := range device.Actuators {
-			if sensor.Time == noTime {
-				sensor.Time = now
+		for _, actuator := range device.Actuators {
+			actuator.Modified = now
+			if actuator.Time == noTime {
+				actuator.Time = now
 			}
 		}
 	}

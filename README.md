@@ -86,6 +86,19 @@ Console output will be like:
 new device.id: 5cde6d034b9f610ff8373bdb
 ```
 
+### change a device name
+
+```javascript
+var deviceId = "5cde6d034b9f610ff8373bdb";
+await fetch(`/devices/${deviceId}/name`, {
+    method: "POST",
+    headers: {
+		'Content-Type': 'application/json'
+	},
+    body: JSON.stringify("New Device Name")
+});
+```
+
 ### delete a device
 
 ```javascript
@@ -102,6 +115,42 @@ var resp = await await fetch("/devices");
 var devices = await resp.json();
 console.log(devices);
 ```
+
+Console output will be like:
+
+```javascript
+[{
+  name: "My Device 1",
+  id: "5cde6d034b9f61",
+  // Sensors List
+  sensors: [{
+    id: "6f840f0b1",
+    name: "My Sensor 1",
+    modified: "2019-06-03T12:31:34.331Z",
+    time: "2019-06-03T12:15:47.971Z",
+    value: null
+  },{
+    id: "df34b9f612",
+    name: "My Sensor 2",
+    modified: "0001-01-01T00:00:00Z",
+    time: "2019-06-03T12:15:47.971Z",
+    value: null
+  }],
+  // Actuators List
+  actuators: [{
+    id: "40f034",
+    name: "My Actuator 1",
+    modified: "2019-06-03T12:30:52.106Z",
+    time: "2019-06-03T12:15:47.971Z",
+    value: null
+  }],
+  modified: "2019-06-03T12:30:52.106Z"
+}]
+```
+
+* Modified-times for devices get updated when the device name changes (using POST .../name) but not if a new sensor or actuator gets added or deleted.
+* Modified-times on sensors or actuators get updated when the sensor or actuator name changes, but not if a new value gets posted.
+* Time and Value for each sensor are the same as at GET .../value
 
 ### create a new sensor *or actuator*
 
@@ -120,6 +169,20 @@ await fetch(`/devices/${deviceId}/sensors`, {
 ```
 
 The same goes for actuators. Just replace `sensors` with `actuators`.
+
+### change a sensor *or actuator* name
+
+```javascript
+var sensorId = "0ff8373bd";
+var deviceId = "5cde6d034b9f610ff8373bdb";
+await fetch(`/devices/${deviceId}/sensors/${sensorId}/name`, {
+    method: "POST",
+    headers: {
+		'Content-Type': 'application/json'
+	},
+    body: JSON.stringify("New Sensor Name")
+});
+```
 
 ### list all sensors *or actuators*
 

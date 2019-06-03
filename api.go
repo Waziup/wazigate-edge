@@ -17,6 +17,7 @@ func init() {
 	router.GET("/devices/:device_id", api.GetDevice)
 	router.POST("/devices", api.PostDevice)
 	router.DELETE("/devices/:device_id", api.DeleteDevice)
+	router.POST("/devices/:device_id/name", api.PostDeviceName)
 
 	// Sensor Endpoints
 
@@ -25,6 +26,7 @@ func init() {
 
 	router.POST("/devices/:device_id/sensors", api.PostDeviceSensor)
 	router.DELETE("/devices/:device_id/sensors/:sensor_id", api.DeleteDeviceSensor)
+	router.POST("/devices/:device_id/sensors/:sensor_id/name", api.PostDeviceSensorName)
 
 	router.GET("/devices/:device_id/sensors/:sensor_id/value", api.GetDeviceSensorValue)
 	router.GET("/devices/:device_id/sensors/:sensor_id/values", api.GetDeviceSensorValues)
@@ -37,8 +39,9 @@ func init() {
 	router.GET("/devices/:device_id/actuators", api.GetDeviceActuators)
 	router.GET("/devices/:device_id/actuators/:actuator_id", api.GetDeviceActuator)
 
-	router.POST("/devices/:device_id/actuator", api.PostDeviceActuator)
-	router.DELETE("/devices/:device_id/actuator/:actuator_id", api.DeleteDeviceActuator)
+	router.POST("/devices/:device_id/actuators", api.PostDeviceActuator)
+	router.DELETE("/devices/:device_id/actuators/:actuator_id", api.DeleteDeviceActuator)
+	router.POST("/devices/:device_id/actuators/:actuator_id/name", api.PostDeviceActuatorName)
 
 	router.GET("/devices/:device_id/actuators/:actuator_id/value", api.GetDeviceActuatorValue)
 	router.GET("/devices/:device_id/actuators/:actuator_id/values", api.GetDeviceActuatorValues)
@@ -49,6 +52,7 @@ func init() {
 	// Shortcut Endpoints (equals device_id = current device ID)
 
 	router.GET("/device", api.GetCurrentDevice)
+	router.POST("/device/name", api.PostCurrentDeviceName)
 
 	router.GET("/sensors", api.GetSensors)
 	router.GET("/sensors/:sensor_id", api.GetSensor)

@@ -7,16 +7,18 @@ import (
 	"time"
 
 	"github.com/Waziup/waziup-edge/tools"
+	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	routing "github.com/julienschmidt/httprouter"
 )
 
 // Actuator represents a Waziup actuator
 type Actuator struct {
-	ID    string      `json:"id" bson:"id"`
-	Name  string      `json:"name" bson:"name"`
-	Time  time.Time   `json:"time" bson:"time"`
-	Value interface{} `json:"value" bson:"value"`
+	ID       string      `json:"id" bson:"id"`
+	Name     string      `json:"name" bson:"name"`
+	Modified time.Time   `json:"modified" bson:"modified"`
+	Time     time.Time   `json:"time" bson:"time"`
+	Value    interface{} `json:"value" bson:"value"`
 }
 
 // GetDeviceActuator implements GET /devices/{deviceID}/actuators/{actuatorID}
@@ -65,6 +67,18 @@ func DeleteDeviceActuator(resp http.ResponseWriter, req *http.Request, params ro
 func DeleteActuator(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
 	deleteDeviceActuator(resp, GetLocalID(), params.ByName("actuator_id"))
+}
+
+// PostDeviceActuatorName implements POST /devices/{deviceID}/actuators/{actuatorID}/name
+func PostDeviceActuatorName(resp http.ResponseWriter, req *http.Request, params routing.Params) {
+
+	postDeviceActuatorName(resp, req, params.ByName("device_id"), params.ByName("actuator_id"))
+}
+
+// PostActuatorName implements POST /actuators/{actuatorID}/name
+func PostActuatorName(resp http.ResponseWriter, req *http.Request, params routing.Params) {
+
+	postDeviceActuatorName(resp, req, GetLocalID(), params.ByName("actuator_id"))
 }
 
 ////////////////////
@@ -149,6 +163,46 @@ func postDeviceActuator(resp http.ResponseWriter, req *http.Request, deviceID st
 	resp.Write([]byte{'"'})
 }
 
+func postDeviceActuatorName(resp http.ResponseWriter, req *http.Request, deviceID string, actuatorID string) {
+	body, err := tools.ReadAll(req.Body)
+	if err != nil {
+		http.Error(resp, "Bad Request: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	var name string
+	err = json.Unmarshal(body, &name)
+	if err != nil {
+		http.Error(resp, "Bad Request: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if DBDevices == nil {
+		http.Error(resp, "Database unavailable.", http.StatusServiceUnavailable)
+		return
+	}
+
+	err = DBDevices.Update(bson.M{
+		"_id":        deviceID,
+		"actuators.id": actuatorID,
+	}, bson.M{
+		"$set": bson.M{
+			"actuators.$.modified": time.Now(),
+			"actuators.$.name":     name,
+		},
+	})
+
+	if err != nil {
+		if err == mgo.ErrNotFound {
+			http.Error(resp, "Device or actuator not found.", http.StatusNotFound)
+			return
+		}
+		http.Error(resp, "Database Error - "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	resp.Write([]byte("true"))
+}
+
 func deleteDeviceActuator(resp http.ResponseWriter, deviceID string, actuatorID string) {
 
 	if DBDevices == nil || DBActuatorValues == nil {
@@ -166,7 +220,7 @@ func deleteDeviceActuator(resp http.ResponseWriter, deviceID string, actuatorID 
 		},
 	})
 	info, err2 := DBActuatorValues.RemoveAll(bson.M{
-		"deviceId":   deviceID,
+		"deviceId": deviceID,
 		"actuatorId": actuatorID,
 	})
 
@@ -193,6 +247,7 @@ func getReqActuator(req *http.Request, actuator *Actuator) error {
 		return err
 	}
 	actuator.Time = time.Now()
+	actuator.Modified = time.Now()
 	err = json.Unmarshal(body, &actuator)
 	if err != nil {
 		return err

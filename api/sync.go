@@ -2,6 +2,7 @@ package api
 
 import (
 	"log"
+	"net/url"
 	"time"
 
 	"github.com/Waziup/waziup-edge/mqtt"
@@ -27,15 +28,45 @@ func (cloud *Cloud) endSync() {
 
 func (cloud *Cloud) beginSync(counter int) {
 
+	/*
+		resp, err := http.Get("https://" + cloud.URL + "/devices")
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		log.Println(resp.Status, string(body))
+		return
+	*/
+
 	nretry := 0
 
+	addr := cloud.URL
+	u, err := url.Parse("//" + cloud.URL)
+	if err != nil {
+		log.Println("[UP   ] Err", err)
+		return
+	}
+	if u.Port() == "" {
+		addr = u.Hostname() + ":1883" + u.RequestURI()
+	}
+	if addr[len(addr)-1] == '/' {
+		addr = addr[:len(addr)-1]
+	}
+
 	for !cloud.Paused {
-		log.Printf("[UP   ] Dialing Upstream at %q...\n", cloud.URL)
+		log.Printf("[UP   ] Dialing Upstream at %q...\n", addr)
 		auth := &mqtt.ConnectAuth{
 			Username: cloud.Credentials.Username,
 			Password: cloud.Credentials.Token,
 		}
-		client, err := mqtt.Dial(cloud.URL, GetLocalID(), false, auth, nil)
+		client, err := mqtt.Dial(addr, GetLocalID(), false, auth, nil)
 		cloud.Client = client
 		if counter != cloud.counter {
 			client.Disconnect()

@@ -21,9 +21,6 @@ type Cloud struct {
 	Paused bool   `json:"paused"`
 	URL    string `json:"url"`
 
-	Config struct {
-	} `json:"config"`
-
 	Credentials struct {
 		Username string `json:"username"`
 		Token    string `json:"token"`
@@ -147,7 +144,7 @@ func PostClouds(resp http.ResponseWriter, req *http.Request, params routing.Para
 	WriteCloudConfig()
 }
 
-// DeleteClouds implements DELETE /clouds/{cloudID}
+// DeleteCloud implements DELETE /clouds/{cloudID}
 func DeleteCloud(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 	CloudsMutex.Lock()
 
@@ -193,8 +190,8 @@ func GetCloud(resp http.ResponseWriter, req *http.Request, params routing.Params
 	resp.Write(data)
 }
 
-// PostCloudConfig implements POST /clouds/{cloudID}/config
-func PostCloudConfig(resp http.ResponseWriter, req *http.Request, params routing.Params) {
+// PostCloudURL implements POST /clouds/{cloudID}/url
+func PostCloudURL(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 	CloudsMutex.Lock()
 
 	cloudID := params.ByName("cloud_id")
@@ -206,14 +203,15 @@ func PostCloudConfig(resp http.ResponseWriter, req *http.Request, params routing
 		return
 	}
 
+	var url string
 	decoder := json.NewDecoder(req.Body)
-	err := decoder.Decode(&cloud.Config)
+	err := decoder.Decode(&url)
 	if err != nil {
 		http.Error(resp, "Bad Request: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	log.Printf("[CLOUD] Changed config %q", cloud.ID)
+	log.Printf("[CLOUD] Changed URL %q", cloud.ID)
 
 	resp.Header().Set("Content-Type", "application/json")
 	resp.Write([]byte("true"))
@@ -223,7 +221,10 @@ func PostCloudConfig(resp http.ResponseWriter, req *http.Request, params routing
 	if !cloud.Paused {
 		cloud.endSync()
 		cloud.counter++
+		cloud.URL = url
 		go cloud.beginSync(cloud.counter)
+	} else {
+		cloud.URL = url
 	}
 
 	WriteCloudConfig()

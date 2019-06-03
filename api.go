@@ -78,6 +78,6 @@ func init() {
 	router.DELETE("/clouds/:cloud_id", api.DeleteCloud)
 	router.POST("/clouds/:cloud_id/paused", api.PostCloudPaused)
 	router.POST("/clouds/:cloud_id/credentials", api.PostCloudCredentials)
-	router.POST("/clouds/:cloud_id/config", api.PostCloudConfig)
+	router.POST("/clouds/:cloud_id/url", api.PostCloudURL)
 
 }

@@ -17,6 +17,7 @@ type Actuator struct {
 	ID       string      `json:"id" bson:"id"`
 	Name     string      `json:"name" bson:"name"`
 	Modified time.Time   `json:"modified" bson:"modified"`
+	Created  time.Time   `json:"created" bson:"created"`
 	Time     time.Time   `json:"time" bson:"time"`
 	Value    interface{} `json:"value" bson:"value"`
 }
@@ -246,12 +247,17 @@ func getReqActuator(req *http.Request, actuator *Actuator) error {
 	if err != nil {
 		return err
 	}
-	actuator.Time = time.Now()
-	actuator.Modified = time.Now()
+
+	now := time.Now()
+	actuator.Time = now
+	actuator.Modified = now
+	actuator.Created = now
+
 	err = json.Unmarshal(body, &actuator)
 	if err != nil {
 		return err
 	}
+
 	if actuator.ID == "" {
 		actuator.ID = bson.NewObjectId().String()
 	}

@@ -17,6 +17,7 @@ type Sensor struct {
 	ID       string      `json:"id" bson:"id"`
 	Name     string      `json:"name" bson:"name"`
 	Modified time.Time   `json:"modified" bson:"modified"`
+	Created  time.Time   `json:"created" bson:"created"`
 	Time     time.Time   `json:"time" bson:"time"`
 	Value    interface{} `json:"value" bson:"value"`
 }
@@ -246,12 +247,17 @@ func getReqSensor(req *http.Request, sensor *Sensor) error {
 	if err != nil {
 		return err
 	}
-	sensor.Time = time.Now()
-	sensor.Modified = time.Now()
+
+	now := time.Now()
+	sensor.Time = now
+	sensor.Modified = now
+	sensor.Created = now
+	
 	err = json.Unmarshal(body, &sensor)
 	if err != nil {
 		return err
 	}
+
 	if sensor.ID == "" {
 		sensor.ID = bson.NewObjectId().String()
 	}

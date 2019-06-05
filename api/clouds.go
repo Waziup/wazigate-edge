@@ -29,6 +29,9 @@ type Cloud struct {
 	counter int
 	Client  *mqtt.Client `json:"-"`
 	Queue   *mqtt.Queue  `json:"queue"`
+
+	StatusCode int    `json:"statusCode"`
+	StatusText string `json:"statusText"`
 }
 
 // Clouds lists all clouds that we synchronize.

@@ -116,7 +116,7 @@ var devices = await resp.json();
 console.log(devices);
 ```
 
-Console output will be like:
+Console output will be like: (without comments)
 
 ```javascript
 [{
@@ -124,15 +124,23 @@ Console output will be like:
   id: "5cde6d034b9f61",
   // Sensors List
   sensors: [{
+    // unique sensor id
     id: "6f840f0b1",
+    // Sensor name
     name: "My Sensor 1",
+    // time when last modified
     modified: "2019-06-03T12:31:34.331Z",
+    // time when created
+    created: "2019-06-03T12:31:34.331Z",
+    // time last value received
     time: "2019-06-03T12:15:47.971Z",
+    // last value
     value: null
   },{
     id: "df34b9f612",
     name: "My Sensor 2",
     modified: "0001-01-01T00:00:00Z",
+    created: "2019-06-03T12:31:34.331Z",
     time: "2019-06-03T12:15:47.971Z",
     value: null
   }],
@@ -141,10 +149,12 @@ Console output will be like:
     id: "40f034",
     name: "My Actuator 1",
     modified: "2019-06-03T12:30:52.106Z",
+    created: "2019-06-03T12:31:34.331Z",
     time: "2019-06-03T12:15:47.971Z",
     value: null
   }],
-  modified: "2019-06-03T12:30:52.106Z"
+  modified: "2019-06-03T12:30:52.106Z",
+  created: "2019-06-03T12:31:34.331Z"
 }]
 ```
 
@@ -317,19 +327,30 @@ console.log(clouds);
 ```
 
 Output will be like:
-```json
+```javascript
 {
   "5ce2793d4b9f612a04a7951d": {
-    "id": "5ce2793d4b9f612a04a7951d",
-    "paused": true,
-    "url": "api.waziup.io/api/v2",
-    "credentials": {
-      "username": "myUsername",
-      "token": "myPassword"
-    }
+    id: "5ce2793d4b9f612a04a7951d",
+    paused: true,
+    url: "api.waziup.io/api/v2",
+    credentials: {
+      username: "myUsername",
+      token: "myPassword"
+    },
+    // bytes in queue waiting for sync with server
+    queue: 136,
+    // sync status code (200 = OK)
+    statusCode: 200,
+    // readable status text or error, if any
+    statusText: "MQTT connected for persistent sync."
   }
 }
 ```
+
+*statusCode* can be one of:<br>
+`200` OK. The synchronization is active.<br>
+`0` The synchronization is paused.<br>
+Any other code: There was a problem with this synchronization.
 
 ### pause & resume cloud synchronization
 
@@ -400,10 +421,10 @@ Remember that messages must be valid JSON, so enquote strings like `"my string"`
 ![Hive MQTT Websocket Client](assets/hive_mqtt.png)
 See http://www.hivemq.com/demos/websocket-client/.
 
-Equivalent mosquitto calls looks like:
+Equivalent mosquitto calls look like:
 
 ```bash
-# Publish Values
+# Publish Values:
 mosquitto_pub \
   -t "devices/5cd92df34b9f6126f840f0b1/sensors/df34b9f612/value" \
   -V "mqttv31" \
@@ -412,6 +433,26 @@ mosquitto_pub \
 # Subscribe to topics:
 mosquitto_sub \
   -t "devices/5cd92df34b9f6126f840f0b1/sensors/df34b9f612/value" \
+  -V "mqttv31"
+
+# Subscribe to all sensors of one device:
+mosquitto_sub \
+  -t "devices/5cd92df34b9f6126f840f0b1/sensors/*/value" \
+  -V "mqttv31"
+
+# Subscribe to actuating-data of all devices:
+mosquitto_sub \
+  -t "devices/*/actuator/*/value" \
+  -V "mqttv31"
+
+# Subscribe to all changes on one device:
+mosquitto_sub \
+  -t "devices/5cd92df34b9f6126f840f0b1/#" \
+  -V "mqttv31"
+
+# Subscribe to literally everything on devices:
+mosquitto_sub \
+  -t "devices/#" \
   -V "mqttv31"
 ```
 
@@ -424,6 +465,7 @@ There are a few things to keep in mind when using MQTT:
 * Subscriptions will be triggered by both Publishes (via MQTT) and Post (via REST).
 * Topics do not start with a slash '/'.
 * Use only valid JSON objects as payload!
+* At the moment, the broker can do MQTT v3.1 only!
 
 # Configuration
 

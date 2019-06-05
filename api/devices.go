@@ -21,6 +21,7 @@ type Device struct {
 	Sensors   []*Sensor   `json:"sensors" bson:"sensors"`
 	Actuators []*Actuator `json:"actuators" bson:"actuators"`
 	Modified  time.Time   `json:"modified" bson:"modified"`
+	Created  time.Time   `json:"created" bson:"created"`
 }
 
 ////////////////////
@@ -245,12 +246,20 @@ func getReqDevice(req *http.Request, device *Device) error {
 	if device.ID == "" {
 		device.ID = bson.NewObjectId().Hex()
 	}
-	now := time.Now()
-	device.Modified = now
 	var noTime time.Time
+	now := time.Now()
+	if device.Modified == noTime {
+		device.Modified = now
+	}
+
 	if device.Sensors != nil {
 		for _, sensor := range device.Sensors {
-			sensor.Modified = now
+			if sensor.Created == noTime {
+				sensor.Created = now
+			}
+			if sensor.Modified == noTime {
+				sensor.Modified = now
+			}
 			if sensor.Time == noTime {
 				sensor.Time = now
 			}
@@ -258,7 +267,12 @@ func getReqDevice(req *http.Request, device *Device) error {
 	}
 	if device.Actuators != nil {
 		for _, actuator := range device.Actuators {
-			actuator.Modified = now
+			if actuator.Created == noTime {
+				actuator.Created = now
+			}
+			if actuator.Modified == noTime {
+				actuator.Modified = now
+			}
 			if actuator.Time == noTime {
 				actuator.Time = now
 			}

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/Waziup/waziup-edge/api"
 	"github.com/Waziup/waziup-edge/mqtt"
@@ -58,17 +59,21 @@ func main() {
 
 	////////////////////
 
-	log.Printf("[DB   ] Dialing MongoDB at %q...\n", *dbAddr)
+	for i := 0; i < 5; i++ {
+		log.Printf("[DB   ] Dialing MongoDB at %q...\n", *dbAddr)
+		db, err := mgo.Dial("mongodb://" + *dbAddr + "/?connect=direct")
+		if err != nil {
+			log.Println("[DB   ] MongoDB client error:\n", err)
+			time.Sleep(time.Second * 2)
+			continue
+		} else {
 
-	db, err := mgo.Dial("mongodb://" + *dbAddr + "/?connect=direct")
-	if err != nil {
-		log.Println("[DB   ] MongoDB client error:\n", err)
-	} else {
-
-		db.SetSafe(&mgo.Safe{})
-		api.DBSensorValues = db.DB("waziup").C("sensor_values")
-		api.DBActuatorValues = db.DB("waziup").C("actuator_values")
-		api.DBDevices = db.DB("waziup").C("devices")
+			db.SetSafe(&mgo.Safe{})
+			api.DBSensorValues = db.DB("waziup").C("sensor_values")
+			api.DBActuatorValues = db.DB("waziup").C("actuator_values")
+			api.DBDevices = db.DB("waziup").C("devices")
+			break
+		}
 	}
 
 	////////////////////

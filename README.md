@@ -21,19 +21,19 @@ You can compile this project from source with golang and git.
 Grab yourself the go language from [golang.org](https://golang.org/) and the
 git command line tools with `apt-get git` or from [git-scm.com/download](https://git-scm.com/download).
 
-Now build the waziup-edge executable:
+Now build the wazigateway-edge executable:
 
 ```bash
-git clone https://github.com/Waziup/waziup-edge.git
-cd waziup-edge
+git clone https://github.com/Waziup/wazigateway-edge.git
+cd wazigateway-edge
 go build .
 ```
 
-And run the waziup-edge server with:
+And run the wazigateway-edge server with:
 
 
 ```bash
-waziup-edge
+wazigateway-edge
 ```
 
 ## with docker
@@ -42,10 +42,10 @@ If you like to use docker you can use the public waziup docker containers at [th
 For development you can build this repo on your own using:
 
 ```bash
-git clone https://github.com/Waziup/waziup-edge.git
-cd waziup-edge
-docker build --tag=waziup-edge .
-docker run -p 4000:80 waziup-edge
+git clone https://github.com/Waziup/wazigateway-edge.git
+cd wazigateway-edge
+docker build --tag=wazigateway-edge .
+docker run -p 4000:80 wazigateway-edge
 ```
 
 # Examples

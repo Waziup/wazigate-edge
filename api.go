@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/Waziup/waziup-edge/api"
+	"github.com/Waziup/wazigateway-edge/api"
 	routing "github.com/julienschmidt/httprouter"
 )
 

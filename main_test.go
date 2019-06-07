@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Waziup/waziup-edge/api"
+	"github.com/Waziup/wazigateway-edge/api"
 )
 
 var time1, _ = time.Parse(api.TimeFormat, "2019-05-13T11:35:24.002Z")
@@ -290,13 +290,13 @@ func runMongoBackground(t *testing.T) *exec.Cmd {
 }
 
 func runEdgeBackground(t *testing.T) *exec.Cmd {
-	t.Log("$ waziup-edge")
-	edge := exec.Command("waziup-edge")
+	t.Log("$ wazigateway-edge")
+	edge := exec.Command("wazigateway-edge")
 	edge.Stdout = os.Stdout
 	edge.Stderr = os.Stderr
 	err := edge.Start()
 	if err != nil {
-		t.Fatalf("waziup-edge.exe is required for this test.\n%v", err)
+		t.Fatalf("wazigateway-edge.exe is required for this test.\n%v", err)
 	}
 	return edge
 }

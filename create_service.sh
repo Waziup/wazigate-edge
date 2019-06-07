@@ -1,8 +1,8 @@
 #!/bin/bash
 
-REPO="github.com/Waziup/waziup-edge"
-BIN="waziup-edge"
-SERVICE="waziup-edge"
+REPO="github.com/Waziup/wazigateway-edge"
+BIN="wazigateway-edge"
+SERVICE="wazigateway-edge"
 
 go install $REPO
 

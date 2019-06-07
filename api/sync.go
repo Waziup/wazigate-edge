@@ -10,7 +10,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/Waziup/waziup-edge/mqtt"
+	"github.com/Waziup/wazigateway-edge/mqtt"
 )
 
 var Downstream mqtt.Server

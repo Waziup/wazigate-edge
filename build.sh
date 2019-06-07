@@ -1,5 +1,5 @@
 #!/bin/bash
 
-BIN="waziup-edge"
+BIN="wazigateway-edge"
 
 go build -o $BIN .

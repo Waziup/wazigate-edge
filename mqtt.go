@@ -10,9 +10,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/Waziup/waziup-edge/api"
-	"github.com/Waziup/waziup-edge/mqtt"
-	"github.com/Waziup/waziup-edge/tools"
+	"github.com/Waziup/wazigateway-edge/api"
+	"github.com/Waziup/wazigateway-edge/mqtt"
+	"github.com/Waziup/wazigateway-edge/tools"
 )
 
 type MQTTServer struct {

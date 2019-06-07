@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Waziup/waziup-edge/tools"
+	"github.com/Waziup/wazigateway-edge/tools"
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	routing "github.com/julienschmidt/httprouter"
@@ -252,7 +252,7 @@ func getReqSensor(req *http.Request, sensor *Sensor) error {
 	sensor.Time = now
 	sensor.Modified = now
 	sensor.Created = now
-	
+
 	err = json.Unmarshal(body, &sensor)
 	if err != nil {
 		return err

@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/Waziup/waziup-edge/tools"
+	"github.com/Waziup/wazigateway-edge/tools"
 	"github.com/globalsign/mgo/bson"
 )
 

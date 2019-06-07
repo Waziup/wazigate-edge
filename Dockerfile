@@ -1,6 +1,6 @@
 FROM golang:1.12-alpine AS development
 
-ENV PROJECT_PATH=/waziup-edge
+ENV PROJECT_PATH=/wazigateway-edge
 ENV PATH=$PATH:$PROJECT_PATH/build
 ENV CGO_ENABLED=0
 
@@ -10,11 +10,11 @@ RUN mkdir -p $PROJECT_PATH
 COPY . $PROJECT_PATH
 WORKDIR $PROJECT_PATH
 
-RUN go build -o build/waziup-edge .
+RUN go build -o build/wazigateway-edge .
 
 FROM alpine:latest AS production
 
 WORKDIR /root/
 RUN apk --no-cache add ca-certificates tzdata
-COPY --from=development /waziup-edge/build/waziup-edge .
-ENTRYPOINT ["./waziup-edge"]
+COPY --from=development /wazigateway-edge/build/wazigateway-edge .
+ENTRYPOINT ["./wazigateway-edge"]

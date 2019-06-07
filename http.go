@@ -11,7 +11,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/Waziup/wazigateway-edge/mqtt"
+	"github.com/Waziup/wazigate-edge/mqtt"
 	"github.com/gorilla/websocket"
 )
 

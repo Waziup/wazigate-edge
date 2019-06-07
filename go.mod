@@ -1,4 +1,4 @@
-module github.com/Waziup/wazigateway-edge
+module github.com/Waziup/wazigate-edge
 
 go 1.12
 

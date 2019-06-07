@@ -7,7 +7,7 @@ import (
 	"io"
 	"net"
 
-	"github.com/Waziup/wazigateway-edge/mqtt/tools"
+	"github.com/Waziup/wazigate-edge/mqtt/tools"
 )
 
 type Closer interface {

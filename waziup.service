@@ -1,6 +1,6 @@
 [Unit]
 Description=Waziup Edge
-ConditionPathExists=/bin/wazigateway-edge
+ConditionPathExists=/bin/wazigate-edge
 After=network.target
 
 [Service]
@@ -11,7 +11,7 @@ Restart=always
 RestartSec=2
 
 WorkingDirectory=/var/www
-ExecStart=/bin/wazigateway-edge
+ExecStart=/bin/wazigate-edge
 
 [Install]
 WantedBy=multi-user.target

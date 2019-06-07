@@ -10,7 +10,7 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 
-	"github.com/Waziup/wazigateway-edge/mqtt"
+	"github.com/Waziup/wazigate-edge/mqtt"
 
 	routing "github.com/julienschmidt/httprouter"
 )

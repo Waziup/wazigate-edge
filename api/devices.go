@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Waziup/wazigateway-edge/tools"
+	"github.com/Waziup/wazigate-edge/tools"
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	routing "github.com/julienschmidt/httprouter"

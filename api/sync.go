@@ -10,7 +10,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/Waziup/wazigateway-edge/mqtt"
+	"github.com/Waziup/wazigate-edge/mqtt"
 )
 
 var Downstream mqtt.Server
@@ -82,7 +82,7 @@ func (cloud *Cloud) persistentSync() bool {
 		log.Println("[UP   ] Err", err)
 		return false
 	}
-	addr := u.Hostname() + ":1883"
+	addr := u.Hostname() + ":8883"
 
 	log.Printf("[UP   ] Dialing Upstream at %q...\n", addr)
 	auth := &mqtt.ConnectAuth{

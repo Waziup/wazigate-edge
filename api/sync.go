@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"net/url"
 	"time"
 
 	"github.com/Waziup/wazigate-edge/mqtt"
@@ -77,14 +76,8 @@ func (cloud *Cloud) persistentSync() bool {
 	cloud.StatusCode = 0
 	cloud.StatusText = "Connecting to server for persistent sync..."
 
-	u, err := url.Parse("//" + cloud.URL)
-	if err != nil {
-		log.Println("[UP   ] Err", err)
-		return false
-	}
-	addr := u.Hostname() + ":8883"
-
-	log.Printf("[UP   ] Dialing Upstream at %q...\n", addr)
+	addr := cloud.getMQTTAddr()
+	log.Printf("[UP   ] Dialing MQTT %q...\n", addr)
 	auth := &mqtt.ConnectAuth{
 		Username: cloud.Credentials.Username,
 		Password: cloud.Credentials.Token,
@@ -144,7 +137,9 @@ func (cloud *Cloud) initialSync() bool {
 	// Get Authentication Token
 	//
 	body, _ := json.Marshal(credentials)
-	resp, err := http.Post("https://"+cloud.URL+"/auth/token", "application/json", bytes.NewReader(body))
+	addr := cloud.getRESTAddr()
+	log.Printf("[UP   ] Dialing REST %q...", addr)
+	resp, err := http.Post(addr+"/auth/token", "application/json", bytes.NewReader(body))
 	if err != nil {
 		log.Printf("[UP   ] Err %s", err.Error())
 		cloud.StatusCode = -1
@@ -178,7 +173,7 @@ func (cloud *Cloud) initialSync() bool {
 	var device Device
 	iter := DBDevices.Find(nil).Iter()
 	for iter.Next(&device) {
-		req, err := http.NewRequest(http.MethodGet, "https://"+cloud.URL+"/devices/"+device.ID, nil)
+		req, err := http.NewRequest(http.MethodGet, addr+"/devices/"+device.ID, nil)
 		req.Header.Set("Authorization", auth)
 		resp, err = http.DefaultClient.Do(req)
 
@@ -195,7 +190,7 @@ func (cloud *Cloud) initialSync() bool {
 			resp.Body.Close()
 
 			data, _ := json.Marshal(device)
-			req2, _ := http.NewRequest(http.MethodPost, "https://"+cloud.URL+"/devices", bytes.NewReader(data))
+			req2, _ := http.NewRequest(http.MethodPost, addr+"/devices", bytes.NewReader(data))
 			req2.Header.Set("Authorization", auth)
 			req2.Header.Set("Content-Type", "application/json")
 			resp2, err := http.DefaultClient.Do(req2)

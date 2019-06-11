@@ -5,7 +5,9 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/globalsign/mgo/bson"
@@ -19,7 +21,8 @@ import (
 type Cloud struct {
 	ID     string `json:"id"`
 	Paused bool   `json:"paused"`
-	URL    string `json:"url"`
+	REST   string `json:"rest"`
+	MQTT   string `json:"mqtt"`
 
 	Credentials struct {
 		Username string `json:"username"`
@@ -49,6 +52,30 @@ func getCloudsFile() string {
 	return cloudsFile
 }
 
+func (c *Cloud) getRESTAddr() string {
+	u, _ := url.Parse(c.REST)
+	u.Scheme = "https"
+	u.RawQuery = ""
+	u.Fragment = ""
+	if strings.HasSuffix(u.RawPath, "/") {
+		u.RawPath = u.RawPath[:len(u.RawPath)-1]
+	}
+	return u.String()
+}
+
+func (c *Cloud) getMQTTAddr() string {
+	var u *url.URL
+	if c.MQTT == "" {
+		u, _ = url.Parse(c.REST)
+	} else {
+		u, _ = url.Parse(c.MQTT)
+	}
+	if u.Port() == "" {
+		return u.Host + ":1883"
+	}
+	return u.Host
+}
+
 // ReadCloudConfig reads clouds.json into the current configuration.
 func ReadCloudConfig() error {
 	CloudsMutex.Lock()
@@ -64,7 +91,7 @@ func ReadCloudConfig() error {
 			log.Printf("[CLOUD] %d clouds from config:", len(Clouds))
 			for _, cloud := range Clouds {
 				cloud.Queue = mqtt.NewQueue(cloud.ID)
-				log.Printf("[CLOUD] %q %q (pause:%v)", cloud.ID, cloud.URL, cloud.Paused)
+				log.Printf("[CLOUD] %q %q (pause:%v)", cloud.ID, cloud.REST, cloud.Paused)
 				if !cloud.Paused {
 					cloud.counter++
 					go cloud.beginSync(cloud.counter)
@@ -122,6 +149,22 @@ func PostClouds(resp http.ResponseWriter, req *http.Request, params routing.Para
 	if cloud.ID == "" {
 		cloud.ID = bson.NewObjectId().Hex()
 	}
+
+	_, err = url.Parse(cloud.REST)
+	if err != nil {
+		CloudsMutex.Unlock()
+		http.Error(resp, "Bad Request: Mal formatted REST address.", http.StatusBadRequest)
+		return
+	}
+
+	if cloud.MQTT != "" {
+		if _, err = url.Parse(cloud.MQTT); err != nil {
+			CloudsMutex.Unlock()
+			http.Error(resp, "Bad Request: Mal formatted MQTT address.", http.StatusBadRequest)
+			return
+		}
+	}
+
 	if _, exists := Clouds[cloud.ID]; exists {
 		CloudsMutex.Unlock()
 		http.Error(resp, "Bad Request: A cloud with that ID already exists.", http.StatusBadRequest)
@@ -130,7 +173,7 @@ func PostClouds(resp http.ResponseWriter, req *http.Request, params routing.Para
 	mqtt.DeleteQueue(cloud.ID)
 	cloud.Queue = mqtt.NewQueue(cloud.ID)
 	Clouds[cloud.ID] = cloud
-	log.Printf("[CLOUD] Created %q: %q", cloud.ID, cloud.URL)
+	log.Printf("[CLOUD] Created %q: %q", cloud.ID, cloud.REST)
 
 	resp.Header().Set("Content-Type", "application/json")
 	resp.Write([]byte{'"'})
@@ -160,7 +203,7 @@ func DeleteCloud(resp http.ResponseWriter, req *http.Request, params routing.Par
 	}
 
 	delete(Clouds, cloudID)
-	log.Printf("[CLOUD] Deleted %q: %q", cloud.ID, cloud.URL)
+	log.Printf("[CLOUD] Deleted %q: %q", cloud.ID, cloud.REST)
 
 	resp.Header().Set("Content-Type", "application/json")
 	resp.Write([]byte("true"))
@@ -193,8 +236,8 @@ func GetCloud(resp http.ResponseWriter, req *http.Request, params routing.Params
 	resp.Write(data)
 }
 
-// PostCloudURL implements POST /clouds/{cloudID}/url
-func PostCloudURL(resp http.ResponseWriter, req *http.Request, params routing.Params) {
+// PostCloudRESTAddr implements POST /clouds/{cloudID}/rest
+func PostCloudRESTAddr(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 	CloudsMutex.Lock()
 
 	cloudID := params.ByName("cloud_id")
@@ -206,15 +249,15 @@ func PostCloudURL(resp http.ResponseWriter, req *http.Request, params routing.Pa
 		return
 	}
 
-	var url string
+	var addr string
 	decoder := json.NewDecoder(req.Body)
-	err := decoder.Decode(&url)
+	err := decoder.Decode(&addr)
 	if err != nil {
 		http.Error(resp, "Bad Request: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	log.Printf("[CLOUD] Changed URL %q", cloud.ID)
+	log.Printf("[CLOUD] Changed REST Addr %q", cloud.ID)
 
 	resp.Header().Set("Content-Type", "application/json")
 	resp.Write([]byte("true"))
@@ -224,10 +267,50 @@ func PostCloudURL(resp http.ResponseWriter, req *http.Request, params routing.Pa
 	if !cloud.Paused {
 		cloud.endSync()
 		cloud.counter++
-		cloud.URL = url
+		cloud.REST = addr
 		go cloud.beginSync(cloud.counter)
 	} else {
-		cloud.URL = url
+		cloud.REST = addr
+	}
+
+	WriteCloudConfig()
+}
+
+// PostCloudMQTTAddr implements POST /clouds/{cloudID}/mqtt
+func PostCloudMQTTAddr(resp http.ResponseWriter, req *http.Request, params routing.Params) {
+	CloudsMutex.Lock()
+
+	cloudID := params.ByName("cloud_id")
+	cloud, exists := Clouds[cloudID]
+
+	if !exists {
+		CloudsMutex.Unlock()
+		http.Error(resp, "Not Found: There is no cloud with that ID.", http.StatusNotFound)
+		return
+	}
+
+	var addr string
+	decoder := json.NewDecoder(req.Body)
+	err := decoder.Decode(&addr)
+	if err != nil {
+		http.Error(resp, "Bad Request: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	log.Printf("[CLOUD] Changed MQTT Addr %q", cloud.ID)
+
+	resp.Header().Set("Content-Type", "application/json")
+	resp.Write([]byte("true"))
+
+	CloudsMutex.Unlock()
+
+	if !cloud.Paused {
+		cloud.endSync()
+		cloud.counter++
+		cloud.MQTT = addr
+		go cloud.beginSync(cloud.counter)
+	} else {
+		cloud.MQTT = addr
 	}
 
 	WriteCloudConfig()

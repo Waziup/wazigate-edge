@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Waziup/wazigate-edge/mqtt"
 	"github.com/Waziup/wazigate-edge/tools"
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
@@ -21,7 +22,7 @@ type Device struct {
 	Sensors   []*Sensor   `json:"sensors" bson:"sensors"`
 	Actuators []*Actuator `json:"actuators" bson:"actuators"`
 	Modified  time.Time   `json:"modified" bson:"modified"`
-	Created  time.Time   `json:"created" bson:"created"`
+	Created   time.Time   `json:"created" bson:"created"`
 }
 
 ////////////////////
@@ -156,6 +157,18 @@ func postDevice(resp http.ResponseWriter, req *http.Request) {
 
 	log.Printf("[DB   ] created device %s\n", device.ID)
 
+	CloudsMutex.RLock()
+	for _, cloud := range Clouds {
+		topic := "devices/" + device.ID + "/actuators/#"
+		pkt := mqtt.Subscribe(0, []mqtt.TopicSubscription{
+			mqtt.TopicSubscription{
+				Name: topic,
+			},
+		})
+		cloud.Queue.WritePacket(pkt)
+	}
+	CloudsMutex.RUnlock()
+
 	resp.Header().Set("Content-Type", "application/json")
 	resp.Write([]byte{'"'})
 	resp.Write([]byte(device.ID))
@@ -183,7 +196,7 @@ func postDeviceName(resp http.ResponseWriter, req *http.Request, deviceID string
 	}
 
 	err = DBDevices.Update(bson.M{
-		"_id":        deviceID,
+		"_id": deviceID,
 	}, bson.M{
 		"$set": bson.M{
 			"modified": time.Now(),
@@ -211,6 +224,19 @@ func deleteDevice(resp http.ResponseWriter, deviceID string) {
 		http.Error(resp, "Database unavailable.", http.StatusServiceUnavailable)
 		return
 	}
+
+	var device Device
+	devices := DBDevices.FindId(deviceID).Iter()
+	for devices.Next(&device) {
+		CloudsMutex.RLock()
+		for _, cloud := range Clouds {
+			topic := "devices/" + device.ID + "/actuators/#"
+			pkt := mqtt.Unsubscribe(0, []string{topic})
+			cloud.Queue.WritePacket(pkt)
+		}
+		CloudsMutex.RUnlock()
+	}
+	devices.Close()
 
 	err := DBDevices.RemoveId(deviceID)
 	info1, _ := DBSensorValues.RemoveAll(bson.M{"deviceId": deviceID})

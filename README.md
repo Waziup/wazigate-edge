@@ -7,6 +7,34 @@ You can use REST and MQTT on all endpoints.
 ![Waziup Structure](./assets/waziup_structure.svg)
 
 
+# Table of Contents
+
+* [Usage](#usage)
+* [Development](#development)
+* [Examples](#examples)
+  * [create a new device](#create-a-new-device)
+  * [change a device name](#change-a-device-name)
+  * [delete a device](#delete-a-device)
+  * [list all devices](#list-all-devices)
+  * [create a new sensor or actuator](#create-a-new-sensor-or-actuator)
+  * [change a sensor or actuator name](#change-a-sensor-or-actuator-name)
+  * [list all sensors or actuators](#create-a-new-device)
+  * [delete a sensor or actuator](#delete-a-sensor-or-actuator)
+  * [upload a sensor or actuator value](#upload-a-sensor-or-actuator-value)
+  * [upload multiple sensor or actuator values](#upload-multiple-sensor-or-actuator-values)
+  * [get-the-last-sensor-or-actuator-value](#get the last sensor or actuator value)
+* Clouds and Synchronization
+  * [add a Waziup Cloud for synchronization](#add-a-waziup-cloud-for-synchronization)
+  * [list all configured clouds](#list-all-configured-clouds)
+  * [pause & resume cloud synchronization](#pause--resume-cloud-synchronization)
+  * [change cloud credentials (username and password)](#change-cloud-credentials-username-and-password)
+  * [change the cloud url (rest or mqtt)](#change-the-cloud-url)
+* [Use MQTT!](#use-mqtt)
+* [System Settings](#system-settings)
+  * [Log Files](#log-files)
+* [Configuration](#configuration)
+
+
 # Usage
 
 This project is part of the [Waziup Open Innovation Platform](https://www.waziup.eu/). In most cases you do not want to use this repository without the
@@ -111,7 +139,7 @@ fetch(`/devices/${deviceId}`, {
 ### list all devices
 
 ```javascript
-var resp = await await fetch("/devices");
+var resp = await fetch("/devices");
 var devices = await resp.json();
 console.log(devices);
 ```
@@ -198,7 +226,7 @@ await fetch(`/devices/${deviceId}/sensors/${sensorId}/name`, {
 
 ```javascript
 var deviceId = "5cde6c194b9f610ff8373bda";
-var resp = await await fetch(`/devices/${deviceId}/sensors`);
+var resp = await fetch(`/devices/${deviceId}/sensors`);
 var sensors = await resp.json();
 console.log(sensors);
 ```
@@ -240,8 +268,6 @@ fetch(`/devices/${deviceId}/sensors/${sensorId}/value`, {
 ```
 
 
-
-
 ### upload multiple sensor *or actuator* values
 
 ```javascript
@@ -276,7 +302,7 @@ fetch(`/devices/${deviceId}/sensors/${sensorId}/values`, {
 ```javascript
 var sensorId = "0ff8373bd";
 var deviceId = "5cde6d034b9f610ff8373bdb";
-var resp = await await fetch(`/devices/${deviceId}/sensors/${sensorId}/value`);
+var resp = await fetch(`/devices/${deviceId}/sensors/${sensorId}/value`);
 var value = await resp.json();
 console.log(value);
 ```
@@ -286,7 +312,7 @@ console.log(value);
 ```javascript
 var sensorId = "0ff8373bd";
 var deviceId = "5cde6d034b9f610ff8373bdb";
-var resp = await await fetch(`/devices/${deviceId}/sensors/${sensorId}/values`);
+var resp = await fetch(`/devices/${deviceId}/sensors/${sensorId}/values`);
 var values = await resp.json();
 console.log(values);
 ```
@@ -300,7 +326,8 @@ fetch(`/clouds`, {
     'Content-Type': 'application/json'
   },
   body: JSON.stringify({
-    url: "api.waziup.io/api/v2",
+    rest: "api.waziup.io/api/v2",
+    mqtt: "api.waziup.io",
     paused: true, // default false
     credentials: {
       username: "myUsername",
@@ -321,7 +348,7 @@ new cloud.id: 5ce2793d4b9f612a04a7951d
 ### list all configured clouds
 
 ```javascript
-var resp = await await fetch("/clouds");
+var resp = await fetch("/clouds");
 var clouds = await resp.json();
 console.log(clouds);
 ```
@@ -332,7 +359,8 @@ Output will be like:
   "5ce2793d4b9f612a04a7951d": {
     id: "5ce2793d4b9f612a04a7951d",
     paused: true,
-    url: "api.waziup.io/api/v2",
+    rest: "api.waziup.io/api/v2",
+    mqtt: "api.waziup.io",
     credentials: {
       username: "myUsername",
       token: "myPassword"
@@ -381,11 +409,22 @@ fetch(`/clouds/${cloudId}/credentials`, {
 });
 ```
 
-### change the cloud url
+### change the cloud url (rest or mqtt)
 
 ```javascript
 var cloudId = "5ce2793d4b9f612a04a7951d";
-fetch(`/clouds/${cloudId}/url`, {
+fetch(`/clouds/${cloudId}/mqtt`, {
+  method: "POST",
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify("waziup.myserver.com")
+});
+```
+
+```javascript
+var cloudId = "5ce2793d4b9f612a04a7951d";
+fetch(`/clouds/${cloudId}/rest`, {
   method: "POST",
   headers: {
     'Content-Type': 'application/json'
@@ -467,7 +506,113 @@ There are a few things to keep in mind when using MQTT:
 * Use only valid JSON objects as payload!
 * At the moment, the broker can do MQTT v3.1 only!
 
+# System Settings
+
+The following APIs are for system settings and debugging.
+
+### uptime
+
+```javascript
+var resp = await fetch("/sys/uptime");
+var uptime = await resp.text();
+console.log(uptime);
+```
+
+Console output will be like `6m29.5201577s`.
+
+### clear all
+
+*Attention!* This call will clear the local database, removing all devices and all data values.
+
+This can not be undone!
+
+```javascript
+var resp = await fetch("/sys/clear_all", {method: "PUT"});
+console.log(resp.ok);
+```
+
+## Log Files
+
+For every session, the wazigate-edge will create a log file at `./logs` that equals the cmd output (your console output).
+
+### list all logs
+
+```javascript
+var resp = await fetch("/sys/logs");
+var logs = await resp.json();
+console.log(logs);
+```
+
+Console output will be like:
+
+```javascript
+[
+  {name: "5cff90374b9f6139d44193e6.txt", time: "2019-06-11T13:27:51+02:00", size: 2187},
+  {name: "5cff92874b9f6136541f4aaa.txt", time: "2019-06-11T13:37:43+02:00", size: 523},
+  ...
+]
+```
+
+The last file in this list will be the current log file. This file can not be deleted.
+
+### read a log file
+
+```javascript
+var file = "5cff92874b9f6136541f4aaa.txt";
+var resp = await fetch("/sys/log/"+file);
+var log = await resp.text();
+console.log(log);
+```
+
+The file is text only and will look like:
+
+```
+[WWW  ] Serving from "/var/www"
+[DB   ] Dialing MongoDB at "localhost:27017"...
+[     ] Local device id is "309c23cdbda6".
+[CLOUD] 1 clouds from config:
+[CLOUD] "5cebcfa04b9f6119688b3cdc" "//api.waziup.io/api/v2" (pause:false)
+[UP   ] Dialing REST "https://api.waziup.io/api/v2"...
+[MQTT ] MQTT Server at ":1883".
+[HTTP ] HTTP Server at ":80". Use "http://".
+[WS   ] MQTT via WebSocket Server at":80". Use "ws://".
+[UP   ] Authentication successfull.
+[MQTT ] Connect "mosqsub|12576-DESKTOP-L" <nil>
+[MQTT ] Subscribe "mosqsub|12576-DESKTOP-L" "sys/log" QoS:0
+[UP   ] Device "5cde6d034b9f61" found. Checking for updates.
+[UP   ] Dialing MQTT "api.waziup.io:1883"...
+[HTTP ] [::1]:62660 200 GET "/sys/logs" s:0
+[HTTP ] [::1]:62660 200 GET "/sys/log/5cff90374b9f6139d44193e6.txt" s:0
+```
+
+### subscribe to `sys/log`
+
+You can subscribe to the system log topic to monitor the log in real-time!
+
+```bash
+mosquitto_sub -t "sys/log" -V "mqttv31"
+```
+
+With [HiveMQ](http://www.hivemq.com/demos/websocket-client/) use port 80, click *connect* and subscribe to *sys/log*.
+
+The first result will always be `[MQTT ] Subscribe "..." "sys/log" QoS:0` which is the log generated from the mqtt subscription you just made.
+
+### delete a log file
+
+```javascript
+var file = "5cff92874b9f6136541f4aaa.txt";
+fetch("/sys/log/"+file, {
+    method: "DELETE",
+});
+```
+
 # Configuration
+
+**The application is ready to use with no configration needed!**
+
+You might want to change some variables if you
+- run multiple wazigate-edge applications on the same machine (maybe for testing) or if you
+- use wazigate-edge inside a docker-container.
 
 **Env Variables**
 
@@ -503,3 +648,7 @@ Secure connections will only be used if -crt and -key are present.
 ```
 clouds.json   Saves /clouds setttings
 ```
+
+**Logging Files**
+
+All files at `log/*.txt` are log files generated with each session.

@@ -275,6 +275,7 @@ func ServeConn(stream io.ReadWriteCloser, server Server) {
 
 	packet, _, err := Read(stream)
 	if err != nil {
+		log.Println("[MQTT ] Invalid handshake:", err)
 		stream.Close()
 		return
 	}
@@ -282,7 +283,7 @@ func ServeConn(stream io.ReadWriteCloser, server Server) {
 	if connect, ok := packet.(*ConnectPacket); ok {
 		server.PreConnect(stream, connect, server)
 	} else {
-
+		log.Println("[MQTT ] Invalid handshake: Not a Connect-Packet:", packet.Header().MType)
 		stream.Close()
 	}
 }

@@ -82,6 +82,13 @@ func init() {
 	router.DELETE("/clouds/:cloud_id", api.DeleteCloud)
 	router.POST("/clouds/:cloud_id/paused", api.PostCloudPaused)
 	router.POST("/clouds/:cloud_id/credentials", api.PostCloudCredentials)
-	router.POST("/clouds/:cloud_id/url", api.PostCloudURL)
+	router.POST("/clouds/:cloud_id/rest", api.PostCloudRESTAddr)
+	router.POST("/clouds/:cloud_id/mqtt", api.PostCloudMQTTAddr)
+
+	router.GET("/sys/uptime", api.SysGetUptime)
+	router.PUT("/sys/clear_all", api.SysClearAll)
+	router.GET("/sys/logs", api.SysGetLogs)
+	router.GET("/sys/log/:log_id", api.SysGetLog)
+	router.DELETE("/sys/log/:log_id", api.SysDeleteLog)
 
 }

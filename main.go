@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/tls"
 	"flag"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 	"github.com/Waziup/wazigate-edge/mqtt"
 	"github.com/Waziup/wazigate-edge/tools"
 	"github.com/globalsign/mgo"
+	"github.com/globalsign/mgo/bson"
 )
 
 var static http.Handler
@@ -22,6 +24,22 @@ var static http.Handler
 func main() {
 	// Remove date and time from logs
 	log.SetFlags(log.Flags() &^ (log.Ldate | log.Ltime))
+
+	////////////////////
+
+	log.Println("Waziup API Server")
+	log.Println("--------------------")
+
+	////////////////////
+
+	logFile, err := os.Create("log/" + bson.NewObjectId().Hex() + ".txt")
+	if err != nil {
+		log.Println("[ERR  ]", err)
+		log.SetOutput(io.MultiWriter(os.Stdout, &mqttLogWriter{}))
+	} else {
+		defer logFile.Close()
+		log.SetOutput(io.MultiWriter(os.Stdout, logFile, &mqttLogWriter{}))
+	}
 
 	tlsCertStr := os.Getenv("WAZIUP_TLS_CRT")
 	tlsKeyStr := os.Getenv("WAZIUP_TLS_KEY")
@@ -42,11 +60,6 @@ func main() {
 	dbAddr := flag.String("db", dbAddrStr, "MongoDB address")
 
 	flag.Parse()
-
-	////////////////////
-
-	log.Println("Waziup API Server")
-	log.Println("--------------------")
 
 	////////////////////
 
@@ -193,5 +206,27 @@ func Serve(resp http.ResponseWriter, req *http.Request) {
 		}
 		// }
 	}
+}
 
+////////////////////////////////////////////////////////////////////////////////
+
+type mqttLogWriter struct{}
+
+func (w *mqttLogWriter) Write(data []byte) (n int, err error) {
+	if mqttServer != nil && len(data) != 0 {
+		data2 := make([]byte, len(data))
+		copy(data2, data)
+		if data2[len(data2)-1] == '\n' {
+			data2 = data2[:len(data2)-1]
+		}
+		go func(data []byte) {
+			msg := &mqtt.Message{
+				QoS:   0,
+				Topic: "sys/log",
+				Data:  data,
+			}
+			mqttServer.Publish(nil, msg)
+		}(data2)
+	}
+	return len(data), nil
 }

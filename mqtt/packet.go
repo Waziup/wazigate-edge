@@ -327,6 +327,7 @@ var Codes = [...]string{
 
 type ConnAckPacket struct {
 	header *FixedHeader
+	SessionPresent bool
 	Code   byte
 }
 
@@ -340,7 +341,11 @@ func (pkt *ConnAckPacket) WriteTo(w io.Writer) (n int, err error) {
 	if err != nil {
 		return
 	}
-	d, err = w.Write([]byte{pkt.Code, 0x00})
+	var sp byte = 0x00
+	if pkt.SessionPresent {
+		sp = 0x01
+	}
+	d, err = w.Write([]byte{sp, pkt.Code})
 	n += d
 	return
 }
@@ -361,7 +366,10 @@ func readConnAck(fh *FixedHeader, buf []byte) (Packet, error) {
 	if len(buf) < 2 {
 		return pkt, IncompleteMessage
 	}
-	pkt.Code = buf[0]
+	pkt.Code = buf[1] 
+	if buf[0] == 0x01 {
+		pkt.SessionPresent = true
+	}
 	return pkt, nil
 }
 
@@ -589,21 +597,23 @@ type SubAckPacket struct {
 	Id int // Message Id
 	// Payload
 	Topics []TopicSubscription // List of Subscriptions
+	Failure byte // Failure indication
 }
 
-func SubAck(id int, topics []TopicSubscription) *SubAckPacket {
+func SubAck(id int, topics []TopicSubscription, failure byte) *SubAckPacket {
 	return &SubAckPacket{
 		header: &FixedHeader{
 			MType: SUBACK,
 		},
 		Id:     id,
 		Topics: topics,
+		Failure: failure,
 	}
 }
 
 func (pkt *SubAckPacket) Header() *FixedHeader {
-	// MessageId + Topics*(granted QoS)
-	length := 2 + len(pkt.Topics)
+	// MessageId + Topics*(granted QoS) + Failure
+	length := 2 + len(pkt.Topics) + 1
 	pkt.header.Length = length
 	return pkt.header
 }
@@ -626,6 +636,7 @@ func (pkt *SubAckPacket) WriteTo(w io.Writer) (n int, err error) {
 			return
 		}
 	}
+	w.Write([]byte{pkt.Failure})
 	return
 }
 
@@ -642,7 +653,7 @@ func readSubAck(fh *FixedHeader, buf []byte) (Packet, error) {
 	pkt.Id = int(buf[0])<<8 + int(buf[1])
 	buf = buf[2:]
 
-	n := len(buf)
+	n := len(buf)-1
 	pkt.Topics = make([]TopicSubscription, n)
 	for i := 0; i < n; i++ {
 		pkt.Topics[i].QoS = buf[i]
@@ -650,6 +661,7 @@ func readSubAck(fh *FixedHeader, buf []byte) (Packet, error) {
 			return pkt, InvalidQoS
 		}
 	}
+	pkt.Failure = buf[len(buf)-1]
 
 	return pkt, nil
 }

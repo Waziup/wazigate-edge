@@ -192,7 +192,7 @@ RUN:
 
 			if client == nil {
 				client = &Client{
-					pending: make(map[int]Packet),
+					Pending: make(map[int]Packet),
 					// queuePacket: make(chan Packet),
 					// queueWriter: make(chan io.Writer),
 					Closer:    conn.stream,
@@ -201,6 +201,7 @@ RUN:
 					State:     StateConnecting,
 					Context:   context.Background(),
 					sigServed: make(chan struct{}),
+					pktQueue: NewQueue(conn.packet.ClientId),
 				}
 
 				if err := client.connect(conn.packet, conn.stream); err != nil {

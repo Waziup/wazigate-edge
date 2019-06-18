@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"sync/atomic"
 
 	"github.com/Waziup/wazigate-edge/mqtt/tools"
 )
@@ -54,10 +55,12 @@ type Client struct {
 
 	sigServed chan struct{}
 
-	pending map[int]Packet
+	Pending map[int]Packet
 	subs    map[string]*Subscription
 
-	pktQueue Queue
+	mids int32
+
+	pktQueue *Queue
 
 	sysall *Subscription
 }
@@ -73,7 +76,7 @@ func Dial(addr string, clientId string, cleanSession bool, auth *ConnectAuth, wi
 	server := make(loopback)
 	client := &Client{
 		Id:      clientId,
-		pending: make(map[int]Packet),
+		Pending: make(map[int]Packet),
 		// queuePacket:  make(chan Packet),
 		// queueWriter:  make(chan io.Writer),
 		CleanSession: cleanSession,
@@ -85,7 +88,8 @@ func Dial(addr string, clientId string, cleanSession bool, auth *ConnectAuth, wi
 		State:     StateConnecting,
 		sigServed: make(chan struct{}),
 	}
-	client.pktQueue.id = clientId
+	client.pktQueue = NewQueue(clientId)
+	//client.pktQueue.id = clientId
 
 	conn, err := net.Dial("tcp", addr)
 	if err != nil {
@@ -94,7 +98,8 @@ func Dial(addr string, clientId string, cleanSession bool, auth *ConnectAuth, wi
 	client.Context = context.Background()
 	client.Closer = tools.MultiCloser(server, conn)
 
-	connect := Connect("MQIsdp", byte(0x03), cleanSession, 5000, clientId, will, auth)
+	// connect := Connect("MQIsdp", byte(0x03), cleanSession, 5000, clientId, will, auth)
+	connect := Connect("MQTT", byte(0x04), cleanSession, 5000, clientId, will, auth)
 	connect.WriteTo(conn)
 
 	pkt, _, err := Read(conn)
@@ -151,7 +156,7 @@ func (client *Client) Send(pkt Packet) (int, error) {
 		}
 		// id must not be 0, but we ignore that here
 		if id != 0 {
-			client.pending[id] = pkt
+			client.Pending[id] = pkt
 		}
 	}
 
@@ -175,13 +180,15 @@ func (client *Client) Publish(sender *Client, msg *Message) error {
 
 func (client *Client) Subscribe(topic string, qos byte) error {
 
-	_, err := client.Send(Subscribe(0, []TopicSubscription{TopicSubscription{topic, qos}}))
+	mid := atomic.AddInt32(&client.mids, 1)
+	_, err := client.Send(Subscribe(int(mid), []TopicSubscription{TopicSubscription{topic, qos}}))
 	return err
 }
 
 func (client *Client) Unsubscribe(topic string) {
 
-	client.Send(Unsubscribe(0, []string{topic}))
+	mid := atomic.AddInt32(&client.mids, 1)
+	client.Send(Unsubscribe(int(mid), []string{topic}))
 }
 
 /*
@@ -364,8 +371,8 @@ func (client *Client) Close(err error) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var (
-	// UnacceptableProtoV : Unacceptable protocol verion. It must always be '0x03'.
-	UnacceptableProtoV = errors.New("unacceptable protocol verion. Expected '0x03'")
+	// UnacceptableProtoV : Unacceptable protocol verion. It must always be '0x04'.
+	UnacceptableProtoV = errors.New("unacceptable protocol verion. Expected '0x04'")
 
 	// ClientIdRejected : Client-identifier rejected.
 	ClientIdRejected = errors.New("client-Id too long or too short")
@@ -411,10 +418,10 @@ func (client *Client) connect(pkt *ConnectPacket, w io.Writer) error {
 		return unknownPacketErr(pkt.header.MType, client.State)
 	}
 
-	if pkt.Protocol != "MQIsdp" {
+	if pkt.Protocol != "MQTT" { // MQIsdp
 		return fmt.Errorf("unsupported protocol '%.12s'", pkt.Protocol)
 	}
-	if pkt.Version != 0x03 {
+	if pkt.Version != 0x04 { // 0x03
 		return UnacceptableProtoV
 	}
 	if pkt.Will != nil {
@@ -488,7 +495,7 @@ func (client *Client) consume(packet Packet) {
 			granted[i].QoS = subs.QoS
 		}
 
-		client.Send(SubAck(pkt.Id, granted))
+		client.Send(SubAck(pkt.Id, granted, 0x02))
 
 	case *SubAckPacket:
 
@@ -497,8 +504,8 @@ func (client *Client) consume(packet Packet) {
 			return
 		}
 
-		// Delete from pending to stop resending Publish
-		delete(client.pending, pkt.Id)
+		// Delete from Pending to stop resending Publish
+		delete(client.Pending, pkt.Id)
 
 	case *UnsubscribePacket:
 
@@ -524,7 +531,7 @@ func (client *Client) consume(packet Packet) {
 		}
 
 		// might already be deleted from previous duplicate PubAck packets
-		delete(client.pending, pkt.Id)
+		delete(client.Pending, pkt.Id)
 
 	case *PublishPacket:
 
@@ -550,14 +557,14 @@ func (client *Client) consume(packet Packet) {
 			client.Send(PubRec(pkt.Id))
 
 			// we stop here if we already recieved this Publish (with the same Id)
-			if _, ok := client.pending[pkt.Id]; ok {
+			if _, ok := client.Pending[pkt.Id]; ok {
 				break
 			}
 
 			client.Server.Publish(client, pkt.Message())
 
 			// to indicate that this Message Id is taken
-			client.pending[pkt.Id] = nil
+			client.Pending[pkt.Id] = nil
 		}
 
 	case *PubAckPacket:
@@ -568,7 +575,7 @@ func (client *Client) consume(packet Packet) {
 		}
 
 		// might already be deleted from previous duplicate PubAck packets
-		delete(client.pending, pkt.Id)
+		delete(client.Pending, pkt.Id)
 
 	case *PubRelPacket:
 
@@ -579,7 +586,7 @@ func (client *Client) consume(packet Packet) {
 
 		client.Send(PubComp(pkt.Id))
 		// might already be deleted from previous duplicate PubRel packets
-		delete(client.pending, pkt.Id)
+		delete(client.Pending, pkt.Id)
 
 	case *PubRecPacket:
 
@@ -588,8 +595,8 @@ func (client *Client) consume(packet Packet) {
 			return
 		}
 
-		// delete from pending to stop resending Publish
-		delete(client.pending, pkt.Id)
+		// delete from Pending to stop resending Publish
+		delete(client.Pending, pkt.Id)
 		client.Send(PubRel(pkt.Id))
 
 	case *PubCompPacket:
@@ -599,8 +606,8 @@ func (client *Client) consume(packet Packet) {
 			return
 		}
 
-		// delete from pending to stop resending PubRel
-		delete(client.pending, pkt.Id)
+		// delete from Pending to stop resending PubRel
+		delete(client.Pending, pkt.Id)
 
 	case *PingReqPacket:
 

@@ -11,6 +11,11 @@ func init() {
 
 	api.Downstream = mqttServer
 
+	// Auth
+
+	router.POST("/auth/token", api.GetDevices)
+	router.GET("/auth/permissions", api.GetDevices)
+
 	// Device Endpoints
 
 	router.GET("/devices", api.GetDevices)

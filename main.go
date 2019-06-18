@@ -142,15 +142,25 @@ func (resp *ResponseWriter) WriteHeader(statusCode int) {
 ////////////////////
 
 func Serve(resp http.ResponseWriter, req *http.Request) {
+
+	if strings.HasSuffix(req.RequestURI, "/") {
+		req.RequestURI += "index.html"
+	}
+
 	wrapper := ResponseWriter{resp, 200}
 
 	if static != nil {
-		if strings.HasPrefix(req.RequestURI, "/www/") {
-			req.RequestURI = req.RequestURI[4:]
-			req.URL.Path = req.URL.Path[4:]
+
+		if strings.HasSuffix(req.RequestURI, ".js") ||
+			strings.HasSuffix(req.RequestURI, ".css") ||
+			strings.HasSuffix(req.RequestURI, ".map") ||
+			strings.HasSuffix(req.RequestURI, ".png") ||
+			strings.HasSuffix(req.RequestURI, ".svg") ||
+			strings.HasSuffix(req.RequestURI, ".html") {
+
 			static.ServeHTTP(&wrapper, req)
 
-			log.Printf("[WWW  ] (%s) %d %s \"/www%s\"\n",
+			log.Printf("[WWW  ] (%s) %d %s \"%s\"\n",
 				req.RemoteAddr,
 				wrapper.status,
 				req.Method,

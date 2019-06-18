@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"strconv"
 
 	"github.com/globalsign/mgo/bson"
 
@@ -54,7 +55,9 @@ func getCloudsFile() string {
 
 func (c *Cloud) getRESTAddr() string {
 	u, _ := url.Parse(c.REST)
-	u.Scheme = "https"
+	if u.Scheme == "" {
+		u.Scheme = "https"
+	}
 	u.RawQuery = ""
 	u.Fragment = ""
 	if strings.HasSuffix(u.RawPath, "/") {
@@ -74,6 +77,27 @@ func (c *Cloud) getMQTTAddr() string {
 		return u.Host + ":1883"
 	}
 	return u.Host
+}
+
+func (c *Cloud) setStatus(code int, text string) {
+	c.StatusCode = code
+	c.StatusText = text
+
+	if Downstream != nil {
+		msg := &mqtt.Message{
+			QoS:   0,
+			Topic: "clouds/"+c.ID+"/statusCode",
+			Data:  []byte(strconv.Itoa(code)),
+		}
+		Downstream.Publish(nil, msg)
+
+		msg = &mqtt.Message{
+			QoS:   0,
+			Topic: "clouds/"+c.ID+"/statusText",
+			Data:  []byte(text),
+		}
+		Downstream.Publish(nil, msg)
+	}
 }
 
 // ReadCloudConfig reads clouds.json into the current configuration.

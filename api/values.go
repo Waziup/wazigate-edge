@@ -82,6 +82,14 @@ func getReqValues(req *http.Request) ([]Value, error) {
 			values[i].Time = now
 			values[i].Value = plain
 		}
+	} else {
+		now := time.Now()
+		var noTime time.Time
+		for i, val := range values {
+			if val.Time == noTime {
+				values[i].Time = now
+			}
+		}
 	}
 	return values, nil
 }

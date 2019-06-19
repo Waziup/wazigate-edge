@@ -437,7 +437,9 @@ fetch(`/clouds/${cloudId}/rest`, {
 
 With MQTT you can publish values for the sensor, which is more efficient than the REST interface.
 You will need a MQTT client like [Eclipse Mosquitto](https://mosquitto.org/man/mosquitto_sub-1.html) (commandline) or
-[HiveMQ MQTT Websocket Client](http://www.hivemq.com/demos/websocket-client/). For the following examples we will use the HiveMQ Client.
+~~[HiveMQ MQTT Websocket Client](http://www.hivemq.com/demos/websocket-client/)~~. For the following examples we will use the HiveMQ Client.
+
+> **Attention:** The HiveMQ Websocket Client is outdated and uses MQTT v3.1 while the Edge uses MQTT v3.1.1 to connect to the server.
 
 Subscriptions are especially usefull if you want to listen for changes and want to get notified when new sensor values arrive. They will be triggered by both Publishes (via MQTT) and Post (via REST).
 
@@ -447,7 +449,7 @@ Connect to your Waziup Gateway using the connection settings:
 * Host: Gateway IP
 * Port: 80 (for in-browser MQTT via Websocket) or default 1883
 * Client: (any)
-* MQTT Version: 3.1
+* MQTT Version: 3.1.1
 
 You can now publish and subscribe topics like sensor-values or actuator-values.
 
@@ -466,33 +468,33 @@ Equivalent mosquitto calls look like:
 # Publish Values:
 mosquitto_pub \
   -t "devices/5cd92df34b9f6126f840f0b1/sensors/df34b9f612/value" \
-  -V "mqttv31" \
+  -V "mqttv311" \
   -m 456
 
 # Subscribe to topics:
 mosquitto_sub \
   -t "devices/5cd92df34b9f6126f840f0b1/sensors/df34b9f612/value" \
-  -V "mqttv31"
+  -V "mqttv311"
 
 # Subscribe to all sensors of one device:
 mosquitto_sub \
   -t "devices/5cd92df34b9f6126f840f0b1/sensors/*/value" \
-  -V "mqttv31"
+  -V "mqttv311"
 
 # Subscribe to actuating-data of all devices:
 mosquitto_sub \
   -t "devices/*/actuator/*/value" \
-  -V "mqttv31"
+  -V "mqttv311"
 
 # Subscribe to all changes on one device:
 mosquitto_sub \
   -t "devices/5cd92df34b9f6126f840f0b1/#" \
-  -V "mqttv31"
+  -V "mqttv311"
 
 # Subscribe to literally everything on devices:
 mosquitto_sub \
   -t "devices/#" \
-  -V "mqttv31"
+  -V "mqttv311"
 ```
 
 Mosquitto is available for both Linux and Windows.
@@ -504,7 +506,7 @@ There are a few things to keep in mind when using MQTT:
 * Subscriptions will be triggered by both Publishes (via MQTT) and Post (via REST).
 * Topics do not start with a slash '/'.
 * Use only valid JSON objects as payload!
-* At the moment, the broker can do MQTT v3.1 only!
+* At the moment, the broker can do MQTT v3.1.1 only!
 
 # System Settings
 
@@ -590,7 +592,7 @@ The file is text only and will look like:
 You can subscribe to the system log topic to monitor the log in real-time!
 
 ```bash
-mosquitto_sub -t "sys/log" -V "mqttv31"
+mosquitto_sub -t "sys/log" -V "mqttv311"
 ```
 
 With [HiveMQ](http://www.hivemq.com/demos/websocket-client/) use port 80, click *connect* and subscribe to *sys/log*.

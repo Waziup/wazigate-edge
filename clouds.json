@@ -1,1 +1,1 @@
-{"5cebcfa04b9f6119688b3cdc":{"id":"5cebcfa04b9f6119688b3cdc","paused":false,"rest":"//api.waziup.io/api/v2", "mqtt": "","credentials":{"username":"j.forster","token":"waziup7ln"},"queue":136}}
+{"5cebcfa04b9f6119688b3cdc":{"id":"5cebcfa04b9f6119688b3cdc","paused":true,"rest":"//api.waziup.io/api/v2", "mqtt": "","credentials":null,"queue":0}}

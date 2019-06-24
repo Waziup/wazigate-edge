@@ -53,6 +53,13 @@ func GetCurrentDevice(resp http.ResponseWriter, req *http.Request, params routin
 	getDevice(resp, GetLocalID())
 }
 
+// GetCurrentDeviceID implements GET /device/id
+func GetCurrentDeviceID(resp http.ResponseWriter, req *http.Request, params routing.Params) {
+
+	resp.Header().Set("Content-Type", "text/plain")
+	resp.Write([]byte(GetLocalID()))
+}
+
 // PostDevice implements POST /devices
 func PostDevice(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 

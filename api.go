@@ -57,6 +57,7 @@ func init() {
 	// Shortcut Endpoints (equals device_id = current device ID)
 
 	router.GET("/device", api.GetCurrentDevice)
+	router.GET("/device/id", api.GetCurrentDeviceID)
 	router.POST("/device/name", api.PostCurrentDeviceName)
 
 	router.GET("/sensors", api.GetSensors)
@@ -95,5 +96,4 @@ func init() {
 	router.GET("/sys/logs", api.SysGetLogs)
 	router.GET("/sys/log/:log_id", api.SysGetLog)
 	router.DELETE("/sys/log/:log_id", api.SysDeleteLog)
-
 }

@@ -80,6 +80,19 @@ docker run -p 4000:80 wazigate-edge
 
 ... with JavaScript and [fetch](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch).
 
+### get this Gateway's ID
+
+```javascript
+var resp = await fetch(`/device/id`);
+var id = await resp.text();
+console.log(`device id: ${id}`);
+```
+
+Console output will be like:
+```
+device id: 201c85cdbda3
+```
+
 ### create a new device
 
 ```javascript

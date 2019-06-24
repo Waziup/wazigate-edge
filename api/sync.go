@@ -71,21 +71,26 @@ func (cloud *Cloud) beginSync(counter int) {
 ////////////////////////////////////////////////////////////////////////////////
 
 type v2Sensor struct {
-	ID       string      `json:"id" bson:"id"`
-	Name     string      `json:"name" bson:"name"`
+	ID   string `json:"id" bson:"id"`
+	Name string `json:"name" bson:"name"`
 }
 
 type v2Actuator struct {
-	ID       string      `json:"id" bson:"id"`
-	Name     string      `json:"name" bson:"name"`
+	ID   string `json:"id" bson:"id"`
+	Name string `json:"name" bson:"name"`
 }
 
-
 type v2Device struct {
-	Name      string      `json:"name" bson:"name"`
-	ID        string      `json:"id" bson:"_id"`
+	Name      string       `json:"name" bson:"name"`
+	ID        string       `json:"id" bson:"_id"`
 	Sensors   []v2Sensor   `json:"sensors" bson:"sensors"`
 	Actuators []v2Actuator `json:"actuators" bson:"actuators"`
+}
+
+type v2Gateway struct {
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	Visibility string `json:"visibility"`
 }
 
 func (cloud *Cloud) initialSync() bool {
@@ -129,10 +134,43 @@ func (cloud *Cloud) initialSync() bool {
 	auth := "Bearer " + string(body)
 	log.Println("[UP   ] Authentication successfull.")
 
+	// Call /gateways
+
+	var device Device
+	DBDevices.FindId(GetLocalID()).One(device)
+
+	var gateway = v2Gateway{
+		ID:         GetLocalID(),
+		Name:       device.Name,
+		Visibility: "public",
+	}
+
+	body, _ = json.Marshal(gateway)
+	req, err := http.NewRequest(http.MethodPost, addr+"/gateways", bytes.NewReader(body))
+	req.Header.Set("Authorization", auth)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err = http.DefaultClient.Do(req)
+	if err != nil {
+		log.Printf("[UP   ] Err %s %q", resp.Status, err)
+		cloud.setStatus(resp.StatusCode, fmt.Sprintf("REST failed: %s.\n%s", resp.Status, err.Error()))
+		return false
+	}
+	body, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("[UP   ] Err %s %q", resp.Status, err)
+		cloud.setStatus(resp.StatusCode, fmt.Sprintf("REST failed: %s.\n%s", resp.Status, err.Error()))
+		return false
+	}
+	switch resp.StatusCode {
+	case http.StatusOK:
+		log.Printf("[UP   ] Gateway was declared at cloud.")
+	default:
+		log.Printf("[UP   ] Err %s %q", resp.Status, string(body))
+	}
+
 	// Get all devices from this Gateway and update all.
 	//
 
-	var device Device
 	iter := DBDevices.Find(nil).Iter()
 	for iter.Next(&device) {
 		req, err := http.NewRequest(http.MethodGet, addr+"/devices/"+device.ID, nil)
@@ -213,7 +251,6 @@ func (cloud *Cloud) initialSync() bool {
 	iter.Close()
 	return true
 }
-
 
 func (cloud *Cloud) persistentSync() bool {
 

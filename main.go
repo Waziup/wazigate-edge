@@ -91,6 +91,10 @@ func main() {
 
 	////////////////////
 
+	initDevice()
+
+	////////////////////
+
 	log.Printf("[     ] Local device id is %q.\n", api.GetLocalID())
 
 	api.ReadCloudConfig()
@@ -239,4 +243,27 @@ func (w *mqttLogWriter) Write(data []byte) (n int, err error) {
 		}(data2)
 	}
 	return len(data), nil
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+func initDevice() {
+	if api.DBDevices == nil {
+		return
+	}
+
+	var device = api.Device{
+		ID:        api.GetLocalID(),
+		Name:      "Gateway " + api.GetLocalID(),
+		Sensors:   make([]*api.Sensor, 0),
+		Actuators: make([]*api.Actuator, 0),
+	}
+
+	err := api.DBDevices.Insert(&device)
+	if err != nil {
+		if mgo.IsDup(err) {
+			return
+		}
+		log.Printf("[DB   ] Err insert current device: %s", err)
+	}
 }

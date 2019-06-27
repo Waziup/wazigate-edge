@@ -301,6 +301,7 @@ func (cloud *Cloud) persistentSync() bool {
 	//	}
 	// }
 
+	cloud.setStatus(0, "Disconnected.")
 	log.Printf("[UP   ] Disconnected: %v\n", client.Error)
 	cloud.Client = nil
 	return true

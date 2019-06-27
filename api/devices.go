@@ -166,6 +166,7 @@ func postDevice(resp http.ResponseWriter, req *http.Request) {
 
 	CloudsMutex.RLock()
 	for _, cloud := range Clouds {
+
 		topic := "devices/" + device.ID + "/actuators/#"
 		pkt := mqtt.Subscribe(0, []mqtt.TopicSubscription{
 			mqtt.TopicSubscription{
@@ -180,6 +181,20 @@ func postDevice(resp http.ResponseWriter, req *http.Request) {
 	resp.Write([]byte{'"'})
 	resp.Write([]byte(device.ID))
 	resp.Write([]byte{'"'})
+
+	go fallbackSync()
+}
+
+// FALLBACK: create devices with REST
+func fallbackSync() {
+	CloudsMutex.RLock()
+	for _, cloud := range Clouds {
+		log.Println("[UP  F] (fallback) initial sync failed")
+		if !cloud.initialSync() {
+			log.Println("[UP  F] (fallback) initial sync failed")
+		}
+	}
+	CloudsMutex.RUnlock()
 }
 
 ////////////////////

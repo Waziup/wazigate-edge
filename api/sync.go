@@ -137,7 +137,7 @@ func (cloud *Cloud) initialSync() bool {
 	// Call /gateways
 
 	var device Device
-	DBDevices.FindId(GetLocalID()).One(device)
+	DBDevices.FindId(GetLocalID()).One(&device)
 
 	var gateway = v2Gateway{
 		ID:         GetLocalID(),

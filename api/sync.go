@@ -12,6 +12,8 @@ import (
 	"github.com/Waziup/wazigate-edge/mqtt"
 )
 
+var noTime time.Time
+
 var Downstream mqtt.Server
 
 var retries = []time.Duration{
@@ -59,6 +61,7 @@ func (cloud *Cloud) beginSync(counter int) {
 			break
 		}
 
+		break
 		if !cloud.persistentSync() {
 			retry()
 			continue
@@ -70,21 +73,29 @@ func (cloud *Cloud) beginSync(counter int) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+type v2Value struct {
+	Value        interface{} `json:"value"`
+	Time         time.Time   `json:"timestamp"`
+	TimeReceived time.Time   `json:"date_received"`
+}
+
 type v2Sensor struct {
-	ID   string `json:"id" bson:"id"`
-	Name string `json:"name" bson:"name"`
+	ID    string   `json:"id"`
+	Name  string   `json:"name"`
+	Value *v2Value `json:"value,omitempty"`
 }
 
 type v2Actuator struct {
-	ID   string `json:"id" bson:"id"`
-	Name string `json:"name" bson:"name"`
+	ID    string   `json:"id"`
+	Name  string   `json:"name"`
+	Value *v2Value `json:"value,omitempty"`
 }
 
 type v2Device struct {
-	Name      string       `json:"name" bson:"name"`
-	ID        string       `json:"id" bson:"_id"`
-	Sensors   []v2Sensor   `json:"sensors" bson:"sensors"`
-	Actuators []v2Actuator `json:"actuators" bson:"actuators"`
+	Name      string       `json:"name"`
+	ID        string       `json:"id"`
+	Sensors   []v2Sensor   `json:"sensors"`
+	Actuators []v2Actuator `json:"actuators"`
 }
 
 type v2Gateway struct {
@@ -168,7 +179,7 @@ func (cloud *Cloud) initialSync() bool {
 		log.Printf("[UP   ] Err %s %q", resp.Status, string(body))
 	}
 
-	// Get all devices from this Gateway and update all.
+	// Get all devices from this Gateway and update all of them
 	//
 
 	iter := DBDevices.Find(nil).Iter()
@@ -227,21 +238,41 @@ func (cloud *Cloud) initialSync() bool {
 		case http.StatusOK:
 			log.Printf("[UP   ] Device %q found. Checking for updates.", device.ID)
 
-			/*
-				decoder := json.NewDecoder(resp.Body)
-				var device2 Device
-				err := decoder.Decode(&device2)
-				resp.Body.Close()
+			decoder := json.NewDecoder(resp.Body)
+			var device2 v2Device
+			err := decoder.Decode(&device2)
+			resp.Body.Close()
 
-				if err != nil {
-					log.Printf("[UP   ] Err %s %q", resp.Status, err)
-					cloud.setStatus(resp, = fmt.Sprintf("REST failed: %s.\n%s", resp.Status, err.Error())
-					iter.Close()
-					return
+			if err != nil {
+				log.Printf("[UP   ] Err %s %q", resp.Status, err)
+				cloud.setStatus(resp.StatusCode, fmt.Sprintf("REST failed: %s.\n%s", resp.Status, err.Error()))
+				iter.Close()
+				return false
+			}
+
+		SENSORS:
+			for _, sensor := range device.Sensors {
+				for _, s := range device2.Sensors {
+					if s.ID == sensor.ID {
+						if s.Value != nil {
+							if s.Value.Time == noTime {
+								s.Value.Time = s.Value.TimeReceived
+							}
+							if !s.Value.Time.Before(sensor.Time) {
+								log.Printf("[UP   ] Sensor %q up do date.", sensor.ID)
+							} else {
+								log.Printf("[UP   ] Sensor %q outdated! Last value %v.", sensor.ID, s.Value.Time)
+							}
+						} else {
+							if sensor.Value != nil {
+								log.Printf("[UP   ] Sensor %q outdated! No values.", sensor.ID)
+							}
+						}
+						continue SENSORS
+					}
 				}
-
-				log.Printf("%#v", device2)
-			*/
+				log.Printf("[UP   ] Sensor %q does not exist!", sensor.ID)
+			}
 
 		default:
 			log.Printf("[UP   ] Err Unexpected status %d for device %q", resp.StatusCode, device.ID)

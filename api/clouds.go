@@ -7,9 +7,10 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
-	"strconv"
+	"time"
 
 	"github.com/globalsign/mgo/bson"
 
@@ -17,6 +18,10 @@ import (
 
 	routing "github.com/julienschmidt/httprouter"
 )
+
+type dirtySensor struct {
+	local, remove time.Time
+}
 
 // Cloud represents a configuration to access a Waziup Cloud.
 type Cloud struct {
@@ -36,6 +41,8 @@ type Cloud struct {
 
 	StatusCode int    `json:"statusCode"`
 	StatusText string `json:"statusText"`
+
+	dirty map[string]dirtySensor
 }
 
 // Clouds lists all clouds that we synchronize.
@@ -51,6 +58,10 @@ func getCloudsFile() string {
 		return "clouds.json"
 	}
 	return cloudsFile
+}
+
+func (c *Cloud) flag(device string, sensor string, time time.Time) {
+
 }
 
 func (c *Cloud) getRESTAddr() string {
@@ -86,14 +97,14 @@ func (c *Cloud) setStatus(code int, text string) {
 	if Downstream != nil {
 		msg := &mqtt.Message{
 			QoS:   0,
-			Topic: "clouds/"+c.ID+"/statusCode",
+			Topic: "clouds/" + c.ID + "/statusCode",
 			Data:  []byte(strconv.Itoa(code)),
 		}
 		Downstream.Publish(nil, msg)
 
 		msg = &mqtt.Message{
 			QoS:   0,
-			Topic: "clouds/"+c.ID+"/statusText",
+			Topic: "clouds/" + c.ID + "/statusText",
 			Data:  []byte(text),
 		}
 		Downstream.Publish(nil, msg)

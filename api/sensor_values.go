@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
@@ -106,8 +107,29 @@ func getSensorValues(resp http.ResponseWriter, deviceID string, sensorID string,
 	}
 
 	var value SensorValue
-	iter := DBSensorValues.Find(bson.M{"deviceId": deviceID, "sensorId": sensorID}).Iter()
-	serveIter(resp, iter, &value)
+
+	m := bson.M{
+		"deviceId": deviceID,
+		"sensorId": sensorID,
+	}
+	var noTime = time.Time{}
+	if query.From != noTime || query.To != noTime {
+		mid := bson.M{}
+		m["_id"] = mid
+		if query.From != noTime {
+			mid["$gt"] = bson.NewObjectIdWithTime(query.From)
+		}
+		if query.To != noTime {
+			query.To.Add(time.Second)
+			mid["$lt"] = bson.NewObjectIdWithTime(query.To)
+		}
+	}
+	q := DBSensorValues.Find(m)
+	if query.Limit != 0 {
+		q.Limit(int(query.Limit))
+	}
+
+	serveIter(resp, q.Iter(), &value)
 }
 
 ////////////////////

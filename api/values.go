@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"regexp"
 	"strconv"
 	"time"
 
@@ -39,6 +40,7 @@ type Query struct {
 	Limit int64
 	From  time.Time
 	To    time.Time
+	Size  int64
 }
 
 ////////////////////
@@ -96,6 +98,9 @@ func getReqValues(req *http.Request) ([]Value, error) {
 
 ////////////////////
 
+var sizeRegex = regexp.MustCompile(`^\d+[kKmMgG]?[bB]?`)
+var sizeUnitRegex = regexp.MustCompile(`[kKmMgG]?[bB]?$`)
+
 func (query *Query) from(req *http.Request) string {
 
 	var param string
@@ -104,14 +109,14 @@ func (query *Query) from(req *http.Request) string {
 	q := req.URL.Query()
 
 	if param = q.Get("from"); param != "" {
-		query.From, err = time.Parse(TimeFormat, param)
+		err = query.From.UnmarshalText([]byte(param))
 		if err != nil {
 			return "Query ?from=.. is mal formatted."
 		}
 	}
 
 	if param = q.Get("to"); param != "" {
-		query.To, err = time.Parse(TimeFormat, param)
+		err = query.To.UnmarshalText([]byte(param))
 		if err != nil {
 			return "Query ?to=.. is mal formatted."
 		}
@@ -124,7 +129,38 @@ func (query *Query) from(req *http.Request) string {
 		}
 	}
 
+	if param = q.Get("size"); param != "" {
+		query.Size = parseSize(param)
+		if query.Size == -1 {
+			return "Query ?size=.. is mal formatted."
+		}
+	}
+
 	return ""
+}
+
+func parseSize(str string) (size int64) {
+	for len(str) != 0 {
+		match := sizeRegex.FindString(str)
+		if match == "" {
+			return -1
+		}
+		unit := sizeUnitRegex.FindString(str)
+		var fact int64 = 1
+		if len(unit) > 0 {
+			if unit[0] == 'k' || unit[0] == 'K' {
+				fact = 1e3
+			} else if unit[0] == 'm' || unit[0] == 'M' {
+				fact = 1e6
+			} else if unit[0] == 'g' || unit[0] == 'G' {
+				fact = 1e9
+			}
+		}
+		n, _ := strconv.ParseInt(match[0:len(match)-len(unit)], 10, 64)
+		size += n * fact
+		str = str[len(match):]
+	}
+	return
 }
 
 ////////////////////

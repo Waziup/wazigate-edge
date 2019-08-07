@@ -10,9 +10,9 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/Waziup/wazigate-edge/api"
+	"github.com/Waziup/wazigate-edge/edge"
 	"github.com/Waziup/wazigate-edge/mqtt"
 	"github.com/Waziup/wazigate-edge/tools"
 	"github.com/globalsign/mgo"
@@ -74,18 +74,9 @@ func main() {
 
 	for i := 0; i < 5; i++ {
 		log.Printf("[DB   ] Dialing MongoDB at %q...\n", *dbAddr)
-		db, err := mgo.Dial("mongodb://" + *dbAddr + "/?connect=direct")
+		err := edge.Connect("mongodb://" + *dbAddr + "/?connect=direct")
 		if err != nil {
-			log.Println("[DB   ] MongoDB client error:\n", err)
-			time.Sleep(time.Second * 2)
-			continue
-		} else {
-
-			db.SetSafe(&mgo.Safe{})
-			api.DBSensorValues = db.DB("waziup").C("sensor_values")
-			api.DBActuatorValues = db.DB("waziup").C("actuator_values")
-			api.DBDevices = db.DB("waziup").C("devices")
-			break
+			log.Fatalf("[DB   ] MongoDB client error:\n", err)
 		}
 	}
 

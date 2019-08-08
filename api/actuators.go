@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/Waziup/wazigate-edge/edge"
@@ -125,10 +126,7 @@ func postDeviceActuator(resp http.ResponseWriter, req *http.Request, deviceID st
 
 	log.Printf("[DB   ] Actuator %s/%s created.\n", deviceID, actuator.ID)
 
-	resp.Header().Set("Content-Type", "application/json")
-	resp.Write([]byte{'"'})
 	resp.Write([]byte(actuator.ID))
-	resp.Write([]byte{'"'})
 }
 
 func postDeviceActuatorName(resp http.ResponseWriter, req *http.Request, deviceID string, actuatorID string) {
@@ -139,10 +137,15 @@ func postDeviceActuatorName(resp http.ResponseWriter, req *http.Request, deviceI
 		return
 	}
 	var name string
-	err = json.Unmarshal(body, &name)
-	if err != nil {
-		http.Error(resp, "bad request: "+err.Error(), http.StatusBadRequest)
-		return
+	contentType := req.Header.Get("Content-Type")
+	if strings.HasSuffix(contentType, "application/json") {
+		err = json.Unmarshal(body, &name)
+		if err != nil {
+			http.Error(resp, "bad request: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+	} else {
+		name = string(body)
 	}
 
 	err = edge.SetActuatorName(deviceID, actuatorID, name)
@@ -184,7 +187,7 @@ func getReqActuator(req *http.Request, actuator *edge.Actuator) error {
 	}
 
 	if actuator.ID == "" {
-		actuator.ID = bson.NewObjectId().String()
+		actuator.ID = bson.NewObjectId().Hex()
 	}
 	return nil
 }

@@ -129,9 +129,7 @@ func PostDevice(device *Device) error {
 // SetDeviceName changes a device name.
 func SetDeviceName(deviceID string, name string) error {
 
-	err := dbDevices.Update(bson.M{
-		"_id": deviceID,
-	}, bson.M{
+	err := dbDevices.UpdateId(deviceID, bson.M{
 		"$set": bson.M{
 			"modified": time.Now(),
 			"name":     name,

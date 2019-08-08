@@ -31,9 +31,19 @@ navigate = (hash) ->
         location.hash = "#devices/#{match[1]}"
         return
 
+    match = hash.match /^devices\/(\w+)\/actuators$/
+    if match != null
+        location.hash = "#devices/#{match[1]}"
+        return
+
     match = hash.match /^devices\/(\w+)\/sensors\/(\w+)$/
     if match != null
         showSensor match[1], match[2]
+        return
+
+    match = hash.match /^devices\/(\w+)\/actuators\/(\w+)$/
+    if match != null
+        showActuator match[1], match[2]
         return
 
     location.hash = "#devices"
@@ -214,7 +224,7 @@ showDevice = (deviceID) ->
             id = await resp.text()
             actuator.id = id
             inflated = inflateActuator device.id, actuator
-            content1.$.insertBefore inflated, virgin
+            content2.$.insertBefore inflated, virgin2
             return        
     , [$.text "Create new Actuator"]
 
@@ -384,8 +394,9 @@ showSensor = (deviceID, sensorID) ->
             try
                 JSON.parse value
             catch err
-                alert "Formatting Error:\n"+err
-                return
+                if ! confirm "Value is not valid JSON! Send as string (with quotation marks)?\nValue: \"#{value}\""
+                    return
+                value = JSON.stringify value
             resp3 = await fetch "/devices/#{deviceID}/sensors/#{sensorID}/value",
                 method: "POST"
                 body: value
@@ -395,10 +406,10 @@ showSensor = (deviceID, sensorID) ->
                 return
             time = new Date()
             dpoint = $.create "tr", {}, [
-                $.create "td", {}, [value]
+                $.create "td", {}, [$.text value]
                 $.create "td", {}, [$.text formatTime time]
             ]
-            values.prepend dpoint
+            tbody.prepend dpoint
             return
 
     , [ $.text "Push Value"]
@@ -412,14 +423,81 @@ showSensor = (deviceID, sensorID) ->
                 $.create "td", {}, [$.text "Time"]
             ]
         ]
-        values = $.create "tbody", {}, [
-            ... for value from values
-                $.create "tr", {}, [
-                    $.create "td", {}, [$.text JSON.stringify value.value, null, 2]
-                    $.create "td", {}, [$.text formatTime value.time]
-                ]
-        ]
+        tbody = $.create "tbody", {}, []
     ]
+
+    for value from values
+        tbody.prepend $.create "tr", {}, [
+            $.create "td", {}, [$.text JSON.stringify value.value, null, 2]
+            $.create "td", {}, [$.text formatTime value.time]
+        ]
+
+    subheading2.hide()
+    content2.hide()
+    return
+
+showActuator = (deviceID, actuatorID) ->
+    resp = await fetch "/devices/#{deviceID}/actuators/#{actuatorID}"
+    if ! resp.ok
+        showRespError resp
+        return
+    actuator = await resp.json()
+
+    heading.text actuator.name
+
+    resp2 = await fetch "/devices/#{deviceID}/actuators/#{actuatorID}/values"
+    if ! resp2.ok
+        showRespError resp2
+        return
+
+    values = await resp2.json()
+    subheading1.show().text "#{values.length} Values"
+
+    virgin = $.create "span",
+        className: "virgin"
+        on: click: () ->
+            value = prompt "Enter a new value (JSON):", ""
+            return if ! value
+            try
+                JSON.parse value
+            catch err
+                if ! confirm "Value is not valid JSON! Send as string (with quotation marks)?\nValue: \"#{value}\""
+                    return
+                value = JSON.stringify value
+            resp3 = await fetch "/devices/#{deviceID}/actuators/#{actuatorID}/value",
+                method: "POST"
+                body: value
+            if ! resp3.ok
+                text = await resp.text()
+                alert "Error:\n"+text
+                return
+            time = new Date()
+            dpoint = $.create "tr", {}, [
+                $.create "td", {}, [$.text value]
+                $.create "td", {}, [$.text formatTime time]
+            ]
+            tbody.prepend dpoint
+            return
+
+    , [ $.text "Push Value"]
+    subheading1.append virgin
+
+    content1.text ""
+    content1.append $.create "table", {}, [
+        $.create "thead", {}, [
+            $.create "tr", {}, [
+                $.create "td", {}, [$.text "Values"]
+                $.create "td", {}, [$.text "Time"]
+            ]
+        ]
+        tbody = $.create "tbody", {}, []
+    ]
+
+    for value from values
+        tbody.prepend $.create "tr", {}, [
+            $.create "td", {}, [$.text JSON.stringify value.value, null, 2]
+            $.create "td", {}, [$.text formatTime value.time]
+        ]
 
     subheading2.hide()
     content2.hide()

@@ -66,12 +66,12 @@ func getReqValue(req *http.Request) (edge.Value, error) {
 	return val, nil
 }
 
-func getReqValues(req *http.Request) ([]Value, error) {
+func getReqValues(req *http.Request) ([]edge.Value, error) {
 	body, err := tools.ReadAll(req.Body)
 	if err != nil {
 		return nil, err
 	}
-	var values []Value
+	var values []edge.Value
 	err = json.Unmarshal(body, &values)
 	if err != nil {
 		var plains []interface{}
@@ -79,7 +79,7 @@ func getReqValues(req *http.Request) ([]Value, error) {
 		if err != nil {
 			return nil, err
 		}
-		values = make([]Value, len(plains))
+		values = make([]edge.Value, len(plains))
 		now := time.Now()
 		for i, plain := range plains {
 			values[i].Time = now

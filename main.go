@@ -15,7 +15,6 @@ import (
 	"github.com/Waziup/wazigate-edge/edge"
 	"github.com/Waziup/wazigate-edge/mqtt"
 	"github.com/Waziup/wazigate-edge/tools"
-	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 )
 
@@ -237,22 +236,17 @@ func (w *mqttLogWriter) Write(data []byte) (n int, err error) {
 ////////////////////////////////////////////////////////////////////////////////
 
 func initDevice() {
-	if api.DBDevices == nil {
-		return
-	}
-
-	var device = api.Device{
-		ID:        api.GetLocalID(),
-		Name:      "Gateway " + api.GetLocalID(),
-		Sensors:   make([]*api.Sensor, 0),
-		Actuators: make([]*api.Actuator, 0),
-	}
-
-	err := api.DBDevices.Insert(&device)
+	local, err := edge.GetDevice(edge.LocalID())
 	if err != nil {
-		if mgo.IsDup(err) {
-			return
+		log.Fatalf("[DB   ] Err %v", err)
+	}
+	if local == nil {
+		err = edge.PostDevice(&edge.Device{
+			ID:   edge.LocalID(),
+			Name: "Gateway " + edge.LocalID(),
+		})
+		if err != nil {
+			log.Fatalf("[DB   ] Err %v", err)
 		}
-		log.Printf("[DB   ] Err insert current device: %s", err)
 	}
 }

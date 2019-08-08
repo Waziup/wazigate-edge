@@ -2,9 +2,10 @@ package api
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
-	"time"
 
+	"github.com/Waziup/wazigate-edge/edge"
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 
@@ -26,9 +27,9 @@ func GetSensorValue(resp http.ResponseWriter, req *http.Request, params routing.
 // GetDeviceSensorValues implements GET /devices/{deviceID}/sensors/{sensorID}/values
 func GetDeviceSensorValues(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
-	var query Query
-	if err := query.from(req); err != "" {
-		http.Error(resp, "Bad Request - "+err, http.StatusBadRequest)
+	var query edge.Query
+	if err := query.Parse(req); err != "" {
+		http.Error(resp, "bad request: "+err, http.StatusBadRequest)
 		return
 	}
 	getSensorValues(resp, params.ByName("device_id"), params.ByName("sensor_id"), &query)
@@ -37,12 +38,12 @@ func GetDeviceSensorValues(resp http.ResponseWriter, req *http.Request, params r
 // GetSensorValues implements GET /sensors/{sensorID}/values
 func GetSensorValues(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
-	var query Query
-	if err := query.from(req); err != "" {
-		http.Error(resp, "Bad Request - "+err, http.StatusBadRequest)
+	var query edge.Query
+	if err := query.Parse(req); err != "" {
+		http.Error(resp, "bad request: "+err, http.StatusBadRequest)
 		return
 	}
-	getSensorValues(resp, GetLocalID(), params.ByName("sensor_id"), &query)
+	getSensorValues(resp, edge.LocalID(), params.ByName("sensor_id"), &query)
 }
 
 // PostDeviceSensorValue implements POST /devices/{deviceID}/sensors/{sensorID}/value
@@ -60,76 +61,51 @@ func PostDeviceSensorValues(resp http.ResponseWriter, req *http.Request, params 
 // PostSensorValue implements POST /sensors/{sensorID}/value
 func PostSensorValue(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
-	postSensorValue(resp, req, GetLocalID(), params.ByName("sensor_id"))
+	postSensorValue(resp, req, edge.LocalID(), params.ByName("sensor_id"))
 }
 
 // PostSensorValues implements POST /sensors/{sensorID}/values
 func PostSensorValues(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
-	postSensorValues(resp, req, GetLocalID(), params.ByName("sensor_id"))
+	postSensorValues(resp, req, edge.LocalID(), params.ByName("sensor_id"))
 }
 
 ////////////////////
 
 func getLastSensorValue(resp http.ResponseWriter, deviceID string, sensorID string) {
 
-	if DBDevices == nil {
-		http.Error(resp, "Database unavailable.", http.StatusServiceUnavailable)
+	sensor, err := edge.GetSensor(deviceID, sensorID)
+	if err != nil {
+		serveError(resp, err)
 		return
 	}
 
-	var device Device
-	err := DBDevices.Find(bson.M{
-		"_id": deviceID,
-	}).Select(bson.M{
-		"sensors": bson.M{
-			"$elemMatch": bson.M{
-				"id": sensorID,
-			},
-		},
-	}).One(&device)
-
-	if err != nil || len(device.Sensors) == 0 {
-		http.Error(resp, "null", http.StatusNotFound)
-		return
-	}
-
-	value := device.Sensors[0].Value
-	data, _ := json.Marshal(value)
+	resp.Header().Set("Content-Type", "application/json")
+	data, _ := json.Marshal(sensor.Value)
 	resp.Write(data)
 }
 
-func getSensorValues(resp http.ResponseWriter, deviceID string, sensorID string, query *Query) {
+func getSensorValues(resp http.ResponseWriter, deviceID string, sensorID string, query *edge.Query) {
 
-	if DBSensorValues == nil {
-		http.Error(resp, "Database unavailable.", http.StatusServiceUnavailable)
+	values := edge.GetSensorValues(deviceID, sensorID, query)
+	encoder := json.NewEncoder(resp)
+
+	value, err := values.Next()
+	if err != nil && err != io.EOF {
+		serveError(resp, err)
 		return
 	}
 
-	var value SensorValue
-
-	m := bson.M{
-		"deviceId": deviceID,
-		"sensorId": sensorID,
-	}
-	var noTime = time.Time{}
-	if query.From != noTime || query.To != noTime {
-		mid := bson.M{}
-		m["_id"] = mid
-		if query.From != noTime {
-			mid["$gt"] = bson.NewObjectIdWithTime(query.From)
-		}
-		if query.To != noTime {
-			query.To.Add(time.Second)
-			mid["$lt"] = bson.NewObjectIdWithTime(query.To)
+	resp.Header().Set("Content-Type", "application/json")
+	resp.Write([]byte{'['})
+	for err == nil {
+		encoder.Encode(value)
+		value, err = values.Next()
+		if err == nil {
+			resp.Write([]byte{','})
 		}
 	}
-	q := DBSensorValues.Find(m)
-	if query.Limit != 0 {
-		q.Limit(int(query.Limit))
-	}
-
-	serveIter(resp, q.Iter(), &value)
+	resp.Write([]byte{']'})
 }
 
 ////////////////////
@@ -138,51 +114,15 @@ func postSensorValue(resp http.ResponseWriter, req *http.Request, deviceID strin
 
 	val, err := getReqValue(req)
 	if err != nil {
-		http.Error(resp, "Bad Request - "+err.Error(), http.StatusBadRequest)
+		http.Error(resp, "bad request: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if DBSensorValues == nil || DBDevices == nil {
-		http.Error(resp, "Database unavailable.", http.StatusServiceUnavailable)
-		return
-	}
-
-	value := SensorValue{
-		ID:       newID(val.Time),
-		Value:    val.Value,
-		DeviceID: deviceID,
-		SensorID: sensorID,
-	}
-
-	err = DBDevices.Update(bson.M{
-		"_id":        deviceID,
-		"sensors.id": sensorID,
-	}, bson.M{
-		"$set": bson.M{
-			"sensors.$.value": val.Value,
-			"sensors.$.time":  val.Time,
-		},
-	})
-
+	err = edge.PostSensorValue(deviceID, sensorID, val)
 	if err != nil {
-		if err == mgo.ErrNotFound {
-			http.Error(resp, "Device or sensor not found.", http.StatusNotFound)
-			return
-		}
-		http.Error(resp, "Database Error - "+err.Error(), http.StatusInternalServerError)
+		serveError(resp, err)
 		return
 	}
-
-	err = DBSensorValues.Insert(&value)
-
-	if err != nil {
-		http.Error(resp, "Database Error - "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	resp.Write([]byte{'"'})
-	resp.Write([]byte(value.ID.Hex()))
-	resp.Write([]byte{'"'})
 }
 
 func postSensorValues(resp http.ResponseWriter, req *http.Request, deviceID string, sensorID string) {

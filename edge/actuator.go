@@ -2,6 +2,7 @@ package edge
 
 import (
 	"time"
+	"io"
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
@@ -17,13 +18,137 @@ type Actuator struct {
 	Value    interface{} `json:"value" bson:"value"`
 }
 
+// GetActuator returns the Waziup actuator.
+func GetActuator(deviceID string, actuatorID string) (*Actuator, error) {
+
+	var device Device
+	err := dbDevices.Find(bson.M{
+		"_id": deviceID,
+	}).Select(bson.M{
+		"actuators": bson.M{
+			"$elemMatch": bson.M{
+				"id": actuatorID,
+			},
+		},
+	}).One(&device)
+
+	if err != nil {
+		if err == mgo.ErrNotFound {
+			return nil, errNotFound
+		}
+		return nil, CodeError{500, "database error: " + err.Error()}
+	}
+
+	if len(device.Actuators) == 0 {
+		return nil, errNotFound
+	}
+
+	return device.Actuators[0], nil
+}
+
+// PostActuator creates a new actuator for this device.
+func PostActuator(deviceID string, actuator *Actuator) error {
+
+	err := dbDevices.Update(bson.M{
+		"_id": deviceID,
+	}, bson.M{
+		"$push": bson.M{
+			"actuators": &actuator,
+		},
+	})
+	if err != nil {
+		if err == mgo.ErrNotFound {
+			return errNotFound
+		}
+		return CodeError{500, "database error: " + err.Error()}
+	}
+	return nil
+}
+
+// SetActuatorName changes this actuators name.
+func SetActuatorName(deviceID string, actuatorID string, name string) error {
+
+	err := dbDevices.Update(bson.M{
+		"_id":          deviceID,
+		"actuators.id": actuatorID,
+	}, bson.M{
+		"$set": bson.M{
+			"actuators.$.modified": time.Now(),
+			"actuators.$.name":     name,
+		},
+	})
+
+	if err != nil {
+		if err == mgo.ErrNotFound {
+			return errNotFound
+		}
+		return CodeError{500, "database error: " + err.Error()}
+	}
+
+	return nil
+}
+
+// DeleteActuator removes this actuator from the device and deletes all data points.
+// This returns the number of data points deleted.
+func DeleteActuator(deviceID string, actuatorID string) (int, error) {
+
+	err1 := dbDevices.Update(bson.M{
+		"_id": deviceID,
+	}, bson.M{
+		"$pull": bson.M{
+			"actuators": bson.M{
+				"id": actuatorID,
+			},
+		},
+	})
+	info, err2 := dbActuatorValues.RemoveAll(bson.M{
+		"deviceId":   deviceID,
+		"actuatorId": actuatorID,
+	})
+
+	if err1 != nil || err2 != nil {
+		err := err1
+		if err == nil {
+			err = err2
+		}
+		if err == mgo.ErrNotFound {
+			return 0, errNotFound
+		}
+		return 0, CodeError{500, "database error: " + err.Error()}
+	}
+
+	return info.Removed, nil
+}
+
+////////////////////
+
+type aValueIterator struct {
+	dbIter *mgo.Iter
+}
+
+func (iter aValueIterator) Next() (Value, error) {
+	var sval aValue
+	if iter.dbIter.Next(&sval) {
+		val := Value{
+			Value: sval.Value,
+			Time:  sval.ID.Time(),
+		}
+		return val, iter.dbIter.Err()
+	}
+	return Value{}, io.EOF
+}
+
+func (iter aValueIterator) Close() error {
+	return iter.dbIter.Close()
+}
+
 // GetActuatorValues returns an iterator over all actuator values.
-func GetActuatorValues(deviceID string, actuatorID string, query *Query) *ValueIterator {
+func GetActuatorValues(deviceID string, actuatorID string, query *Query) ValueIterator {
 
 	// var value ActuatorValue
 
 	m := bson.M{
-		"deviceId":   deviceID,
+		"deviceId": deviceID,
 		"actuatorId": actuatorID,
 	}
 	var noTime = time.Time{}
@@ -43,9 +168,7 @@ func GetActuatorValues(deviceID string, actuatorID string, query *Query) *ValueI
 		q.Limit(int(query.Limit))
 	}
 
-	return &ValueIterator{
-		dbIter: q.Iter(),
-	}
+	return aValueIterator{q.Iter()}
 }
 
 type aValue struct {
@@ -56,7 +179,7 @@ type aValue struct {
 }
 
 // PostActuatorValue stores a new actuator value for this actuator.
-func PostActuatorValue(deviceID string, actuatorID string, val *Value) error {
+func PostActuatorValue(deviceID string, actuatorID string, val Value) error {
 
 	value := aValue{
 		ID:         newID(val.Time),

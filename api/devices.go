@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/Waziup/wazigate-edge/edge"
@@ -40,9 +41,12 @@ func GetDevices(resp http.ResponseWriter, req *http.Request, params routing.Para
 
 	resp.Header().Set("Content-Type", "application/json")
 	resp.Write([]byte{'['})
-	for err == nil {
+	for device != nil {
 		encoder.Encode(device)
-		device, err = devices.Next()
+		device, _ = devices.Next()
+		if device != nil {
+			resp.Write([]byte{','})
+		}
 	}
 	resp.Write([]byte{']'})
 }
@@ -73,7 +77,7 @@ func GetCurrentDevice(resp http.ResponseWriter, req *http.Request, params routin
 func GetCurrentDeviceID(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
 	resp.Header().Set("Content-Type", "text/plain")
-	resp.Write([]byte(GetLocalID()))
+	resp.Write([]byte(edge.LocalID()))
 }
 
 // PostDevice implements POST /devices
@@ -142,10 +146,7 @@ func postDevice(resp http.ResponseWriter, req *http.Request) {
 
 	log.Printf("[DB   ] Created device %q\n", device.ID)
 
-	resp.Header().Set("Content-Type", "application/json")
-	resp.Write([]byte{'"'})
 	resp.Write([]byte(device.ID))
-	resp.Write([]byte{'"'})
 }
 
 ////////////////////
@@ -157,9 +158,15 @@ func postDeviceName(resp http.ResponseWriter, req *http.Request, deviceID string
 		return
 	}
 	var name string
-	if err := json.Unmarshal(body, &name); err != nil {
-		http.Error(resp, "bad request: "+err.Error(), http.StatusBadRequest)
-		return
+	contentType := req.Header.Get("Content-Type")
+	if strings.HasSuffix(contentType, "application/json") {
+		err = json.Unmarshal(body, &name)
+		if err != nil {
+			http.Error(resp, "bad request: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+	} else {
+		name = string(body)
 	}
 
 	if err := edge.SetDeviceName(deviceID, name); err != nil {

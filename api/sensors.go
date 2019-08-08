@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/Waziup/wazigate-edge/edge"
@@ -125,10 +126,7 @@ func postDeviceSensor(resp http.ResponseWriter, req *http.Request, deviceID stri
 
 	log.Printf("[DB   ] Sensor %s/%s created.\n", deviceID, sensor.ID)
 
-	resp.Header().Set("Content-Type", "application/json")
-	resp.Write([]byte{'"'})
 	resp.Write([]byte(sensor.ID))
-	resp.Write([]byte{'"'})
 }
 
 func postDeviceSensorName(resp http.ResponseWriter, req *http.Request, deviceID string, sensorID string) {
@@ -139,10 +137,15 @@ func postDeviceSensorName(resp http.ResponseWriter, req *http.Request, deviceID 
 		return
 	}
 	var name string
-	err = json.Unmarshal(body, &name)
-	if err != nil {
-		http.Error(resp, "bad request: "+err.Error(), http.StatusBadRequest)
-		return
+	contentType := req.Header.Get("Content-Type")
+	if strings.HasSuffix(contentType, "application/json") {
+		err = json.Unmarshal(body, &name)
+		if err != nil {
+			http.Error(resp, "bad request: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+	} else {
+		name = string(body)
 	}
 
 	err = edge.SetSensorName(deviceID, sensorID, name)
@@ -184,7 +187,7 @@ func getReqSensor(req *http.Request, sensor *edge.Sensor) error {
 	}
 
 	if sensor.ID == "" {
-		sensor.ID = bson.NewObjectId().String()
+		sensor.ID = bson.NewObjectId().Hex()
 	}
 	return nil
 }

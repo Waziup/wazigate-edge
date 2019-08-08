@@ -1,6 +1,7 @@
 package edge
 
 import (
+	"io"
 	"time"
 
 	"github.com/globalsign/mgo"
@@ -119,8 +120,30 @@ func DeleteSensor(deviceID string, sensorID string) (int, error) {
 	return info.Removed, nil
 }
 
+////////////////////
+
+type sValueIterator struct {
+	dbIter *mgo.Iter
+}
+
+func (iter sValueIterator) Next() (Value, error) {
+	var sval sValue
+	if iter.dbIter.Next(&sval) {
+		val := Value{
+			Value: sval.Value,
+			Time:  sval.ID.Time(),
+		}
+		return val, iter.dbIter.Err()
+	}
+	return Value{}, io.EOF
+}
+
+func (iter sValueIterator) Close() error {
+	return iter.dbIter.Close()
+}
+
 // GetSensorValues returns an iterator over all sensor values.
-func GetSensorValues(deviceID string, sensorID string, query *Query) *ValueIterator {
+func GetSensorValues(deviceID string, sensorID string, query *Query) ValueIterator {
 
 	// var value SensorValue
 
@@ -145,9 +168,7 @@ func GetSensorValues(deviceID string, sensorID string, query *Query) *ValueItera
 		q.Limit(int(query.Limit))
 	}
 
-	return &ValueIterator{
-		dbIter: q.Iter(),
-	}
+	return sValueIterator{q.Iter()}
 }
 
 type sValue struct {
@@ -158,7 +179,7 @@ type sValue struct {
 }
 
 // PostSensorValue stores a new sensor value for this sensor.
-func PostSensorValue(deviceID string, sensorID string, val *Value) error {
+func PostSensorValue(deviceID string, sensorID string, val Value) error {
 
 	value := sValue{
 		ID:       newID(val.Time),

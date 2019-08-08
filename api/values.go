@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/Waziup/wazigate-edge/edge"
 	"github.com/Waziup/wazigate-edge/tools"
 	"github.com/globalsign/mgo/bson"
 )
@@ -45,12 +46,12 @@ type Query struct {
 
 ////////////////////
 
-func getReqValue(req *http.Request) (Value, error) {
+func getReqValue(req *http.Request) (edge.Value, error) {
 	body, err := tools.ReadAll(req.Body)
 	if err != nil {
-		return Value{}, err
+		return edge.Value{}, err
 	}
-	val := Value{
+	val := edge.Value{
 		Value: nil,
 		Time:  time.Now(),
 	}

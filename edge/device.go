@@ -50,11 +50,10 @@ type DeviceIterator struct {
 // Next returns the next device or nil.
 func (iter *DeviceIterator) Next() (*Device, error) {
 
-	end := iter.dbIter.Next(&iter.device)
-	if end {
-		return nil, iter.dbIter.Err()
+	if iter.dbIter.Next(&iter.device) {
+		return &iter.device, iter.dbIter.Err()
 	}
-	return &iter.device, iter.dbIter.Err()
+	return nil, iter.dbIter.Err()
 }
 
 // Close closes the iterator.

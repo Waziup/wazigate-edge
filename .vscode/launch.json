@@ -8,7 +8,10 @@
             "mode": "auto",
             "program": "${workspaceFolder}",
             "env": {},
-            "args": []
+            "args": [
+                "-www",
+                "${workspaceFolder}/www"
+            ]
         }
     ]
 }

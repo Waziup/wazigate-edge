@@ -1,9 +1,11 @@
 package edge
 
 import (
+	"net/http"
+	"regexp"
+	"strconv"
 	"time"
 
-	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 )
 
@@ -22,24 +24,9 @@ type Query struct {
 }
 
 // ValueIterator iterates over data points. Call .Next() to get the next value.
-type ValueIterator struct {
-	value  Value
-	dbIter *mgo.Iter
-}
-
-// Next returns the next value or nil.
-func (iter *ValueIterator) Next() (*Value, error) {
-
-	end := iter.dbIter.Next(&iter.value)
-	if end {
-		return nil, iter.dbIter.Err()
-	}
-	return &iter.value, iter.dbIter.Err()
-}
-
-// Close closes the iterator.
-func (iter *ValueIterator) Close() error {
-	return iter.dbIter.Close()
+type ValueIterator interface {
+	Next() (Value, error)
+	Close() error
 }
 
 var errNotFound = CodeError{404, "device or sensor/actuator not found"}
@@ -51,4 +38,69 @@ func newID(t time.Time) bson.ObjectId {
 	timeID := []byte(bson.NewObjectIdWithTime(t))
 	copy(id[:4], timeID[:4])
 	return bson.ObjectId(id)
+}
+
+var sizeRegex = regexp.MustCompile(`^\d+[kKmMgG]?[bB]?`)
+var sizeUnitRegex = regexp.MustCompile(`[kKmMgG]?[bB]?$`)
+
+func (query *Query) Parse(req *http.Request) string {
+
+	var param string
+	var err error
+
+	q := req.URL.Query()
+
+	if param = q.Get("from"); param != "" {
+		err = query.From.UnmarshalText([]byte(param))
+		if err != nil {
+			return "Query ?from=.. is mal formatted."
+		}
+	}
+
+	if param = q.Get("to"); param != "" {
+		err = query.To.UnmarshalText([]byte(param))
+		if err != nil {
+			return "Query ?to=.. is mal formatted."
+		}
+	}
+
+	if param = q.Get("limit"); param != "" {
+		query.Limit, err = strconv.ParseInt(param, 10, 64)
+		if err != nil {
+			return "Query ?limit=.. is mal formatted."
+		}
+	}
+
+	if param = q.Get("size"); param != "" {
+		query.Size = parseSize(param)
+		if query.Size == -1 {
+			return "Query ?size=.. is mal formatted."
+		}
+	}
+
+	return ""
+}
+
+func parseSize(str string) (size int64) {
+	for len(str) != 0 {
+		match := sizeRegex.FindString(str)
+		if match == "" {
+			return -1
+		}
+		unit := sizeUnitRegex.FindString(str)
+		var fact int64 = 1
+		if len(unit) > 0 {
+			if unit[0] == 'k' || unit[0] == 'K' {
+				fact = 1e3
+			} else if unit[0] == 'm' || unit[0] == 'M' {
+				fact = 1e6
+			} else if unit[0] == 'g' || unit[0] == 'G' {
+				fact = 1e9
+			}
+		}
+		n, _ := strconv.ParseInt(match[0:len(match)-len(unit)], 10, 64)
+		size += n * fact
+		str = str[len(match):]
+	}
+	return
 }

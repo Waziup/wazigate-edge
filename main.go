@@ -72,12 +72,10 @@ func main() {
 
 	////////////////////
 
-	for i := 0; i < 5; i++ {
-		log.Printf("[DB   ] Dialing MongoDB at %q...\n", *dbAddr)
-		err := edge.Connect("mongodb://" + *dbAddr + "/?connect=direct")
-		if err != nil {
-			log.Fatalf("[DB   ] MongoDB client error:\n", err)
-		}
+	log.Printf("[DB   ] Dialing MongoDB at %q...\n", *dbAddr)
+	err = edge.Connect("mongodb://" + *dbAddr + "/?connect=direct")
+	if err != nil {
+		log.Fatalf("[DB   ] MongoDB client error: %v\n", err)
 	}
 
 	////////////////////
@@ -88,7 +86,7 @@ func main() {
 
 	log.Printf("[     ] Local device id is %q.\n", api.GetLocalID())
 
-	api.ReadCloudConfig()
+	// api.ReadCloudConfig()
 
 	////////////////////
 

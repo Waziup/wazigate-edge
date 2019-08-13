@@ -1,6 +1,7 @@
 package edge
 
 import (
+	"io"
 	"net"
 	"strings"
 	"time"
@@ -53,7 +54,7 @@ func (iter *DeviceIterator) Next() (*Device, error) {
 	if iter.dbIter.Next(&iter.device) {
 		return &iter.device, iter.dbIter.Err()
 	}
-	return nil, iter.dbIter.Err()
+	return nil, io.EOF
 }
 
 // Close closes the iterator.

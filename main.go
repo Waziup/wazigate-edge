@@ -11,7 +11,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/Waziup/wazigate-edge/api"
+	"github.com/Waziup/wazigate-edge/clouds"
 	"github.com/Waziup/wazigate-edge/edge"
 	"github.com/Waziup/wazigate-edge/mqtt"
 	"github.com/Waziup/wazigate-edge/tools"
@@ -79,13 +79,11 @@ func main() {
 
 	////////////////////
 
+	log.Printf("[     ] Local device id is %q.\n", edge.LocalID())
+
 	initDevice()
 
-	////////////////////
-
-	log.Printf("[     ] Local device id is %q.\n", api.GetLocalID())
-
-	// api.ReadCloudConfig()
+	initSync()
 
 	////////////////////
 
@@ -248,5 +246,27 @@ func initDevice() {
 		if err != nil {
 			log.Fatalf("[DB   ] Err %v", err)
 		}
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+func getCloudsFile() string {
+	cloudsFile := os.Getenv("WAZIUP_CLOUDS_FILE")
+	if cloudsFile == "" {
+		return "clouds.json"
+	}
+	return cloudsFile
+}
+
+func initSync() {
+	cloudsFile := getCloudsFile()
+	file, err := os.Open(cloudsFile)
+	if err != nil {
+		log.Printf("[UP   ] Can not read %q: %s", cloudsFile, err.Error())
+	}
+	err = clouds.ReadCloudConfig(file)
+	if err != nil {
+		log.Printf("[UP   ] Can not read %q: %s", cloudsFile, err.Error())
 	}
 }

@@ -3,8 +3,10 @@ package api
 import (
 	"encoding/json"
 	"io"
+	"log"
 	"net/http"
 
+	"github.com/Waziup/wazigate-edge/clouds"
 	"github.com/Waziup/wazigate-edge/edge"
 
 	routing "github.com/julienschmidt/httprouter"
@@ -121,6 +123,10 @@ func postActuatorValue(resp http.ResponseWriter, req *http.Request, deviceID str
 		serveError(resp, err)
 		return
 	}
+
+	log.Printf("[DB   ] 1 value for %s/%s.\n", deviceID, actuatorID)
+
+	clouds.FlagActuator(deviceID, actuatorID, val.Time)
 }
 
 func postActuatorValues(resp http.ResponseWriter, req *http.Request, deviceID string, actuatorID string) {
@@ -131,9 +137,15 @@ func postActuatorValues(resp http.ResponseWriter, req *http.Request, deviceID st
 		return
 	}
 
-	err = edge.PostActuatorValues(deviceID, actuatorID, vals)
-	if err != nil {
-		serveError(resp, err)
-		return
+	if len(vals) != 0 {
+		err = edge.PostActuatorValues(deviceID, actuatorID, vals)
+		if err != nil {
+			serveError(resp, err)
+			return
+		}
+
+		clouds.FlagActuator(deviceID, actuatorID, vals[0].Time)
 	}
+
+	log.Printf("[DB   ] %d values for %s/%s.\n", len(vals), deviceID, actuatorID)
 }

@@ -8,9 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strings"
 
-	"github.com/Waziup/wazigate-edge/api"
 	"github.com/Waziup/wazigate-edge/mqtt"
 	"github.com/Waziup/wazigate-edge/tools"
 )
@@ -52,14 +50,6 @@ func (server *MQTTServer) Publish(client *mqtt.Client, msg *mqtt.Message) error 
 	} else {
 
 		server.Server.Publish(client, msg)
-	}
-
-	// Forward data to
-	if strings.Contains(msg.Topic, "/sensors/") || strings.HasSuffix(msg.Topic, "/sensors") {
-		pkt := mqtt.Publish(msg)
-		for _, cloud := range api.Clouds {
-			cloud.Queue.WritePacket(pkt)
-		}
 	}
 
 	return nil

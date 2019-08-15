@@ -27,39 +27,39 @@ func (cloud *Cloud) nextSensor() (entity, *remote) {
 	}
 
 	var nextEntity entity
-	var nextSensor *remote
+	var rem *remote
 
 	cloud.remoteMutex.Lock()
 
 	// loop all dirty sensors/devices to see which one to sync next
-	for entity, rem := range cloud.remote {
+	for entity, r := range cloud.remote {
 		// unexisting devices have the highest priority
-		if entity.sensorID == "" {
+		if entity.sensorID == "" && entity.actuatorID == "" {
 			nextEntity = entity
-			nextSensor = rem
+			rem = r
 			break
 		}
-		// unexisting sensors have the bext priority
-		if !rem.exists {
+		// unexisting sensors & actuators have the bext priority
+		if !r.exists {
 			nextEntity = entity
-			nextSensor = rem
+			rem = r
 			continue
 		}
-		if nextSensor == nil {
+		if rem == nil {
 			nextEntity = entity
-			nextSensor = rem
+			rem = r
 			continue
 		}
-		// oldest sensors first
-		if rem.time.Before(nextSensor.time) {
+		// oldest values first
+		if r.time.Before(rem.time) {
 			nextEntity = entity
-			nextSensor = rem
+			rem = r
 		}
 	}
 
 	cloud.remoteMutex.Unlock()
 
-	return nextEntity, nextSensor
+	return nextEntity, rem
 }
 
 func (cloud *Cloud) persistentSync() int {
@@ -81,7 +81,7 @@ func (cloud *Cloud) persistentSync() int {
 
 func (cloud *Cloud) processEntity(ent entity, rem *remote) (status int) {
 
-	if ent.sensorID == "" {
+	if ent.sensorID == "" && ent.actuatorID == "" {
 		// sync an unexisting device
 		log.Printf("[UP   ] Pushing device %s ...", ent.deviceID)
 		device, err := edge.GetDevice(ent.deviceID)
@@ -97,7 +97,12 @@ func (cloud *Cloud) processEntity(ent entity, rem *remote) (status int) {
 			log.Printf("[UP   ] Device pushed.")
 			for _, sensor := range device.Sensors {
 				if sensor.Value != nil {
-					cloud.remote[entity{device.ID, sensor.ID}] = &remote{noTime, true}
+					cloud.remote[entity{device.ID, sensor.ID, ""}] = &remote{noTime, true}
+				}
+			}
+			for _, actuator := range device.Actuators {
+				if actuator.Value != nil {
+					cloud.remote[entity{device.ID, "", actuator.ID}] = &remote{noTime, true}
 				}
 			}
 			cloud.remoteMutex.Unlock()
@@ -108,20 +113,34 @@ func (cloud *Cloud) processEntity(ent entity, rem *remote) (status int) {
 
 	if !rem.exists {
 
-		// sync an unexisting sensor
-		log.Printf("[UP   ] Pushing sensor %s/%s ...", ent.deviceID, ent.sensorID)
-		sensor, err := edge.GetSensor(ent.deviceID, ent.sensorID)
-		if err != nil {
-			log.Printf("[Err   ] Err %s", err.Error())
-			return -1
-		}
-		status = cloud.postSensor(ent.deviceID, sensor)
-		if isOk(status) {
-			rem.exists = true
-			log.Printf("[UP   ] Sensor pushed.")
+		if ent.sensorID != "" {
+			// sync an unexisting sensor
+			log.Printf("[UP   ] Pushing sensor %s/%s ...", ent.deviceID, ent.sensorID)
+			sensor, err := edge.GetSensor(ent.deviceID, ent.sensorID)
+			if err != nil {
+				log.Printf("[Err   ] Err %s", err.Error())
+				return -1
+			}
+			status = cloud.postSensor(ent.deviceID, sensor)
+			if isOk(status) {
+				rem.exists = true
+				log.Printf("[UP   ] Sensor pushed.")
+			}
+		} else {
+			// sync an unexisting actuator
+			log.Printf("[UP   ] Pushing actuator %s/%s ...", ent.deviceID, ent.actuatorID)
+			actuator, err := edge.GetActuator(ent.deviceID, ent.actuatorID)
+			if err != nil {
+				log.Printf("[Err   ] Err %s", err.Error())
+				return -1
+			}
+			status = cloud.postActuator(ent.deviceID, actuator)
+			if isOk(status) {
+				rem.exists = true
+				log.Printf("[UP   ] Actuator pushed.")
+			}
 		}
 		return
-
 	}
 
 	log.Printf("[UP   ] Pushing values %s/%s ...", ent.deviceID, ent.sensorID)
@@ -199,6 +218,28 @@ func (cloud *Cloud) postSensor(deviceID string, sensor *edge.Sensor) int {
 	})
 	if !resp.ok {
 		cloud.setStatus(resp.status, fmt.Sprintf("Unable to push sensor. %s\n%s", resp.statusText, strings.TrimSpace(resp.text())))
+	}
+	return resp.status
+}
+
+func (cloud *Cloud) postActuator(deviceID string, actuator *edge.Actuator) int {
+	var syncActuator v2Actuator
+	syncActuator.ID = actuator.ID
+	syncActuator.Name = actuator.Name
+
+	addr := cloud.getRESTAddr()
+
+	body, _ := json.Marshal(syncActuator)
+	resp := fetch(addr+"/devices/"+deviceID+"/actuators", fetchInit{
+		method: http.MethodPost,
+		headers: map[string]string{
+			"Content-Type":  "application/json",
+			"Authorization": cloud.auth,
+		},
+		body: bytes.NewReader(body),
+	})
+	if !resp.ok {
+		cloud.setStatus(resp.status, fmt.Sprintf("Unable to push actuator. %s\n%s", resp.statusText, strings.TrimSpace(resp.text())))
 	}
 	return resp.status
 }

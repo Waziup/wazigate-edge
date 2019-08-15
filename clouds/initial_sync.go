@@ -105,7 +105,7 @@ func (cloud *Cloud) initialSync() int {
 		switch resp.status {
 		case http.StatusNotFound:
 			log.Printf("[UP   ] Device %q not found.", device.ID)
-			cloud.remote[entity{device.ID, ""}] = &remote{noTime, false}
+			cloud.remote[entity{device.ID, "", ""}] = &remote{noTime, false}
 
 		case http.StatusOK:
 			var device2 v2Device
@@ -129,12 +129,12 @@ func (cloud *Cloud) initialSync() int {
 								log.Printf("[UP   ] Sensor %q up do date.", sensor.ID)
 							} else {
 								log.Printf("[UP   ] Sensor %q outdated! Last value %v.", sensor.ID, s.Value.Time)
-								cloud.remote[entity{device.ID, sensor.ID}] = &remote{s.Value.Time, true}
+								cloud.remote[entity{device.ID, sensor.ID, ""}] = &remote{s.Value.Time, true}
 							}
 						} else {
 							if sensor.Value != nil {
 								log.Printf("[UP   ] Sensor %q outdated! No values.", sensor.ID)
-								cloud.remote[entity{device.ID, sensor.ID}] = &remote{noTime, true}
+								cloud.remote[entity{device.ID, sensor.ID, ""}] = &remote{noTime, true}
 							}
 							log.Printf("[UP   ] Sensor %q up do date. No values.", sensor.ID)
 						}
@@ -142,7 +142,38 @@ func (cloud *Cloud) initialSync() int {
 					}
 				}
 				log.Printf("[UP   ] Sensor %q does not exist.", sensor.ID)
-				cloud.remote[entity{device.ID, sensor.ID}] = &remote{noTime, false}
+				cloud.remote[entity{device.ID, sensor.ID, ""}] = &remote{noTime, false}
+			}
+
+		ACTUATORS:
+			for _, acuator := range device.Actuators {
+				if acuator.Value == nil {
+					acuator.Time = noTime
+				}
+				for _, s := range device2.Actuators {
+					if s.ID == acuator.ID {
+						if s.Value != nil {
+							if s.Value.Time == noTime {
+								s.Value.Time = s.Value.TimeReceived
+							}
+							if !s.Value.Time.Before(acuator.Time) {
+								log.Printf("[UP   ] Actuator %q up do date.", acuator.ID)
+							} else {
+								log.Printf("[UP   ] Actuator %q outdated! Last value %v.", acuator.ID, s.Value.Time)
+								cloud.remote[entity{device.ID, "", acuator.ID}] = &remote{s.Value.Time, true}
+							}
+						} else {
+							if acuator.Value != nil {
+								log.Printf("[UP   ] Actuator %q outdated! No values.", acuator.ID)
+								cloud.remote[entity{device.ID, "", acuator.ID}] = &remote{noTime, true}
+							}
+							log.Printf("[UP   ] Actuator %q up do date. No values.", acuator.ID)
+						}
+						continue ACTUATORS
+					}
+				}
+				log.Printf("[UP   ] Actuator %q does not exist.", acuator.ID)
+				cloud.remote[entity{device.ID, "", acuator.ID}] = &remote{noTime, false}
 			}
 
 		default:

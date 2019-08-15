@@ -9,7 +9,7 @@ var router = routing.New()
 
 func init() {
 
-	api.Downstream = mqttServer
+	// api.Downstream = mqttServer
 
 	// Auth
 

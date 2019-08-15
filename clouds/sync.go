@@ -16,13 +16,13 @@ var retries = []time.Duration{
 
 func (cloud *Cloud) SetPaused(paused bool) {
 
-	if cloud.pausing || paused == cloud.Paused {
+	if cloud.Pausing || paused == cloud.Paused {
 		return
 	}
 
 	if paused {
 		cloud.Paused = true
-		cloud.pausing = true
+		cloud.Pausing = true
 	} else {
 		cloud.Paused = false
 		go cloud.sync()
@@ -35,7 +35,7 @@ func (cloud *Cloud) sync() {
 
 	retry := func() {
 
-		if cloud.pausing {
+		if cloud.Pausing {
 			return
 		}
 
@@ -50,7 +50,7 @@ func (cloud *Cloud) sync() {
 	}
 
 	auth := func() {
-		for !cloud.pausing {
+		for !cloud.Pausing {
 			status := cloud.authenticate()
 			if status == http.StatusForbidden || status == http.StatusUnauthorized {
 				cloud.SetPaused(true)
@@ -67,7 +67,7 @@ func (cloud *Cloud) sync() {
 	auth()
 
 INITIAL_SYNC:
-	for !cloud.pausing {
+	for !cloud.Pausing {
 
 		cloud.setStatus(0, "Beginning initial sync ...")
 
@@ -90,7 +90,7 @@ INITIAL_SYNC:
 		break
 	}
 
-	for !cloud.pausing {
+	for !cloud.Pausing {
 
 		status := cloud.persistentSync()
 		if status == http.StatusForbidden || status == http.StatusUnauthorized {
@@ -111,5 +111,5 @@ INITIAL_SYNC:
 		nretry = 0
 	}
 
-	cloud.pausing = false
+	cloud.Pausing = false
 }

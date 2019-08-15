@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Waziup/wazigate-edge/clouds"
 	"github.com/Waziup/wazigate-edge/edge"
 	"github.com/Waziup/wazigate-edge/tools"
 	"github.com/globalsign/mgo/bson"
@@ -125,6 +126,7 @@ func postDeviceActuator(resp http.ResponseWriter, req *http.Request, deviceID st
 	}
 
 	log.Printf("[DB   ] Actuator %s/%s created.\n", deviceID, actuator.ID)
+	clouds.FlagActuator(deviceID, actuator.ID, noTime)
 
 	resp.Write([]byte(actuator.ID))
 }

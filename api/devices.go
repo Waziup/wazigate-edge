@@ -145,9 +145,9 @@ func postDevice(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	log.Printf("[DB   ] Created device %q\n", device.ID)
+	log.Printf("[DB   ] Created device %s.", device.ID)
 
-	clouds.Flag(device.ID, "", noTime)
+	clouds.FlagDevice(device.ID)
 
 	resp.Write([]byte(device.ID))
 }
@@ -187,7 +187,7 @@ func deleteDevice(resp http.ResponseWriter, deviceID string) {
 		return
 	}
 
-	log.Printf("[DB   ] removed device %s (%d sensor values, %d actuator values)\n", deviceID, numS, numA)
+	log.Printf("[DB   ] Removed device %s (%d sensor values, %d actuator values).\n", deviceID, numS, numA)
 }
 
 ////////////////////

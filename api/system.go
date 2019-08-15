@@ -15,15 +15,7 @@ import (
 // SysClearAll implements PUT /sys/clear_all
 func SysClearAll(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
-	if DBDevices != nil {
-		DBDevices.RemoveAll(bson.M{})
-	}
-	if DBSensorValues != nil {
-		DBSensorValues.RemoveAll(bson.M{})
-	}
-	if DBActuatorValues != nil {
-		DBActuatorValues.RemoveAll(bson.M{})
-	}
+
 }
 
 var startTime time.Time

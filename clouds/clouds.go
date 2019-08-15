@@ -2,6 +2,7 @@ package clouds
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"io/ioutil"
 	"log"
@@ -14,7 +15,9 @@ import (
 )
 
 type entity struct {
-	deviceID, sensorID string
+	deviceID   string
+	sensorID   string
+	actuatorID string
 }
 
 type remote struct {
@@ -24,19 +27,18 @@ type remote struct {
 
 // Cloud represents a configuration to access a Waziup Cloud.
 type Cloud struct {
-	ID     string `json:"id"`
-	Paused bool   `json:"paused"`
-	REST   string `json:"rest"`
-	MQTT   string `json:"mqtt"`
+	ID      string `json:"id"`
+	Paused  bool   `json:"paused"`
+	Pausing bool   `json:"pausing"`
+	REST    string `json:"rest"`
+	MQTT    string `json:"mqtt"`
 
 	Credentials struct {
 		Username string `json:"username"`
 		Token    string `json:"token"`
 	} `json:"credentials"`
 
-	counter int
-	Client  *mqtt.Client `json:"-"`
-	Queue   *mqtt.Queue  `json:"queue"`
+	client *mqtt.Client
 
 	StatusCode int    `json:"statusCode"`
 	StatusText string `json:"statusText"`
@@ -45,7 +47,6 @@ type Cloud struct {
 	remoteMutex sync.Mutex
 	sigDirty    chan struct{}
 	auth        string
-	pausing     bool
 }
 
 // Clouds lists all clouds that we synchronize.
@@ -55,25 +56,108 @@ var clouds map[string]*Cloud
 // CloudsMutex guards Clouds.
 var cloudsMutex sync.RWMutex
 
-func Flag(device string, sensor string, time time.Time) {
+// GetCloud returns the Cloud with the given ID.
+func GetCloud(id string) *Cloud {
+	return clouds[id]
+}
+
+// GetClouds returns the cloud atlas.
+func GetClouds() map[string]*Cloud {
+	return clouds
+}
+
+var errCloudExists = errors.New("a cloud with that id already exists")
+
+// AddCloud inserts the Cloud to the cloud atlas.
+func AddCloud(cloud *Cloud) error {
+
+	cloudsMutex.Lock()
+	if _, exists := clouds[cloud.ID]; exists {
+		cloudsMutex.Unlock()
+		return errCloudExists
+	}
+	clouds[cloud.ID] = cloud
+	cloudsMutex.Unlock()
+
+	if !cloud.Paused {
+		go cloud.sync()
+	}
+	return nil
+}
+
+// RemoveCloud pauses the cloud with that id and removes it from the cloud atlas.
+func RemoveCloud(id string) bool {
+	cloudsMutex.Lock()
+	cloud := clouds[id]
+	if cloud != nil {
+		cloud.SetPaused(false)
+	}
+	delete(clouds, id)
+	cloudsMutex.Unlock()
+	return cloud != nil
+}
+
+// FlagDevice marks the device as dirty so that it will be synced wih the clouds.
+func FlagDevice(deviceID string) {
 	if len(clouds) == 0 {
 		return
 	}
 	cloudsMutex.RLock()
 	for _, cloud := range clouds {
-		cloud.Flag(device, sensor, time)
+		cloud.FlagDevice(deviceID)
 	}
 	cloudsMutex.RUnlock()
 }
 
-func (cloud *Cloud) Flag(device string, sensor string, time time.Time) {
+// FlagSensor marks the sensor as dirty so that it will be synced wih the clouds.
+func FlagSensor(deviceID string, sensorID string, time time.Time) {
+	if len(clouds) == 0 {
+		return
+	}
+	cloudsMutex.RLock()
+	for _, cloud := range clouds {
+		cloud.FlagSensor(deviceID, sensorID, time)
+	}
+	cloudsMutex.RUnlock()
+}
+
+// FlagActuator marks the actuator as dirty so that it will be synced wih the clouds.
+func FlagActuator(deviceID string, actuatorID string, time time.Time) {
+	if len(clouds) == 0 {
+		return
+	}
+	cloudsMutex.RLock()
+	for _, cloud := range clouds {
+		cloud.FlagActuator(deviceID, actuatorID, time)
+	}
+	cloudsMutex.RUnlock()
+}
+
+// FlagDevice marks the device as dirty.
+func (cloud *Cloud) FlagDevice(deviceID string) {
+	cloud.flag(entity{deviceID, "", ""}, noTime)
+}
+
+// FlagSensor marks the sensor as dirty.
+func (cloud *Cloud) FlagSensor(deviceID string, sensorID string, time time.Time) {
+	cloud.flag(entity{deviceID, sensorID, ""}, time)
+}
+
+// FlagActuator marks the actuator as dirty.
+func (cloud *Cloud) FlagActuator(deviceID string, actuatorID string, time time.Time) {
+	cloud.flag(entity{deviceID, "", actuatorID}, time)
+}
+
+func (cloud *Cloud) flag(ent entity, time time.Time) {
 
 	cloud.remoteMutex.Lock()
-
 	empty := len(cloud.remote) == 0
-	if cloud.remote[entity{device, ""}] == nil {
-		if cloud.remote[entity{device, sensor}] == nil {
-			cloud.remote[entity{device, sensor}] = &remote{time, time != noTime}
+	if ent.sensorID == "" && ent.actuatorID == "" {
+		cloud.remote[ent] = &remote{time, false}
+	} else {
+		deviceEnt := entity{ent.deviceID, "", ""}
+		if cloud.remote[deviceEnt] == nil {
+			cloud.remote[ent] = &remote{time, time != noTime}
 		}
 	}
 	cloud.remoteMutex.Unlock()

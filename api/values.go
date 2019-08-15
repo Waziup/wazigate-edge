@@ -12,6 +12,8 @@ import (
 	"github.com/globalsign/mgo/bson"
 )
 
+var noTime = time.Time{}
+
 const TimeFormat = time.RFC3339 // "2006-01-02T15:04:05-0700"
 
 // Value is one datapoint
@@ -168,8 +170,8 @@ func parseSize(str string) (size int64) {
 
 func newID(t time.Time) bson.ObjectId {
 	id := []byte(bson.NewObjectId())
-	timeId := []byte(bson.NewObjectIdWithTime(t))
-	copy(id[:4], timeId[:4])
+	timeID := []byte(bson.NewObjectIdWithTime(t))
+	copy(id[:4], timeID[:4])
 	return bson.ObjectId(id)
 }
 

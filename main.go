@@ -263,10 +263,10 @@ func initSync() {
 	cloudsFile := getCloudsFile()
 	file, err := os.Open(cloudsFile)
 	if err != nil {
-		log.Printf("[UP   ] Can not read %q: %s", cloudsFile, err.Error())
+		log.Printf("[Err  ] Can not read %q: %s", cloudsFile, err.Error())
 	}
 	err = clouds.ReadCloudConfig(file)
 	if err != nil {
-		log.Printf("[UP   ] Can not read %q: %s", cloudsFile, err.Error())
+		log.Printf("[Err  ] Can not read %q: %s", cloudsFile, err.Error())
 	}
 }

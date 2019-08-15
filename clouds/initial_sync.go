@@ -125,10 +125,11 @@ func (cloud *Cloud) initialSync() int {
 							if s.Value.Time == noTime {
 								s.Value.Time = s.Value.TimeReceived
 							}
-							if !s.Value.Time.Before(sensor.Time) {
+							t := s.Value.Time.Add(time.Second)
+							if !t.Before(sensor.Time) {
 								log.Printf("[UP   ] Sensor %q up do date.", sensor.ID)
 							} else {
-								log.Printf("[UP   ] Sensor %q outdated! Last value %v.", sensor.ID, s.Value.Time)
+								log.Printf("[UP   ] Sensor %q outdated! Last value %v (latest: %v).", sensor.ID, s.Value.Time, sensor.Time)
 								cloud.remote[entity{device.ID, sensor.ID, ""}] = &remote{s.Value.Time, true}
 							}
 						} else {

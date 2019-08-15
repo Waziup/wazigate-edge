@@ -156,7 +156,7 @@ func GetSensorValues(deviceID string, sensorID string, query *Query) ValueIterat
 		mid := bson.M{}
 		m["_id"] = mid
 		if query.From != noTime {
-			mid["$gt"] = bson.NewObjectIdWithTime(query.From)
+			mid["$gte"] = bson.NewObjectIdWithTime(query.From)
 		}
 		if query.To != noTime {
 			query.To.Add(time.Second)

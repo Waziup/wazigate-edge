@@ -1,0 +1,8 @@
+# Local Database
+db/
+
+# Logs
+log/*.txt
+
+# Debug Binary (vscode)
+__debug_bin

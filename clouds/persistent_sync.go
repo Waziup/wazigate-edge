@@ -162,7 +162,7 @@ func (cloud *Cloud) processEntity(ent entity, rem *remote) (status int) {
 		}
 
 		log.Printf("[UP   ] Pushed %d values until %s.", numVal, lastTime.UTC())
-		rem.time = lastTime
+		rem.time = lastTime.Add(time.Second)
 		return
 	}
 	return
@@ -259,14 +259,21 @@ func (cloud *Cloud) postValues(deviceID string, sensorID string, values edge.Val
 		Time  time.Time   `json:"timestamp"`
 	}
 
+	buf.Write([]byte{'['})
+
 	numValues := 0
 	for ; err == nil; value, err = values.Next() {
-		numValues++
+		if numValues != 0 {
+			buf.Write([]byte{','})
+		}
 		lastTime = value.Time
 		value2.Time = value.Time
 		value2.Value = value.Value
 		encoder.Encode(value2)
+		numValues++
 	}
+
+	buf.Write([]byte{']'})
 
 	addr := cloud.getRESTAddr()
 

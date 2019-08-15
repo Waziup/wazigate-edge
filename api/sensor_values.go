@@ -3,8 +3,10 @@ package api
 import (
 	"encoding/json"
 	"io"
+	"log"
 	"net/http"
 
+	"github.com/Waziup/wazigate-edge/clouds"
 	"github.com/Waziup/wazigate-edge/edge"
 
 	routing "github.com/julienschmidt/httprouter"
@@ -121,6 +123,10 @@ func postSensorValue(resp http.ResponseWriter, req *http.Request, deviceID strin
 		serveError(resp, err)
 		return
 	}
+
+	log.Printf("[DB   ] 1 value for %s/%s.\n", deviceID, sensorID)
+
+	clouds.Flag(deviceID, sensorID, val.Time)
 }
 
 func postSensorValues(resp http.ResponseWriter, req *http.Request, deviceID string, sensorID string) {
@@ -131,9 +137,15 @@ func postSensorValues(resp http.ResponseWriter, req *http.Request, deviceID stri
 		return
 	}
 
-	err = edge.PostSensorValues(deviceID, sensorID, vals)
-	if err != nil {
-		serveError(resp, err)
-		return
+	if len(vals) != 0 {
+		err = edge.PostSensorValues(deviceID, sensorID, vals)
+		if err != nil {
+			serveError(resp, err)
+			return
+		}
+
+		clouds.Flag(deviceID, sensorID, vals[0].Time)
 	}
+
+	log.Printf("[DB   ] %d values for %s/%s.\n", len(vals), deviceID, sensorID)
 }

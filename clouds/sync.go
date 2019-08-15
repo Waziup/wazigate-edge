@@ -3,6 +3,7 @@ package clouds
 import (
 	"fmt"
 	"log"
+	"net/http"
 	"time"
 )
 
@@ -48,28 +49,66 @@ func (cloud *Cloud) sync() {
 		}
 	}
 
+	auth := func() {
+		for !cloud.pausing {
+			status := cloud.authenticate()
+			if status == http.StatusForbidden || status == http.StatusUnauthorized {
+				cloud.SetPaused(true)
+				break
+			}
+			if !isOk(status) {
+				retry()
+				continue
+			}
+			break
+		}
+	}
+
+	auth()
+
+INITIAL_SYNC:
 	for !cloud.pausing {
 
 		cloud.setStatus(0, "Beginning initial sync ...")
 
 		cloud.remote = make(map[entity]*remote)
-		cloud.sigDirty = make(chan struct{})
+		cloud.sigDirty = make(chan struct{}, 1)
 
-		if !cloud.initialSync() {
-			log.Println("[UP   ] Initial sync ended.")
+		status := cloud.initialSync()
+		if status == http.StatusForbidden || status == http.StatusUnauthorized {
+			auth()
+			continue
+		}
+
+		if !isOk(status) {
 			retry()
 			continue
 		}
 
-		log.Printf("[UP   ] Initial sync completed with %d dirty. Now persistent sync ... ", len(cloud.remote))
-
-		if !cloud.persistentSync() {
-			log.Println("[UP   ] Persistent sync ended.")
-			retry()
-			continue
-		}
-
+		log.Printf("[UP   ] Initial sync completed with %d dirty.", len(cloud.remote))
+		nretry = 0
 		break
+	}
+
+	for !cloud.pausing {
+
+		status := cloud.persistentSync()
+		if status == http.StatusForbidden || status == http.StatusUnauthorized {
+			auth()
+			continue
+		}
+
+		if status <= 0 { // Network Error
+			retry()
+			continue
+		}
+
+		if !isOk(status) {
+			retry()
+			goto INITIAL_SYNC
+		}
+
+		nretry = 0
 	}
 
 	cloud.pausing = false

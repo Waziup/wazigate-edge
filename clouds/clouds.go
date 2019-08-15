@@ -56,6 +56,9 @@ var clouds map[string]*Cloud
 var cloudsMutex sync.RWMutex
 
 func Flag(device string, sensor string, time time.Time) {
+	if len(clouds) == 0 {
+		return
+	}
 	cloudsMutex.RLock()
 	for _, cloud := range clouds {
 		cloud.Flag(device, sensor, time)
@@ -70,13 +73,16 @@ func (cloud *Cloud) Flag(device string, sensor string, time time.Time) {
 	empty := len(cloud.remote) == 0
 	if cloud.remote[entity{device, ""}] == nil {
 		if cloud.remote[entity{device, sensor}] == nil {
-			cloud.remote[entity{device, sensor}] = &remote{noTime, false}
+			cloud.remote[entity{device, sensor}] = &remote{time, time != noTime}
 		}
 	}
 	cloud.remoteMutex.Unlock()
 
 	if empty {
-		cloud.sigDirty <- struct{}{}
+		select {
+		case cloud.sigDirty <- struct{}{}:
+		default: // channel full
+		}
 	}
 }
 
@@ -108,7 +114,7 @@ func (cloud *Cloud) getMQTTAddr() string {
 
 func (cloud *Cloud) setStatus(code int, text string) {
 	text = strings.TrimSpace(text)
-	log.Printf("[UP   ] Cloud Status: [%d] %s", code, strings.ReplaceAll(text, "\n", " - "))
+	log.Printf("[UP   ] [%d] %s", code, strings.ReplaceAll(text, "\n", " - "))
 	cloud.StatusCode = code
 	cloud.StatusText = text
 }

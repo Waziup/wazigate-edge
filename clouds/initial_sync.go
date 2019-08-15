@@ -13,11 +13,7 @@ import (
 
 var noTime = time.Time{}
 
-func (cloud *Cloud) initialSync() bool {
-	cloud.setStatus(0, "Connecting to server for initial sync...")
-
-	// 1.
-	// Get Auth token from /auth
+func (cloud *Cloud) authenticate() int {
 
 	credentials := struct {
 		Username string `json:"username"`
@@ -28,7 +24,7 @@ func (cloud *Cloud) initialSync() bool {
 	}
 
 	addr := cloud.getRESTAddr()
-	log.Printf("[UP   ] Dialing REST %q...", addr)
+	log.Printf("[UP   ] Authentication ...", addr)
 
 	body, _ := json.Marshal(credentials)
 	resp := fetch(addr+"/auth/token", fetchInit{
@@ -40,28 +36,34 @@ func (cloud *Cloud) initialSync() bool {
 	})
 	if !resp.ok {
 		cloud.setStatus(resp.status, fmt.Sprintf("Unable to connect.\n%s", resp.statusText))
-		return false
+		return resp.status
 	}
 
 	token := resp.text()
 	if len(token) == 0 {
 		cloud.setStatus(0, "Unable to connect.\nRecieved invalid token.")
 		log.Printf("[UP   ] Err Token %s", token)
-		return false
+		return 0
 	}
 	cloud.auth = "Bearer " + token
 	log.Println("[UP   ] Authentication successfull.")
 
-	// 2.
+	return resp.status
+}
+
+func (cloud *Cloud) initialSync() int {
+
 	// Call /gateways
+
+	addr := cloud.getRESTAddr()
 
 	log.Printf("[UP   ] Pushing gateway to the cloud ...")
 
 	localDevice, err := edge.GetDevice(edge.LocalID())
 	if err != nil {
 		cloud.setStatus(0, "Internal Error.\nCan not get local device.")
-		log.Printf("[UP   ] Err %s", err.Error())
-		return false
+		log.Printf("[Err  ] %s", err.Error())
+		return -1
 	}
 
 	var gateway = v2Gateway{
@@ -70,8 +72,8 @@ func (cloud *Cloud) initialSync() bool {
 		Visibility: "public",
 	}
 
-	body, _ = json.Marshal(gateway)
-	resp = fetch(addr+"/gateways", fetchInit{
+	body, _ := json.Marshal(gateway)
+	resp := fetch(addr+"/gateways", fetchInit{
 		method: http.MethodPost,
 		headers: map[string]string{
 			"Content-Type":  "application/json",
@@ -79,16 +81,16 @@ func (cloud *Cloud) initialSync() bool {
 		},
 		body: bytes.NewReader(body),
 	})
-	if resp.ok {
+	switch resp.status {
+	case http.StatusOK:
 		log.Printf("[UP   ] Gateway pushed.")
-	} else {
-		log.Printf("[UP   ] Err Can not register gateway: %s (%s)", resp.statusText, resp.text())
+	case http.StatusUnprocessableEntity:
+		log.Printf("[UP   ] Gateway already pushed.")
+	default:
+		return resp.status
 	}
 
-	// 3.
 	// Get all devices from this gateway and compare them with the cloud
-
-	// log.Printf("[UP   ] Registering devices at the cloud ...")
 
 	devices := edge.GetDevices()
 	for device, err := devices.Next(); err == nil; device, err = devices.Next() {
@@ -104,14 +106,12 @@ func (cloud *Cloud) initialSync() bool {
 		case http.StatusNotFound:
 			log.Printf("[UP   ] Device %q not found.", device.ID)
 			cloud.remote[entity{device.ID, ""}] = &remote{noTime, false}
-			// if !cloud.postDevice(device) {
-			// 	return false
-			// }
+
 		case http.StatusOK:
 			var device2 v2Device
 			if err := resp.json(&device2); err != nil {
 				cloud.setStatus(0, fmt.Sprintf("Communication Error.\nCan not unmarshal response: %s", err.Error()))
-				return false
+				return -1
 			}
 
 		SENSORS:
@@ -143,17 +143,13 @@ func (cloud *Cloud) initialSync() bool {
 				}
 				log.Printf("[UP   ] Sensor %q does not exist.", sensor.ID)
 				cloud.remote[entity{device.ID, sensor.ID}] = &remote{noTime, false}
-				// if !cloud.postSensor(device.ID, sensor) {
-				// 	return false
-				// }
-				// log.Printf("[UP   ] Sensor pushed.")
 			}
 
 		default:
-			cloud.setStatus(0, fmt.Sprintf("Communication Error.\nResponse %d %s: %s", resp.status, resp.statusText, resp.text()))
-			return false
+			cloud.setStatus(resp.status, fmt.Sprintf("Err [%d] %s: %s", resp.status, resp.statusText, resp.text()))
+			return resp.status
 		}
 	}
 
-	return true
+	return http.StatusOK
 }

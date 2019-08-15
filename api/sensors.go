@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Waziup/wazigate-edge/clouds"
 	"github.com/Waziup/wazigate-edge/edge"
 	"github.com/Waziup/wazigate-edge/tools"
 	"github.com/globalsign/mgo/bson"
@@ -125,6 +126,7 @@ func postDeviceSensor(resp http.ResponseWriter, req *http.Request, deviceID stri
 	}
 
 	log.Printf("[DB   ] Sensor %s/%s created.\n", deviceID, sensor.ID)
+	clouds.Flag(deviceID, sensor.ID, noTime)
 
 	resp.Write([]byte(sensor.ID))
 }

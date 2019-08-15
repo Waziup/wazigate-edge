@@ -20,6 +20,10 @@ type fetchResponse struct {
 	body       io.ReadCloser
 }
 
+func isOk(status int) bool {
+	return status >= 200 && status < 300
+}
+
 func fetch(resource string, init fetchInit) fetchResponse {
 
 	req, err := http.NewRequest(init.method, resource, init.body)

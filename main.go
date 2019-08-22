@@ -85,6 +85,9 @@ func main() {
 
 	initSync()
 
+	mqttLogger := log.New(io.MultiWriter(os.Stdout, &mqttLogWriter{}), "[MQTT ]", 0)
+	mqttServer = &MQTTServer{mqtt.NewServer(mqttAuth, mqttLogger, mqtt.LogLevelNormal)}
+
 	////////////////////
 
 	if *tlsCert != "" && *tlsKey != "" {
@@ -131,7 +134,7 @@ func (resp *ResponseWriter) WriteHeader(statusCode int) {
 
 ////////////////////
 
-func Serve(resp http.ResponseWriter, req *http.Request) {
+func Serve(resp http.ResponseWriter, req *http.Request) int {
 
 	if strings.HasSuffix(req.RequestURI, "/") {
 		req.RequestURI += "index.html"
@@ -155,7 +158,7 @@ func Serve(resp http.ResponseWriter, req *http.Request) {
 				wrapper.status,
 				req.Method,
 				req.RequestURI)
-			return
+			return 0
 		}
 	}
 
@@ -169,17 +172,17 @@ func Serve(resp http.ResponseWriter, req *http.Request) {
 		req.Body.Close()
 		if err != nil {
 			http.Error(resp, "400 Bad Request", http.StatusBadRequest)
-			return
+			return 0
 		}
 		req.Body = &tools.ClosingBuffer{
 			Buffer: bytes.NewBuffer(body),
 		}
 	}
 
-	if req.Method == "PUBLISH" {
+	if req.Method == MethodPublish {
 		req.Method = http.MethodPost
 		router.ServeHTTP(&wrapper, req)
-		req.Method = "PUBLISH"
+		req.Method = MethodPublish
 	} else {
 		router.ServeHTTP(&wrapper, req)
 	}
@@ -192,20 +195,21 @@ func Serve(resp http.ResponseWriter, req *http.Request) {
 		req.RequestURI,
 		size)
 
-	if cbuf, ok := req.Body.(*tools.ClosingBuffer); ok {
-		// log.Printf("[DEBUG] Body: %s\n", cbuf.Bytes())
-		msg := &mqtt.Message{
-			QoS:   0,
-			Topic: req.RequestURI[1:],
-			Data:  cbuf.Bytes(),
-		}
+	if req.Method == MethodPublish || req.Method == http.MethodPut || req.Method == http.MethodPost {
 
-		// if wrapper.status >= 200 && wrapper.status < 300 {
-		if req.Method == http.MethodPut || req.Method == http.MethodPost {
-			mqttServer.Publish(nil, msg)
+		if wrapper.status >= 200 && wrapper.status < 300 {
+			if cbuf, ok := req.Body.(*tools.ClosingBuffer); ok {
+				// log.Printf("[DEBUG] Body: %s\n", cbuf.Bytes())
+				msg := &mqtt.Message{
+					QoS:   0,
+					Topic: req.RequestURI[1:],
+					Data:  cbuf.Bytes(),
+				}
+				return mqttServer.Server.Publish(nil, msg)
+			}
 		}
-		// }
 	}
+	return 0
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -214,19 +218,15 @@ type mqttLogWriter struct{}
 
 func (w *mqttLogWriter) Write(data []byte) (n int, err error) {
 	if mqttServer != nil && len(data) != 0 {
-		data2 := make([]byte, len(data))
-		copy(data2, data)
-		if data2[len(data2)-1] == '\n' {
-			data2 = data2[:len(data2)-1]
+		if data[len(data)-1] == '\n' {
+			data = data[:len(data)-1]
 		}
-		go func(data []byte) {
-			msg := &mqtt.Message{
-				QoS:   0,
-				Topic: "sys/log",
-				Data:  data,
-			}
-			mqttServer.Publish(nil, msg)
-		}(data2)
+		msg := &mqtt.Message{
+			QoS:   0,
+			Topic: "sys/log",
+			Data:  data,
+		}
+		mqttServer.Server.Publish(nil, msg)
 	}
 	return len(data), nil
 }

@@ -66,8 +66,14 @@ func (cloud *Cloud) persistentSync() int {
 
 	ent, rem := cloud.nextSensor()
 	status := cloud.processEntity(ent, rem)
-	switch status {
-	case http.StatusBadRequest, http.StatusNotFound:
+	switch {
+	case status >= 500 && status < 600:
+		log.Printf("[UP   ] Entity removed from sync queue due to an server error. This was probably not your fault.")
+		cloud.remoteMutex.Lock()
+		delete(cloud.remote, ent)
+		cloud.remoteMutex.Unlock()
+		return 0
+	case status == http.StatusBadRequest, status == http.StatusNotFound:
 		log.Printf("[UP   ] Entity removed from sync queue due to an error.")
 		cloud.remoteMutex.Lock()
 		delete(cloud.remote, ent)
@@ -151,7 +157,10 @@ func (cloud *Cloud) processEntity(ent entity, rem *remote) (status int) {
 		Limit: 30000,
 	}
 	values := edge.GetSensorValues(ent.deviceID, ent.sensorID, query)
-	status, numVal, lastTime := cloud.postValues(ent.deviceID, ent.sensorID, values)
+
+	var numVal int
+	var lastTime time.Time
+	status, numVal, lastTime = cloud.postValues(ent.deviceID, ent.sensorID, values)
 	if isOk(status) {
 		if numVal == 0 {
 			log.Printf("[UP   ] Values are now up-to-date.")
@@ -280,7 +289,7 @@ func (cloud *Cloud) postValues(deviceID string, sensorID string, values edge.Val
 	resp := fetch(addr+"/devices/"+deviceID+"/sensors/"+sensorID+"/values", fetchInit{
 		method: http.MethodPost,
 		headers: map[string]string{
-			"Content-Type":  "application/json",
+			"Content-Type":  "application/json; charset=UTF-8",
 			"Authorization": cloud.auth,
 		},
 		body: &buf,

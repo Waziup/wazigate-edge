@@ -50,12 +50,39 @@ type wsWrapper struct {
 	remain int
 }
 
+var errTextMsg = errors.New("unexpected TEST message")
+
+func (w *wsWrapper) ReadPacket() (mqtt.Packet, error) {
+	messageType, data, err := w.conn.ReadMessage()
+	if err != nil {
+		w.conn.Close()
+		return nil, err
+	}
+	if messageType != websocket.BinaryMessage {
+		w.conn.Close()
+		return nil, errTextMsg
+	}
+	return mqtt.ReadBuffer(data)
+}
+
+func (w *wsWrapper) WritePacket(pkt mqtt.Packet) (err error) {
+	writer, err := w.conn.NextWriter(websocket.BinaryMessage)
+	if err != nil {
+		return err
+	}
+	_, err = pkt.WriteTo(writer)
+	if err != nil {
+		writer.Close()
+		return err
+	}
+	return writer.Close()
+}
+
 func (w *wsWrapper) Close() error {
 	return w.conn.Close()
 }
 
-var nonBinaryMessage = errors.New("Unexpected TEXT message.")
-
+/*
 func (w *wsWrapper) Read(p []byte) (n int, err error) {
 
 	if w.buf == nil || w.buf.Len() == 0 {
@@ -100,6 +127,7 @@ func (w *wsWrapper) Write(data []byte) (int, error) {
 	}
 	return len(data), err
 }
+*/
 
 ////////////////////
 
@@ -134,7 +162,7 @@ func serveHTTP(resp http.ResponseWriter, req *http.Request) {
 		}
 
 		wrapper := &wsWrapper{tag: tag, conn: conn}
-		mqtt.ServeConn(wrapper, mqttServer)
+		mqttServer.Serve(wrapper)
 	}
 }
 

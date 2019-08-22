@@ -1,175 +1,138 @@
 package mqtt
 
 import (
-	"bytes"
 	"io"
 	"log"
+	"os"
 	"testing"
-	"time"
 )
 
-////////////////////////////////////////////////////////////////////////////////
+func TestRetain(t *testing.T) {
 
-type LoggingServer struct {
-	Server Server
+	logger := log.New(os.Stdout, "", 0)
+	server := NewServer(authenticator, logger, LogLevelDebug)
+
+	var message *Message
+
+	recv1 := RecieverFunc(func(msg *Message) error {
+		message = msg
+		return nil
+	})
+	recv2 := RecieverFunc(func(msg *Message) error {
+		message = msg
+		return nil
+	})
+	recv3 := RecieverFunc(func(msg *Message) error {
+		message = msg
+		return nil
+	})
+
+	server.Publish(simpleMessage)
+	topic := retainMessage.Topic
+	server.Subscribe(recv1, topic, 0x00)
+
+	if message != nil {
+		t.Fatalf("recieved unexpected message: %v", message)
+	}
+
+	server.Publish(retainMessage)
+	server.Subscribe(recv2, topic, 0x00)
+
+	if message == nil {
+		t.Fatalf("expected retain message")
+	}
+
+	server.Publish(clearRetainMessage)
+	message = nil
+	server.Subscribe(recv3, topic, 0x00)
+
+	if message != nil {
+		t.Fatalf("recieved unexpected message: %v", message)
+	}
 }
 
-var connectCounter, disconnectCounter int
+func TestRetainWildcards(t *testing.T) {
 
-func (server *LoggingServer) PreConnect(stream io.ReadWriteCloser, connect *ConnectPacket, s Server) {
-	server.Server.PreConnect(stream, connect, s)
-}
+	logger := log.New(os.Stdout, "", 0)
+	server := NewServer(authenticator, logger, LogLevelDebug)
 
-func (server *LoggingServer) Publish(client *Client, msg *Message) error {
+	topics := []string{
+		"a/b",     // 1
+		"a/b/h",   // 2
+		"b/d/h",   // 3
+		"a/y",     // 4
+		"a/f/h/g", // 5
 
-	log.Printf("PUBLISH     %q %q %q\n", client, msg.Topic, msg.Data)
-	return server.Server.Publish(client, msg)
-}
+		"b/d/h", // again
+	}
 
-func (server *LoggingServer) Connect(client *Client, auth *ConnectAuth) byte {
-	connectCounter++
-	log.Printf("CONNECT     %d %q cs:%v %+v\n", connectCounter, client, client.CleanSession, auth)
-	if auth != nil {
-		if auth.Username+auth.Password == "not allowed" {
-			return CodeBatUserOrPassword
+	for _, topic := range topics {
+		server.Publish(&Message{
+			Topic:  topic,
+			Retain: true,
+			Data:   []byte("987xüz"), // must have data
+			// no data == clear retain
+		})
+	}
+
+	subscriptions := []struct {
+		topic string
+		hit   int
+	}{
+		{"a/b", 1},   // 1
+		{"a/+", 2},   // 1, 4
+		{"a/#", 4},   // 1, 2, 4, 5
+		{"a/+/h", 1}, // 2
+		{"+/+/+", 2}, // 2, 3
+		{"#", 5},     // all
+	}
+
+	var hit int
+
+	recv := RecieverFunc(func(msg *Message) error {
+		hit++
+		return nil
+	})
+
+	for _, subs := range subscriptions {
+		hit = 0
+		server.Subscribe(recv, subs.topic, 0x00)
+		if hit != subs.hit {
+			t.Fatalf("at %q expected %d hits, got %d", subs.topic, subs.hit, hit)
 		}
 	}
-	return CodeAccepted
+
 }
 
-func (server *LoggingServer) Disconnect(client *Client, err error) {
-	disconnectCounter++
-	log.Printf("DISCONNECT  %d %q %v\n", disconnectCounter, client, err)
-}
+func TestServerClose(t *testing.T) {
 
-func (server *LoggingServer) Subscribe(recv Reciever, topic string, qos byte) *Subscription {
+	logger := log.New(os.Stdout, "", 0)
+	server := NewServer(authenticator, logger, LogLevelDebug)
 
-	log.Printf("SUBSCRIBE   %q %q QoS:%d\n", recv, topic, qos)
-	return server.Server.Subscribe(recv, topic, qos)
-}
+	clientStream, serverStream := NewMemStream()
+	go server.Serve(serverStream)
 
-func (server *LoggingServer) Unsubscribe(subs *Subscription) {
+	id := rndID()
 
-	log.Printf("UNSUBSCRIBE %q %q QoS:%d\n", subs.Recv, subs.Topic.FullName(), subs.QoS)
-	server.Server.Unsubscribe(subs)
-}
+	connAck := handshake(t, false, id, 0, simpleAuth, clientStream)
+	if connAck.Code != CodeAccepted {
+		t.Fatalf("simple client not accepted: code %v", connAck.Code)
+	}
+	if connAck.SessionPresent {
+		t.Fatalf("unexpected connack session present")
+	}
 
-////////////////////////////////////////////////////////////////////////////////
+	// Subscribe to topic
+	clientStream.WritePacket(Subscribe(1, simpleSubscription))
+	_ = readPacket(t, clientStream).(*SubAckPacket) // must be SUBACK
 
-func TestServer(t *testing.T) {
+	// closing the server must disconnect the client
+	server.Close()
 
-	if !testing.Short() {
-
-		addr := ":1883"
-		server := &LoggingServer{NewServer()}
-
-		go ListenAndServe(addr, server)
-
-		//////////
-
-		mario, err := Dial(addr, "It'sMeMario!", true, nil, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if connectCounter != 1 {
-			t.Fatalf("Connected to server that was not this server... ? (%d)", connectCounter)
-		}
-
-		mario.Subscribe("a/+", 2)
-		mario.Subscribe("a/y/#", 2)
-		time.Sleep(time.Second / 2)
-
-		//////////
-
-		luigi, err := Dial(addr, "It'sMeLuigi!", true, nil, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		data := []byte("Hello my brother :)")
-		luigi.Publish(nil, &Message{
-			Topic: "a/b",
-			QoS:   2,
-			Data:  data,
-		})
-		luigi.Disconnect()
-
-		//////////
-
-		msg := <-mario.Message()
-		if msg == nil {
-			t.Fatalf("Subscription closed prematurely.")
-		}
-
-		if msg.Topic != "a/b" {
-			t.Fatalf("Recieved wrong topic: %q\n", msg.Topic)
-		}
-		if bytes.Compare(msg.Data, data) != 0 {
-			t.Fatalf("Recieved wrong data: %q\n", msg.Data)
-		}
-		// log.Printf("Recieved: %q %q QoS:%d\n", msg.Topic, msg.Data, msg.QoS)
-
-		//////////
-
-		mario.Disconnect()
-
-		/*
-			msg = <-unused
-			if msg != nil {
-				log.Fatalln("Got a message for an unused subscription.")
-			}
-		*/
-
-		//////////
-
-		auth := &ConnectAuth{
-			Username: "not ",
-			Password: "allowed",
-		}
-		if _, e := Dial(addr, "NotAllowed", true, auth, nil); e == nil {
-			t.Fatal("Client 'NotAllowed' was not rejected.")
-		}
-
-		//////////
-
-		sess, err := Dial(addr, "WithSession1", false, nil, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		sess.Subscribe("z", 1)
-		time.Sleep(time.Second / 2)
-		sess.Closer.Close() // close tcp
-
-		publ, _ := Dial(addr, "Publisher1", true, nil, nil)
-		data = []byte("Woohoo :)")
-		publ.Publish(nil, &Message{Topic: "z", QoS: 2, Data: data})
-		publ.Disconnect()
-
-		sess, err = Dial(addr, "WithSession1", false, nil, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		// subs, _ = sess.Subscribe("z", 0)
-		msg = <-sess.Message()
-		sess.Disconnect()
-
-		if msg == nil || bytes.Compare(msg.Data, data) != 0 {
-			t.Fatalf("Go no or invalid message: %v\n", msg)
-		}
-
-		//////////
-
-		time.Sleep(time.Second / 2)
-
-		if connectCounter != 6 {
-			// it should be 6 connections in this test
-			t.Fatalf("Expected 6 connections, got %d.\n", connectCounter)
-		}
-
-		if disconnectCounter != 5 {
-			// 5 disconnections (because of the 'not-allowed' test)
-			t.Fatalf("Expected 5 disconnections, got %d.\n", disconnectCounter)
+	if pkt, err := clientStream.ReadPacket(); err != io.EOF {
+		_ = pkt.(*DisconnectPacket) // must be DISCONNECT
+		if pkt, err := clientStream.ReadPacket(); err != io.EOF {
+			t.Fatalf("server did non close the connection: %v", pkt)
 		}
 	}
 }

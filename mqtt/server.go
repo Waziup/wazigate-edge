@@ -7,6 +7,7 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"time"
 )
 
 // Reciever can get messages from subscriptions.
@@ -51,8 +52,10 @@ type Server interface {
 	Serve(stream Stream)
 	// Publish can be called from clients to emit new messages.
 	Publish(sender interface{}, msg *Message) int
-	// Subscribe addes a new reciever to the topics tree.
+	// Subscribe adds a new subscription to the topics tree.
 	Subscribe(recv Reciever, topic string, qos byte) *Subscription
+	// SubscribeAll adds a list of subscriptions to the topics tree.
+	SubscribeAll(recv Reciever, topics []TopicSubscription) []*Subscription
 	// Unsubscribe releases a subscription.
 	Unsubscribe(subs ...*Subscription)
 	// Disconnect removes a client that has diconnected.
@@ -82,10 +85,6 @@ type server struct {
 
 	log      *log.Logger
 	LogLevel LogLevel
-
-	publish     chan *Message
-	subscribe   chan *Subscription
-	unsubscribe chan *Subscription
 }
 
 // Authenticate is a simple function to check a client and its authentication.
@@ -297,6 +296,27 @@ func (server *server) Subscribe(recv Reciever, topic string, qos byte) *Subscrip
 	return subs
 }
 
+func (server *server) SubscribeAll(recv Reciever, topics []TopicSubscription) []*Subscription {
+	subs := make([]*Subscription, len(topics))
+	server.topicsMutex.Lock()
+
+	for i, topic := range topics {
+		name := strings.Split(topic.Name, "/")
+		s := newSubscription(recv, topic.QoS)
+		server.topics.subscribe(name, s)
+		subs[i] = s
+	}
+
+	server.topicsMutex.Unlock()
+
+	if server.log != nil && server.LogLevel >= LogLevelNormal {
+		for i, topic := range topics {
+			server.log.Printf("%.24q Subscribed %q qos:%d", recv.ID(), topic.Name, subs[i].QoS())
+		}
+	}
+	return subs
+}
+
 func (server *server) Unsubscribe(subs ...*Subscription) {
 	server.topicsMutex.Lock()
 	for _, sub := range subs {
@@ -349,7 +369,7 @@ func Serve(listener net.Listener, server Server) error {
 	for {
 		conn, err := listener.Accept()
 		if err == nil {
-			go server.Serve(NewStream(conn))
+			go server.Serve(NewStream(conn, time.Second*30))
 		} else {
 			return err
 		}

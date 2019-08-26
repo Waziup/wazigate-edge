@@ -96,7 +96,7 @@ func PostCloudRESTAddr(resp http.ResponseWriter, req *http.Request, params routi
 		return
 	}
 
-	if ! cloud.Paused || cloud.Pausing {
+	if !cloud.Paused || cloud.Pausing {
 		http.Error(resp, "bad request: cloud is paused or pausing", http.StatusBadRequest)
 		return
 	}
@@ -128,7 +128,7 @@ func PostCloudMQTTAddr(resp http.ResponseWriter, req *http.Request, params routi
 		return
 	}
 
-	if ! cloud.Paused || cloud.Pausing {
+	if !cloud.Paused || cloud.Pausing {
 		http.Error(resp, "bad request: cloud is paused or pausing", http.StatusBadRequest)
 		return
 	}
@@ -162,7 +162,7 @@ func PostCloudCredentials(resp http.ResponseWriter, req *http.Request, params ro
 		return
 	}
 
-	if ! cloud.Paused || cloud.Pausing {
+	if !cloud.Paused || cloud.Pausing {
 		http.Error(resp, "bad request: cloud is paused or pausing", http.StatusBadRequest)
 		return
 	}
@@ -179,7 +179,7 @@ func PostCloudCredentials(resp http.ResponseWriter, req *http.Request, params ro
 
 // PostCloudPaused implements POST /clouds/{cloudID}/paused
 func PostCloudPaused(resp http.ResponseWriter, req *http.Request, params routing.Params) {
-	
+
 	cloudID := params.ByName("cloud_id")
 	cloud := clouds.GetCloud(cloudID)
 	if cloud == nil {
@@ -194,7 +194,6 @@ func PostCloudPaused(resp http.ResponseWriter, req *http.Request, params routing
 		http.Error(resp, "bad request: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-
 
 	cloud.SetPaused(paused)
 }

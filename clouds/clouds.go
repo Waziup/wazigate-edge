@@ -30,6 +30,7 @@ type Cloud struct {
 	ID      string `json:"id"`
 	Paused  bool   `json:"paused"`
 	Pausing bool   `json:"pausing"`
+	PausingMQTT bool   `json:"pausing_mqtt"`
 	REST    string `json:"rest"`
 	MQTT    string `json:"mqtt"`
 
@@ -38,7 +39,9 @@ type Cloud struct {
 		Token    string `json:"token"`
 	} `json:"credentials"`
 
-	client *mqtt.Client
+	client    *mqtt.Client
+	mqttMutex sync.Mutex
+	devices   map[string]struct{}
 
 	StatusCode int    `json:"statusCode"`
 	StatusText string `json:"statusText"`

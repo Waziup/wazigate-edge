@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"sync"
+	"time"
 )
 
 // ConnectAuth is the authentication used with Connect packets.
@@ -31,6 +32,9 @@ type Client struct {
 	pendingMutex sync.Mutex
 
 	MaxPending int
+
+	// timeout time.Duration
+
 	// Acknowledgments: make(chan int, 16),
 
 	subscriptions map[string]*Subscription
@@ -76,7 +80,7 @@ func Dial(addr string, id string, cleanSession bool, auth *ConnectAuth, will *Me
 		return nil, err
 	}
 
-	stream := NewStream(conn)
+	stream := NewStream(conn, time.Second*30)
 
 	client := &Client{
 		id: id,
@@ -119,7 +123,18 @@ func (client *Client) Packet() (Packet, *Message, error) {
 
 	packet, err := client.stream.ReadPacket()
 	if err != nil {
-		return nil, nil, err
+
+		if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+
+			client.stream.WritePacket(PingReq())
+			packet, err = client.stream.ReadPacket()
+			if err != nil {
+				return nil, nil, err
+			}
+		} else {
+
+			return nil, nil, err
+		}
 	}
 
 	if client.log != nil && client.LogLevel >= LogLevelDebug {
@@ -141,8 +156,8 @@ func (client *Client) Packet() (Packet, *Message, error) {
 
 			valid, _ := checkTopic(topic.Name)
 			if valid {
-				subs, _ := client.Subscribe(topic.Name, topic.QoS)
-				granted[i].QoS = subs.QoS()
+				//qos, _ := client.Subscribe(topic.Name, topic.QoS)
+				//granted[i].QoS = qos
 			} else {
 
 				if client.log != nil && client.LogLevel >= LogLevelWarnings {
@@ -221,13 +236,16 @@ func (client *Client) Packet() (Packet, *Message, error) {
 		// Ping Request -> Response
 		client.Send(PingResp())
 
+	case *PingRespPacket:
+		// nothing to do here
+
 	case *DisconnectPacket:
 
 		return nil, nil, nil
 
 	default:
 		err := errUnexpectedPacket(pkt.Header().PacketType)
-		return nil, nil, err
+		return pkt, nil, err
 	}
 	return packet, nil, nil
 }
@@ -241,7 +259,7 @@ func (client *Client) Acknowledge(mid int) {
 	//sess.mutex.Unlock()
 }
 
-func (client *Client) Subscribe(topic string, qos byte) (*Subscription, error) {
+func (client *Client) Subscribe(topic string, qos byte) (byte, error) {
 
 	if client.Server == nil {
 
@@ -250,21 +268,51 @@ func (client *Client) Subscribe(topic string, qos byte) (*Subscription, error) {
 			client.counter = 1
 		}
 		err := client.Send(Subscribe(client.counter, []TopicSubscription{{topic, qos}}))
-		return nil, err
+		//FIXME: Does not report the actual QoS granted by the server
+		return qos, err
 	}
 
 	subs := client.subscriptions[topic]
-	if subs == nil {
+	if subs != nil {
+		client.Server.Unsubscribe(subs)
+	}
+	subs = client.Server.Subscribe(client, topic, qos)
+	client.subscriptions[topic] = subs
+	return subs.qos, nil
+}
 
-		subs = client.Server.Subscribe(client, topic, qos)
-		client.subscriptions[topic] = subs
-	} else {
-		subs.qos = qos
-		if client.log != nil && client.LogLevel >= LogLevelVerbose {
-			client.log.Printf("%.24q Subscribed again %q qos:%d", client.id, topic, subs.qos)
+func (client *Client) SubscribeAll(topics []TopicSubscription) ([]byte, error) {
+
+	if client.Server == nil {
+
+		client.counter++
+		if client.counter == 65000 {
+			client.counter = 1
+		}
+		err := client.Send(Subscribe(client.counter, topics))
+		//FIXME: Does not report the actual QoS granted by the server
+		return nil, err
+	}
+
+	duplicates := make([]*Subscription, 0)
+
+	for _, topic := range topics {
+		if subs, ok := client.subscriptions[topic.Name]; ok {
+			duplicates = append(duplicates, subs)
 		}
 	}
-	return subs, nil
+
+	if len(duplicates) != 0 {
+		client.Server.Unsubscribe(duplicates...)
+	}
+
+	subs := client.Server.SubscribeAll(client, topics)
+	granted := make([]byte, len(topics))
+	for i, topic := range topics {
+		client.subscriptions[topic.Name] = subs[i]
+		granted[i] = subs[i].qos
+	}
+	return granted, nil
 }
 
 func (client *Client) Unsubscribe(topics ...string) {
@@ -343,6 +391,11 @@ func (client *Client) Send(pkt Packet) error {
 	}
 
 	return client.stream.WritePacket(pkt)
+}
+
+// Ping sends a Ping packet.
+func (client *Client) Ping() error {
+	return client.Send(PingReq())
 }
 
 // NumPending gives the number of outstanding QoS>0 packets that have now been acknowledged yet.

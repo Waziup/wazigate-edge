@@ -22,7 +22,7 @@ func (cloud *Cloud) nextSensor() (entity, *remote) {
 			break
 		}
 		cloud.remoteMutex.Unlock()
-		cloud.setStatus(0, "Queue drained. Cloud is up-to-date.")
+		cloud.setStatus(200, "Queue drained. Cloud is up-to-date.")
 		<-cloud.sigDirty
 	}
 
@@ -65,6 +65,9 @@ func (cloud *Cloud) nextSensor() (entity, *remote) {
 func (cloud *Cloud) persistentSync() int {
 
 	ent, rem := cloud.nextSensor()
+	if cloud.Pausing {
+		return 0
+	}
 	status := cloud.processEntity(ent, rem)
 	switch {
 	case status >= 500 && status < 600:
@@ -143,7 +146,7 @@ func (cloud *Cloud) processEntity(ent entity, rem *remote) (status int) {
 			status = cloud.postActuator(ent.deviceID, actuator)
 			if isOk(status) {
 				rem.exists = true
-				log.Printf("[UP   ] Actuator pushed.")
+				log.Printf("[UP   ] Actuator pushed successfull.")
 			}
 		}
 		return
@@ -170,7 +173,7 @@ func (cloud *Cloud) processEntity(ent entity, rem *remote) (status int) {
 			return
 		}
 
-		log.Printf("[UP   ] Pushed %d values until %s.", numVal, lastTime.UTC())
+		log.Printf("[UP   ] Pushed %d values successfull until %s.", numVal, lastTime.UTC())
 		rem.time = lastTime.Add(time.Second)
 		return
 	}

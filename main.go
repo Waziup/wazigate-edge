@@ -79,7 +79,7 @@ func main() {
 
 	////////////////////
 
-	log.Printf("[     ] Local device id is %q.\n", edge.LocalID())
+	log.Printf("[     ] Local device ID is %q.\n", edge.LocalID())
 
 	initDevice()
 

@@ -24,7 +24,7 @@ func (cloud *Cloud) authenticate() int {
 	}
 
 	addr := cloud.getRESTAddr()
-	log.Printf("[UP   ] Authentication ...", addr)
+	log.Printf("[UP   ] Authentication ...")
 
 	body, _ := json.Marshal(credentials)
 	resp := fetch(addr+"/auth/token", fetchInit{
@@ -90,11 +90,22 @@ func (cloud *Cloud) initialSync() int {
 		return resp.status
 	}
 
+	cloud.mqttMutex.Lock()
+	cloud.devices = make(map[string]struct{})
+	cloud.mqttMutex.Unlock()
+
 	// Get all devices from this gateway and compare them with the cloud
+
+	// subscriptions := make([]mqtt.TopicSubscription, 8)
 
 	devices := edge.GetDevices()
 	for device, err := devices.Next(); err == nil; device, err = devices.Next() {
 		log.Printf("[UP   ] Checking device %q ...", device.ID)
+
+		// topic := "devices/" + device.ID + "/actuators/*/values"
+		// cloud.devices[device.ID] = struct{}{}
+		// subscriptions = append(subscriptions, mqtt.TopicSubscription{topic, 1})
+		cloud.IncludeDevice(device.ID)
 
 		resp = fetch(addr+"/devices/"+device.ID, fetchInit{
 			method: http.MethodGet,
@@ -157,18 +168,15 @@ func (cloud *Cloud) initialSync() int {
 							if s.Value.Time == noTime {
 								s.Value.Time = s.Value.TimeReceived
 							}
-							if !s.Value.Time.Before(acuator.Time) {
-								log.Printf("[UP   ] Actuator %q up do date.", acuator.ID)
-							} else {
-								log.Printf("[UP   ] Actuator %q outdated! Last value %v.", acuator.ID, s.Value.Time)
-								cloud.remote[entity{device.ID, "", acuator.ID}] = &remote{s.Value.Time, true}
+							if s.Value.Time.After(acuator.Time) {
+								if acuator.Time == noTime {
+									log.Printf("[UP   ] Actuator %q outdated! Last value %v.", acuator.ID, acuator.Time)
+								} else {
+									log.Printf("[UP   ] Actuator %q outdated! No values.", acuator.ID)
+								}
+								edge.PostActuatorValue(device.ID, acuator.ID, edge.Value{s.Value.Value, s.Value.Time})
 							}
-						} else {
-							if acuator.Value != nil {
-								log.Printf("[UP   ] Actuator %q outdated! No values.", acuator.ID)
-								cloud.remote[entity{device.ID, "", acuator.ID}] = &remote{noTime, true}
-							}
-							log.Printf("[UP   ] Actuator %q up do date. No values.", acuator.ID)
+
 						}
 						continue ACTUATORS
 					}
@@ -182,6 +190,10 @@ func (cloud *Cloud) initialSync() int {
 			return resp.status
 		}
 	}
+
+	// if _, err = cloud.client.SubscribeAll(subscriptions); err != nil {
+	// 	return -1
+	// }
 
 	return http.StatusOK
 }

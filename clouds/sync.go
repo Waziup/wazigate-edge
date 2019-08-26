@@ -16,13 +16,20 @@ var retries = []time.Duration{
 
 func (cloud *Cloud) SetPaused(paused bool) {
 
-	if cloud.Pausing || paused == cloud.Paused {
+	if cloud.Pausing || cloud.PausingMQTT || paused == cloud.Paused {
 		return
 	}
 
 	if paused {
 		cloud.Paused = true
 		cloud.Pausing = true
+		cloud.PausingMQTT = true
+
+		cloud.mqttMutex.Lock()
+		if cloud.client != nil {
+			cloud.client.Disconnect()
+		}
+		cloud.mqttMutex.Unlock()
 	} else {
 		cloud.Paused = false
 		go cloud.sync()
@@ -49,6 +56,8 @@ func (cloud *Cloud) sync() {
 		}
 	}
 
+	////
+
 	auth := func() {
 		for !cloud.Pausing {
 			status := cloud.authenticate()
@@ -65,6 +74,12 @@ func (cloud *Cloud) sync() {
 	}
 
 	auth()
+
+	////
+
+	go cloud.mqttSync()
+
+	////
 
 INITIAL_SYNC:
 	for !cloud.Pausing {

@@ -78,6 +78,10 @@ func (w *wsWrapper) WritePacket(pkt mqtt.Packet) (err error) {
 	return writer.Close()
 }
 
+func (w *wsWrapper) SetTimeout(dur time.Duration) error {
+	return nil
+}
+
 func (w *wsWrapper) Close() error {
 	return w.conn.Close()
 }

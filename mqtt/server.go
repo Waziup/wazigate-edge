@@ -7,7 +7,6 @@ import (
 	"net"
 	"strings"
 	"sync"
-	"time"
 )
 
 // Reciever can get messages from subscriptions.
@@ -42,6 +41,10 @@ type Subscription interface {
 }
 */
 
+type Sender interface {
+	ID() string
+}
+
 // Server represents an MQTT server.
 type Server interface {
 	// Connect checks the ConnectAuth of a new client.
@@ -51,7 +54,7 @@ type Server interface {
 	// Serve makes the stream part of this server. This call is blocking and will read and write from the stream until the client or the server closes the connection.
 	Serve(stream Stream)
 	// Publish can be called from clients to emit new messages.
-	Publish(sender interface{}, msg *Message) int
+	Publish(sender Sender, msg *Message) int
 	// Subscribe adds a new subscription to the topics tree.
 	Subscribe(recv Reciever, topic string, qos byte) *Subscription
 	// SubscribeAll adds a list of subscriptions to the topics tree.
@@ -137,7 +140,7 @@ func (server *server) Serve(stream Stream) {
 		return
 	}
 
-	connectPacket, ok := pkt.(*ConnectPacket)
+	connectPkt, ok := pkt.(*ConnectPacket)
 	if !ok {
 		if server.log != nil && server.LogLevel >= LogLevelWarnings {
 			server.log.Printf("Err Handshake")
@@ -146,16 +149,26 @@ func (server *server) Serve(stream Stream) {
 		return
 	}
 
-	id := connectPacket.ClientID
+	id := connectPkt.ClientID
 
 	if server.log != nil && server.LogLevel >= LogLevelDebug {
-		server.log.Printf("%.24q > %v", id, connectPacket)
+		server.log.Printf("%.24q > %v", id, connectPkt)
+	}
+
+	if !(connectPkt.Version == 4 && connectPkt.Protocol == "MQTT") &&
+		!(connectPkt.Version == 3 && connectPkt.Protocol == "MQIsdp") {
+
+		if server.log != nil && server.LogLevel >= LogLevelWarnings {
+			server.log.Printf("Err Client Protocol 0x%x %q", connectPkt.Version, connectPkt.Protocol)
+		}
+		stream.WritePacket(ConnAck(CodeUnacceptableProtoV, false))
+		return
 	}
 
 	client := &Client{
 		id:     id,
 		stream: stream,
-		will:   connectPacket.Will,
+		will:   connectPkt.Will,
 
 		Server: server,
 
@@ -168,7 +181,7 @@ func (server *server) Serve(stream Stream) {
 		MaxPending: server.MaxPending,
 	}
 
-	if code := server.Connect(client, connectPacket.Auth); code != CodeAccepted {
+	if code := server.Connect(client, connectPkt.Auth); code != CodeAccepted {
 		client.Send(ConnAck(code, false))
 		if server.log != nil && server.LogLevel >= LogLevelWarnings {
 			server.log.Printf("%.24q Rejected %s", id, code)
@@ -179,8 +192,10 @@ func (server *server) Serve(stream Stream) {
 	s := client.Server
 
 	if server.log != nil && server.LogLevel >= LogLevelNormal {
-		server.log.Printf("%.24q Connected", id)
+		server.log.Printf("%.24q Connected Protocol 0x%x", id, connectPkt.Version)
 	}
+
+	connectPkt = nil
 
 	server.sessionsMutex.Lock()
 	oldClient := server.sessions[client.id]
@@ -267,7 +282,7 @@ func (server *server) Serve(stream Stream) {
 	}
 }
 
-func (server *server) Publish(sender interface{}, msg *Message) int {
+func (server *server) Publish(sender Sender, msg *Message) int {
 
 	valid, hasWildcards := checkTopic(msg.Topic)
 	if !valid || hasWildcards {
@@ -369,7 +384,7 @@ func Serve(listener net.Listener, server Server) error {
 	for {
 		conn, err := listener.Accept()
 		if err == nil {
-			go server.Serve(NewStream(conn, time.Second*30))
+			go server.Serve(NewStream(conn, 0))
 		} else {
 			return err
 		}

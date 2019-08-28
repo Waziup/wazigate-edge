@@ -24,7 +24,7 @@ func mqttAuth(client *mqtt.Client, auth *mqtt.ConnectAuth) mqtt.ConnectCode {
 	return mqtt.CodeAccepted
 }
 
-func (server *MQTTServer) Publish(sender interface{}, msg *mqtt.Message) int {
+func (server *MQTTServer) Publish(sender mqtt.Sender, msg *mqtt.Message) int {
 
 	if sender == nil {
 		// internal messages (no client as sender)
@@ -32,7 +32,8 @@ func (server *MQTTServer) Publish(sender interface{}, msg *mqtt.Message) int {
 	}
 
 	body := tools.ClosingBuffer{bytes.NewBuffer(msg.Data)}
-	rurl, _ := url.Parse("/" + msg.Topic)
+	uri := "/" + msg.Topic
+	rurl, _ := url.Parse(uri)
 	req := http.Request{
 		Method: MethodPublish,
 		URL:    rurl,
@@ -41,8 +42,8 @@ func (server *MQTTServer) Publish(sender interface{}, msg *mqtt.Message) int {
 		},
 		Body:          &body,
 		ContentLength: int64(len(msg.Data)),
-		RemoteAddr:    "",
-		RequestURI:    msg.Topic,
+		RemoteAddr:    sender.ID(),
+		RequestURI:    uri,
 	}
 	resp := MQTTResponse{
 		status: 200,

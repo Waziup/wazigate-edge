@@ -42,12 +42,13 @@ func ServeHTTPS(resp http.ResponseWriter, req *http.Request) {
 ////////////////////
 
 type wsWrapper struct {
-	tag    string
-	conn   *websocket.Conn
-	wc     io.WriteCloser
-	head   mqtt.FixedHeader
-	buf    *bytes.Buffer
-	remain int
+	tag     string
+	conn    *websocket.Conn
+	wc      io.WriteCloser
+	head    mqtt.FixedHeader
+	buf     *bytes.Buffer
+	version byte
+	remain  int
 }
 
 var errTextMsg = errors.New("unexpected TEST message")
@@ -62,7 +63,13 @@ func (w *wsWrapper) ReadPacket() (mqtt.Packet, error) {
 		w.conn.Close()
 		return nil, errTextMsg
 	}
-	return mqtt.ReadBuffer(data)
+	pkt, err := mqtt.ReadBuffer(data, w.version)
+	if pkt != nil {
+		if connectPacket, ok := pkt.(*mqtt.ConnectPacket); ok {
+			w.version = connectPacket.Version
+		}
+	}
+	return pkt, err
 }
 
 func (w *wsWrapper) WritePacket(pkt mqtt.Packet) (err error) {
@@ -70,7 +77,7 @@ func (w *wsWrapper) WritePacket(pkt mqtt.Packet) (err error) {
 	if err != nil {
 		return err
 	}
-	_, err = pkt.WriteTo(writer)
+	_, err = pkt.WriteTo(writer, w.version)
 	if err != nil {
 		writer.Close()
 		return err
@@ -189,7 +196,7 @@ func ListenAndServeHTTP() {
 	}
 
 	log.Printf("[HTTP ] HTTP Server at %q. Use \"http://\".", addr)
-	log.Printf("[WS   ] MQTT via WebSocket Server at%q. Use \"ws://\".", addr)
+	log.Printf("[WS   ] MQTT via WebSocket Server at %q. Use \"ws://\".", addr)
 
 	notifyDeamon()
 	err = srv.Serve(listener)

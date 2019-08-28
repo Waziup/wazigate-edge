@@ -75,7 +75,7 @@ func (fh *FixedHeader) Read(reader io.Reader) (int, error) {
 // Read reads a FixedHeader from an io.Reader.
 func (fh *FixedHeader) ReadBuffer(buf []byte) (int, error) {
 
-	if len(buf) <= 2 {
+	if len(buf) < 2 {
 		return 0, errIncompleteHeader
 	}
 

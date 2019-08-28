@@ -126,7 +126,7 @@ func (client *Client) Packet() (Packet, *Message, error) {
 
 		if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
 
-			client.stream.WritePacket(PingReq())
+			client.Send(PingReq())
 			packet, err = client.stream.ReadPacket()
 			if err != nil {
 				return nil, nil, err
@@ -149,24 +149,8 @@ func (client *Client) Packet() (Packet, *Message, error) {
 			return nil, nil, errUnexpectedPacket(pkt.header.PacketType)
 		}
 
-		granted := make([]TopicSubscription, len(pkt.Topics))
-
-		for i, topic := range pkt.Topics {
-			granted[i].Name = topic.Name
-
-			valid, _ := checkTopic(topic.Name)
-			if valid {
-				//qos, _ := client.Subscribe(topic.Name, topic.QoS)
-				//granted[i].QoS = qos
-			} else {
-
-				if client.log != nil && client.LogLevel >= LogLevelWarnings {
-					client.log.Printf("%.24q Err Invalid topic %q", client.id, topic.Name)
-				}
-			}
-		}
-
-		client.Send(SubAck(pkt.ID, granted, 0x02))
+		granted, _ := client.SubscribeAll(pkt.Topics)
+		client.Send(SubAck(pkt.ID, granted))
 
 	case *SubAckPacket:
 

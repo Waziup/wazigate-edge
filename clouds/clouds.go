@@ -27,12 +27,12 @@ type remote struct {
 
 // Cloud represents a configuration to access a Waziup Cloud.
 type Cloud struct {
-	ID      string `json:"id"`
-	Paused  bool   `json:"paused"`
-	Pausing bool   `json:"pausing"`
+	ID          string `json:"id"`
+	Paused      bool   `json:"paused"`
+	Pausing     bool   `json:"pausing"`
 	PausingMQTT bool   `json:"pausing_mqtt"`
-	REST    string `json:"rest"`
-	MQTT    string `json:"mqtt"`
+	REST        string `json:"rest"`
+	MQTT        string `json:"mqtt"`
 
 	Credentials struct {
 		Username string `json:"username"`
@@ -153,19 +153,24 @@ func (cloud *Cloud) FlagActuator(deviceID string, actuatorID string, time time.T
 
 func (cloud *Cloud) flag(ent entity, time time.Time) {
 
+	var needsSig bool
 	cloud.remoteMutex.Lock()
-	empty := len(cloud.remote) == 0
-	if ent.sensorID == "" && ent.actuatorID == "" {
-		cloud.remote[ent] = &remote{time, false}
+	if cloud.remote == nil {
+		needsSig = false
 	} else {
-		deviceEnt := entity{ent.deviceID, "", ""}
-		if cloud.remote[deviceEnt] == nil {
-			cloud.remote[ent] = &remote{time, time != noTime}
+		needsSig = len(cloud.remote) == 0
+		if ent.sensorID == "" && ent.actuatorID == "" {
+			cloud.remote[ent] = &remote{time, false}
+		} else {
+			deviceEnt := entity{ent.deviceID, "", ""}
+			if cloud.remote[deviceEnt] == nil {
+				cloud.remote[ent] = &remote{time, time != noTime}
+			}
 		}
 	}
 	cloud.remoteMutex.Unlock()
 
-	if empty {
+	if needsSig {
 		select {
 		case cloud.sigDirty <- struct{}{}:
 		default: // channel full

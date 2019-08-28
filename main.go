@@ -24,6 +24,30 @@ func main() {
 	// Remove date and time from logs
 	log.SetFlags(log.Flags() &^ (log.Ldate | log.Ltime))
 
+	logSettings := os.Getenv("WAZIUP_LOG")
+	if strings.Contains(logSettings, "date") {
+		log.SetFlags(log.Flags() | log.Ldate)
+	}
+	if strings.Contains(logSettings, "time") {
+		log.SetFlags(log.Flags() | log.Ltime)
+	}
+	if strings.Contains(logSettings, "utc") {
+		log.SetFlags(log.Flags() | log.LUTC)
+	}
+
+	if strings.Contains(logSettings, "error") {
+		LogLevel = LogLevelErrors
+	}
+	if strings.Contains(logSettings, "warn") {
+		LogLevel = LogLevelWarnings
+	}
+	if strings.Contains(logSettings, "verb") {
+		LogLevel = LogLevelVerbose
+	}
+	if strings.Contains(logSettings, "debug") {
+		LogLevel = LogLevelDebug
+	}
+
 	////////////////////
 
 	log.Println("Waziup API Server")
@@ -85,8 +109,8 @@ func main() {
 
 	initSync()
 
-	mqttLogger := log.New(io.MultiWriter(os.Stdout, &mqttLogWriter{}), "[MQTT ]", 0)
-	mqttServer = &MQTTServer{mqtt.NewServer(mqttAuth, mqttLogger, mqtt.LogLevelNormal)}
+	mqttLogger := log.New(&mqttPrefixWriter{}, "[MQTT ] ", 0)
+	mqttServer = &MQTTServer{mqtt.NewServer(mqttAuth, mqttLogger, mqtt.LogLevel(LogLevel))}
 
 	////////////////////
 
@@ -177,6 +201,10 @@ func Serve(resp http.ResponseWriter, req *http.Request) int {
 		req.Body = &tools.ClosingBuffer{
 			Buffer: bytes.NewBuffer(body),
 		}
+	} else if req.Method == MethodPublish {
+		if cbuf, ok := req.Body.(*tools.ClosingBuffer); ok {
+			size = cbuf.Len()
+		}
 	}
 
 	if req.Method == MethodPublish {
@@ -217,6 +245,7 @@ func Serve(resp http.ResponseWriter, req *http.Request) int {
 type mqttLogWriter struct{}
 
 func (w *mqttLogWriter) Write(data []byte) (n int, err error) {
+
 	if mqttServer != nil && len(data) != 0 {
 		if data[len(data)-1] == '\n' {
 			data = data[:len(data)-1]
@@ -228,6 +257,13 @@ func (w *mqttLogWriter) Write(data []byte) (n int, err error) {
 		}
 		mqttServer.Server.Publish(nil, msg)
 	}
+	return len(data), nil
+}
+
+type mqttPrefixWriter struct{}
+
+func (w *mqttPrefixWriter) Write(data []byte) (n int, err error) {
+	log.Print(string(data))
 	return len(data), nil
 }
 

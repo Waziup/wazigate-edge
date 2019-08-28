@@ -450,9 +450,7 @@ fetch(`/clouds/${cloudId}/rest`, {
 
 With MQTT you can publish values for the sensor, which is more efficient than the REST interface.
 You will need a MQTT client like [Eclipse Mosquitto](https://mosquitto.org/man/mosquitto_sub-1.html) (commandline) or
-~~[HiveMQ MQTT Websocket Client](http://www.hivemq.com/demos/websocket-client/)~~. For the following examples we will use the HiveMQ Client.
-
-> **Attention:** The HiveMQ Websocket Client is outdated and uses MQTT v3.1 while the Edge uses MQTT v3.1.1 to connect to the server.
+[HiveMQ MQTT Websocket Client](http://www.hivemq.com/demos/websocket-client/). For the following examples we will use the HiveMQ Client.
 
 Subscriptions are especially usefull if you want to listen for changes and want to get notified when new sensor values arrive. They will be triggered by both Publishes (via MQTT) and Post (via REST).
 
@@ -462,7 +460,7 @@ Connect to your Waziup Gateway using the connection settings:
 * Host: Gateway IP
 * Port: 80 (for in-browser MQTT via Websocket) or default 1883
 * Client: (any)
-* MQTT Version: 3.1.1
+* MQTT Version: 3.1.1 (MQTT) or 3.1.0 (MQIsdp)
 
 You can now publish and subscribe topics like sensor-values or actuator-values.
 
@@ -481,33 +479,27 @@ Equivalent mosquitto calls look like:
 # Publish Values:
 mosquitto_pub \
   -t "devices/5cd92df34b9f6126f840f0b1/sensors/df34b9f612/value" \
-  -V "mqttv311" \
   -m 456
 
 # Subscribe to topics:
 mosquitto_sub \
   -t "devices/5cd92df34b9f6126f840f0b1/sensors/df34b9f612/value" \
-  -V "mqttv311"
 
 # Subscribe to all sensors of one device:
 mosquitto_sub \
   -t "devices/5cd92df34b9f6126f840f0b1/sensors/*/value" \
-  -V "mqttv311"
 
 # Subscribe to actuating-data of all devices:
 mosquitto_sub \
   -t "devices/*/actuator/*/value" \
-  -V "mqttv311"
 
 # Subscribe to all changes on one device:
 mosquitto_sub \
   -t "devices/5cd92df34b9f6126f840f0b1/#" \
-  -V "mqttv311"
 
 # Subscribe to literally everything on devices:
 mosquitto_sub \
   -t "devices/#" \
-  -V "mqttv311"
 ```
 
 Mosquitto is available for both Linux and Windows.
@@ -518,8 +510,7 @@ There are a few things to keep in mind when using MQTT:
 * Topics are equivalent to URLs from the REST API. You can use any url as topic and vice versa.
 * Subscriptions will be triggered by both Publishes (via MQTT) and Post (via REST).
 * Topics do not start with a slash '/'.
-* Use only valid JSON objects as payload!
-* At the moment, the broker can do MQTT v3.1.1 only!
+* Use only valid JSON objects as payload! (Don't forget to enquote strings!)
 
 # System Settings
 
@@ -643,6 +634,8 @@ WAZIUP_TLS_KEY =             TLS Key File (.key)
 WAZIUP_MONGO = localhost:27017     MongoDB Address
 
 WAZIUP_CLOUDS_FILE = clouds.json    Clouds Config File
+
+WAZIUP_Log = date,time,verbose      Log Settings
 ```
 
 Note that MQTT via Websocket is available together with the REST API on HTTP and HTTPS. To disable serving static files of *www*, use -www "" (an empty string).
@@ -667,3 +660,6 @@ clouds.json   Saves /clouds setttings
 **Logging Files**
 
 All files at `log/*.txt` are log files generated with each session.
+
+Une can use the `WAZIUP_Log` env variable to control what is logged.
+To log date and time, use `date` and `time`. For more or less logging use one of `error`, `warn`, `normal`, `verbose`, `debug`.

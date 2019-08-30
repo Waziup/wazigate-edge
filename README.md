@@ -635,7 +635,7 @@ WAZIUP_MONGO = localhost:27017     MongoDB Address
 
 WAZIUP_CLOUDS_FILE = clouds.json    Clouds Config File
 
-WAZIUP_Log = date,time,verbose      Log Settings
+WAZIUP_LOG = date,time,verbose      Log Settings, see below
 ```
 
 Note that MQTT via Websocket is available together with the REST API on HTTP and HTTPS. To disable serving static files of *www*, use -www "" (an empty string).
@@ -661,5 +661,7 @@ clouds.json   Saves /clouds setttings
 
 All files at `log/*.txt` are log files generated with each session.
 
-Une can use the `WAZIUP_Log` env variable to control what is logged.
+Une can use the `WAZIUP_LOG` env variable to control what is logged.
 To log date and time, use `date` and `time`. For more or less logging use one of `error`, `warn`, `normal`, `verbose`, `debug`.
+
+The default log settings are: `WAZIUP_LOG = normal` (with no date and time).

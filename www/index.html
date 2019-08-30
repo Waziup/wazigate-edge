@@ -13,16 +13,34 @@
 </head>
 
 <body>
-  <div id="breadcrumbs"></div>
-  <h1 id="heading"></h1>
+  <div id="content" class="inset">
+    <div id="breadcrumbs"></div>
+    <h1 id="heading"></h1>
+  
+    <h3 id="subheading1" class="subheading"></h3>
+    <div id="content1" class="content"></div>
+  
+    <h3 id="subheading2" class="subheading"></h3>
+    <div id="content2" class="content"></div>
+  </div>
 
-  <h3 id="subheading1" class="subheading"></h3>
-  <div id="content1" class="content"></div>
+  <div id="statusbar">
+    <div class="inset">
+      <span id="status"></span>
+      <span id="uptime">Please Wait...</span>
+    </div>
+  </div>
 
-  <h3 id="subheading2" class="subheading"></h3>
-  <div id="content2" class="content"></div>
+  <div id="log" class="open">
+    <div class="opener">
+      Show&emsp;Log
+    </div>
+    <h3>Gateway Log</h3>
+    <div id="logtext" class="code"></div>
+  </div>
 
   <script src="js/$.js"></script>
+  <script src="js/mqttws31.js"></script>
   <script src="js/main.js"></script>
 </body>
 

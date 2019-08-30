@@ -43,6 +43,12 @@ class Query
         @$.appendChild child
     return this
 
+  prepend: (elm...) ->
+    for child in elm
+      if child != null
+        @$.prepend child
+    return this
+
   appendTo: (target) ->
     $(target).$?.appendChild @$
     return this
@@ -83,6 +89,9 @@ class Query
   removeClass: (cls) ->
     @$.classList.remove ... cls.split " "
 
+  toggleClass: (cls) ->
+    @$.classList.toggle ... cls.split " "
+
   hasClass: (cls) ->
     for c in cls.split " "
       if @$.classList.contains c
@@ -94,6 +103,8 @@ class Query
   findAll: (sel) -> @$.querySelectorAll sel
 
   text: (text) ->
+    if arguments.length == 0
+      return @$.textContent
     @$.textContent = text
     return text
 
@@ -313,3 +324,5 @@ $.platform = () -> switch
   when navigator.platform.startsWith "Mac" then "mac"
   when navigator.platform.includes "Linux" then "linux"
   else ""
+
+window.$ = $

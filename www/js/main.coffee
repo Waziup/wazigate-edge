@@ -547,3 +547,123 @@ window.addEventListener "popstate", () ->
     return
 
 navigate location.hash[1...]
+
+################################################################################
+
+log = $ "#logtext"
+tagRegexp = /^\[(\w+)\s*\]/
+
+inflateLog = (text) ->
+
+    line = $.box
+        className: "tag"
+    , [$.text text]
+
+    tag = tagRegexp.exec text
+    if tag != null
+        line.classList.add "tag-#{tag[1].toLowerCase()}"
+
+    log.prepend line
+    return    
+
+
+logOpener = $ "#log .opener"
+logOpener.on "click", () =>
+    if $.body.hasClass "log-open"
+        logOpener.text "Show Log"
+    else
+        logOpener.text "Hide Log"
+    $.body.toggleClass "log-open"
+    return
+
+################################################################################
+
+MQTT = Messaging
+
+conncetMQTT = () ->
+
+    client = new MQTT.Client location.hostname, 80, "dashboard"
+
+    client.onConnectionLost = (resp) ->
+        if resp.errorCode != 0
+            setStatus false, "Connection lost: #{resp.errorMessage}"
+         else
+            setStatus false, "Connection lost."
+        setTimeout conncetMQTT, 2000
+        return
+
+    client.onMessageArrived = (msg) ->
+        if msg.destinationName == "sys/log"
+            inflateLog msg.payloadString
+        else
+            console.log "onMessageArrived:", msg
+        return
+        # client.disconnect(); 
+
+    client.connect
+        onSuccess: () ->
+            setStatus true, "Connected to Gateway."
+            client.subscribe "sys/log"
+            refreshUptime()
+
+            # message = new MQTT.Message "Hello"
+            # message.destinationName = "/World"
+            # client.send message
+            return
+        onFailure: (err) ->
+            setStatus false, "Can not connect to Gateway: #{err.errorMessage}"
+            setTimeout conncetMQTT, 2000
+            return
+    return
+
+conncetMQTT()
+
+################################################################################
+
+status = $ "#status"
+statusbar = $ "#statusbar"
+
+setStatus = (isOk, text) ->
+    status.text text
+    statusbar.removeClass "ok err"
+    if isOk == true
+        statusbar.addClass "ok"
+    if isOk == false
+        statusbar.addClass "err"
+    return
+
+
+timeSuffixes = 
+    ms: 1
+    s: 1000
+    m: 60000
+    h: 3600000
+
+uptimeText = $ "#uptime"
+
+uptimeTicker = null
+
+refreshUptime = () ->
+    resp = await fetch "sys/uptime"
+    return if ! resp.ok
+    text = await resp.text()
+    now = new Date()
+    if ! text.endsWith "ms"
+        text.replace /\d+(\.\d+)?\D+/g, (seg) ->
+            f = parseFloat seg
+            now -= f*timeSuffixes[seg[seg.length-1]]
+    uptime = new Date now
+
+    setUptime = () ->
+        text = "Gateway Start: #{formatTime uptime}"
+        if uptimeText.text() != text
+            uptimeText.text text
+        return
+
+    clearInterval uptimeTicker
+    uptimeTicker = setInterval setUptime, 1000
+    setUptime()
+    return
+
+
+refreshUptime()

@@ -1,5 +1,5 @@
 (function() {
-  var breadcrumbs, content1, content2, formatTime, heading, inflateActuator, inflateDevice, inflateSensor, navigate, showActuator, showBreadcrumbs, showDevice, showDevices, showSensor, subheading1, subheading2;
+  var MQTT, breadcrumbs, conncetMQTT, content1, content2, formatTime, heading, inflateActuator, inflateDevice, inflateLog, inflateSensor, log, logOpener, navigate, refreshUptime, setStatus, showActuator, showBreadcrumbs, showDevice, showDevices, showSensor, status, statusbar, subheading1, subheading2, tagRegexp, timeSuffixes, uptimeText, uptimeTicker;
 
   switch ($.platform()) {
     case "windows":
@@ -694,6 +694,130 @@
   });
 
   navigate(location.hash.slice(1));
+
+  //###############################################################################
+  log = $("#logtext");
+
+  tagRegexp = /^\[(\w+)\s*\]/;
+
+  inflateLog = function(text) {
+    var line, tag;
+    line = $.box({
+      className: "tag"
+    }, [$.text(text)]);
+    tag = tagRegexp.exec(text);
+    if (tag !== null) {
+      line.classList.add(`tag-${tag[1].toLowerCase()}`);
+    }
+    log.prepend(line);
+  };
+
+  logOpener = $("#log .opener");
+
+  logOpener.on("click", () => {
+    if ($.body.hasClass("log-open")) {
+      logOpener.text("Show Log");
+    } else {
+      logOpener.text("Hide Log");
+    }
+    $.body.toggleClass("log-open");
+  });
+
+  //###############################################################################
+  MQTT = Messaging;
+
+  conncetMQTT = function() {
+    var client;
+    client = new MQTT.Client(location.hostname, 80, "dashboard");
+    client.onConnectionLost = function(resp) {
+      if (resp.errorCode !== 0) {
+        setStatus(false, `Connection lost: ${resp.errorMessage}`);
+      } else {
+        setStatus(false, "Connection lost.");
+      }
+      setTimeout(conncetMQTT, 2000);
+    };
+    client.onMessageArrived = function(msg) {
+      if (msg.destinationName === "sys/log") {
+        inflateLog(msg.payloadString);
+      } else {
+        console.log("onMessageArrived:", msg);
+      }
+    };
+    // client.disconnect(); 
+    client.connect({
+      onSuccess: function() {
+        setStatus(true, "Connected to Gateway.");
+        client.subscribe("sys/log");
+        refreshUptime();
+      },
+      // message = new MQTT.Message "Hello"
+      // message.destinationName = "/World"
+      // client.send message
+      onFailure: function(err) {
+        setStatus(false, `Can not connect to Gateway: ${err.errorMessage}`);
+        setTimeout(conncetMQTT, 2000);
+      }
+    });
+  };
+
+  conncetMQTT();
+
+  //###############################################################################
+  status = $("#status");
+
+  statusbar = $("#statusbar");
+
+  setStatus = function(isOk, text) {
+    status.text(text);
+    statusbar.removeClass("ok err");
+    if (isOk === true) {
+      statusbar.addClass("ok");
+    }
+    if (isOk === false) {
+      statusbar.addClass("err");
+    }
+  };
+
+  timeSuffixes = {
+    ms: 1,
+    s: 1000,
+    m: 60000,
+    h: 3600000
+  };
+
+  uptimeText = $("#uptime");
+
+  uptimeTicker = null;
+
+  refreshUptime = async function() {
+    var now, resp, setUptime, text, uptime;
+    resp = (await fetch("sys/uptime"));
+    if (!resp.ok) {
+      return;
+    }
+    text = (await resp.text());
+    now = new Date();
+    if (!text.endsWith("ms")) {
+      text.replace(/\d+(\.\d+)?\D+/g, function(seg) {
+        var f;
+        f = parseFloat(seg);
+        return now -= f * timeSuffixes[seg[seg.length - 1]];
+      });
+    }
+    uptime = new Date(now);
+    setUptime = function() {
+      text = `Gateway Start: ${formatTime(uptime)}`;
+      if (uptimeText.text() !== text) {
+        uptimeText.text(text);
+      }
+    };
+    clearInterval(uptimeTicker);
+    uptimeTicker = setInterval(setUptime, 1000);
+    setUptime();
+  };
+
+  refreshUptime();
 
 }).call(this);
 

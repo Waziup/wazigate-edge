@@ -1,6 +1,15 @@
+html {
+    height: 100%;
+}
+
 body {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
     background: #f1f1f1;
     font-family: 'Segoe UI',Roboto,'Helvetica Neue',Arial,'Noto Sans',sans-serif;
+    margin: 0;
+    
     .code {
         font-family: "monospace";
     }
@@ -30,9 +39,8 @@ body {
 #breadcrumbs {
     font-size: 1em;
     color: gray;
-    margin: 30px auto 0;
+    margin: 30px 0 0;
     padding: 0 20px;
-    max-width: 1080px;
     box-sizing: border-box;
 }
 
@@ -40,9 +48,8 @@ body {
     font-size: 2em;
     color: gray;
     font-weight: lighter;
-    margin: 5px auto 10px;
+    margin: 5px 0 10px;
     padding: 0 20px;
-    max-width: 1080px;
     box-sizing: border-box;
 }
 
@@ -50,9 +57,8 @@ body {
     font-size: 1.5em;
     color: gray;
     font-weight: lighter;
-    margin: 5px auto 10px;
+    margin: 5px 0 10px;
     padding: 0 20px;
-    max-width: 1080px;
     box-sizing: border-box;
 
     .virgin {
@@ -63,16 +69,26 @@ body {
     }
 }
 
+.inset {
+    margin: 0 auto;
+    width: 1100px;
+}
+
 @media (max-width: 1101px) {
-    #heading, #breadcrumbs, .subheading {
+    .inset {
         width: 720px;
     }
 }
 
 @media (max-width: 741px) {
-    #heading, #breadcrumbs, .subheading {
+    .inset {
         width: 360px;
     }
+}
+
+#content {
+    flex-grow: 1;
+    overflow: auto;
 }
 
 .content {
@@ -214,4 +230,132 @@ td {
 
 thead {
     font-size: 1.2em;
+}
+
+#log {
+    position: fixed;
+    left: 100%;
+    top: 0;
+    height: 100%;
+    background: white;
+    color: #303030;
+    border-left: 1px solid #cccccc;
+    box-shadow: 0 0 2px #00000042;
+    transition: transform .2s;
+    display: flex;
+    flex-direction: column;
+
+    h3 {
+        padding: 2px 8px;
+        background: #f1f1f1;
+        color: #9c9c9c;
+        font-size: .75em;
+        line-height: 1.5em;
+        font-weight: lighter;
+        letter-spacing: 1px;
+        margin: 0;
+    }
+
+    .opener {
+        position: absolute;
+        white-space: nowrap;
+        right: 100%;
+        top: 50%;
+        border: 1px solid #cccccc;
+        background: white;
+        padding: 4px 27px 10px;
+        box-sizing: border-box;
+        transform: rotate(-90deg);
+        margin: -10px -50px;
+        cursor: pointer;
+    }
+}
+
+body.log-open #log {
+    transform: translateX(-100%);
+}
+
+@media screen and (min-width: 1780px) {
+    body {
+        transition: margin .2s;
+        &.log-open {
+            margin-right: 680px;
+        }
+    }
+}
+
+#logtext {
+    width: 680px;
+    white-space: pre;
+    padding: 10px 0 20px 0;
+    font-size: .9em;
+    overflow: auto;
+    flex-grow: 1;
+
+    > .tag {
+        border-bottom: 1px solid #efefef;
+        padding: 1px 10px;
+    }
+
+    .tag-www {
+        color: brown;
+    }
+
+    .tag-mqtt,
+    .tag-mqtt {
+        color: cornflowerblue;
+    }
+
+    .tag-http,
+    .tag-http {
+        color: coral;
+    }
+
+    .tag-db {
+        color: limegreen;
+    }
+
+    .tag-err {
+        color: red;
+    }
+
+    .tag-up {
+        color: mediumorchid;
+    }
+}
+
+#statusbar {
+    border-top: 1px solid #cccccc;
+    font-size: .9em;
+    line-height: 1.6em;
+    color: #9c9c9c;
+
+    .inset > span {
+        border-left: 1px solid #cccccc;
+        padding: 0 10px;
+    }
+
+    &.ok {
+        background: #ccffbb;
+        color: #308637;
+        border-color: #67ff67;
+
+        .inset > span {
+            border-color: #67ff67;
+        }
+    }
+
+    &.err {
+        background: #ffcebb;
+        color: #863030;
+        border-color: #ff8367;
+
+        .inset > span {
+            border-color: #ff8367;
+        }
+    }
+       
+}
+
+#status {
 }

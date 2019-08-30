@@ -17,4 +17,5 @@ FROM alpine:latest AS production
 WORKDIR /root/
 RUN apk --no-cache add ca-certificates tzdata
 COPY --from=development /wazigate-edge/build/wazigate-edge .
-ENTRYPOINT ["./wazigate-edge"]
+COPY www www/
+ENTRYPOINT ["./wazigate-edge", "-www", "www"]

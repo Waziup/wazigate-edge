@@ -727,8 +727,9 @@
   MQTT = Messaging;
 
   conncetMQTT = function() {
-    var client;
-    client = new MQTT.Client(location.hostname, 80, "dashboard");
+    var client, rnd;
+    rnd = `${Math.random() * 1e6}`.slice(0, 6);
+    client = new MQTT.Client(location.hostname, 80, "dashboard-" + rnd);
     client.onConnectionLost = function(resp) {
       if (resp.errorCode !== 0) {
         setStatus(false, `Connection lost: ${resp.errorMessage}`);

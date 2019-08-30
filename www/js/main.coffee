@@ -582,7 +582,8 @@ MQTT = Messaging
 
 conncetMQTT = () ->
 
-    client = new MQTT.Client location.hostname, 80, "dashboard"
+    rnd = "#{Math.random()*1e6}"[...6]
+    client = new MQTT.Client location.hostname, 80, "dashboard-"+rnd
 
     client.onConnectionLost = (resp) ->
         if resp.errorCode != 0

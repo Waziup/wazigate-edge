@@ -240,10 +240,10 @@ thead {
     background: white;
     color: #303030;
     border-left: 1px solid #cccccc;
-    box-shadow: 0 0 2px #00000042;
     transition: transform .2s;
     display: flex;
     flex-direction: column;
+    max-width: 100%;
 
     h3 {
         padding: 2px 8px;
@@ -273,6 +273,12 @@ thead {
 
 body.log-open #log {
     transform: translateX(-100%);
+}
+
+@media (max-width: 741px) {
+    body.log-open #log .opener {
+        margin-right: -76px;
+    }
 }
 
 @media screen and (min-width: 1780px) {
@@ -355,6 +361,12 @@ body.log-open #log {
         }
     }
        
+}
+
+@media (max-width: 741px) {
+    #statusbar span {
+        display: block;
+    }
 }
 
 #status {

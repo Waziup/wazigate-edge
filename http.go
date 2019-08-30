@@ -1,14 +1,13 @@
 package main
 
 import (
-	"bytes"
 	"crypto/tls"
 	"errors"
-	"io"
 	"log"
 	"net"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/Waziup/wazigate-edge/mqtt"
@@ -42,13 +41,9 @@ func ServeHTTPS(resp http.ResponseWriter, req *http.Request) {
 ////////////////////
 
 type wsWrapper struct {
-	tag     string
 	conn    *websocket.Conn
-	wc      io.WriteCloser
-	head    mqtt.FixedHeader
-	buf     *bytes.Buffer
+	mutex   sync.Mutex
 	version byte
-	remain  int
 }
 
 var errTextMsg = errors.New("unexpected TEST message")
@@ -73,6 +68,9 @@ func (w *wsWrapper) ReadPacket() (mqtt.Packet, error) {
 }
 
 func (w *wsWrapper) WritePacket(pkt mqtt.Packet) (err error) {
+	w.mutex.Lock()
+	defer w.mutex.Unlock()
+
 	writer, err := w.conn.NextWriter(websocket.BinaryMessage)
 	if err != nil {
 		return err
@@ -165,14 +163,7 @@ func serveHTTP(resp http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		var tag string
-		if req.Header.Get("X-Secure") == "true" {
-			tag = "WSS  "
-		} else {
-			tag = "WS   "
-		}
-
-		wrapper := &wsWrapper{tag: tag, conn: conn}
+		wrapper := &wsWrapper{conn: conn}
 		mqttServer.Serve(wrapper)
 	}
 }

@@ -2,10 +2,12 @@ package api
 
 import (
 	"encoding/json"
+	"io"
+	"log"
 	"net/http"
 
-	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
+	"github.com/Waziup/wazigate-edge/clouds"
+	"github.com/Waziup/wazigate-edge/edge"
 
 	routing "github.com/julienschmidt/httprouter"
 )
@@ -25,9 +27,9 @@ func GetActuatorValue(resp http.ResponseWriter, req *http.Request, params routin
 // GetDeviceActuatorValues implements GET /devices/{deviceID}/actuators/{actuatorID}/values
 func GetDeviceActuatorValues(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
-	var query Query
-	if err := query.from(req); err != "" {
-		http.Error(resp, "Bad Request - "+err, http.StatusBadRequest)
+	var query edge.Query
+	if err := query.Parse(req); err != "" {
+		http.Error(resp, "bad request: "+err, http.StatusBadRequest)
 		return
 	}
 	getActuatorValues(resp, params.ByName("device_id"), params.ByName("actuator_id"), &query)
@@ -36,12 +38,12 @@ func GetDeviceActuatorValues(resp http.ResponseWriter, req *http.Request, params
 // GetActuatorValues implements GET /actuators/{actuatorID}/values
 func GetActuatorValues(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
-	var query Query
-	if err := query.from(req); err != "" {
-		http.Error(resp, "Bad Request - "+err, http.StatusBadRequest)
+	var query edge.Query
+	if err := query.Parse(req); err != "" {
+		http.Error(resp, "bad request: "+err, http.StatusBadRequest)
 		return
 	}
-	getActuatorValues(resp, GetLocalID(), params.ByName("actuator_id"), &query)
+	getActuatorValues(resp, edge.LocalID(), params.ByName("actuator_id"), &query)
 }
 
 // PostDeviceActuatorValue implements POST /devices/{deviceID}/actuators/{actuatorID}/value
@@ -59,55 +61,51 @@ func PostDeviceActuatorValues(resp http.ResponseWriter, req *http.Request, param
 // PostActuatorValue implements POST /actuators/{actuatorID}/value
 func PostActuatorValue(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
-	postActuatorValue(resp, req, GetLocalID(), params.ByName("actuator_id"))
+	postActuatorValue(resp, req, edge.LocalID(), params.ByName("actuator_id"))
 }
 
 // PostActuatorValues implements POST /actuators/{actuatorID}/values
 func PostActuatorValues(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
-	postActuatorValues(resp, req, GetLocalID(), params.ByName("actuator_id"))
+	postActuatorValues(resp, req, edge.LocalID(), params.ByName("actuator_id"))
 }
 
 ////////////////////
 
 func getLastActuatorValue(resp http.ResponseWriter, deviceID string, actuatorID string) {
 
-	if DBDevices == nil {
-		http.Error(resp, "Database unavailable.", http.StatusServiceUnavailable)
+	actuator, err := edge.GetActuator(deviceID, actuatorID)
+	if err != nil {
+		serveError(resp, err)
 		return
 	}
 
-	var device Device
-	err := DBDevices.Find(bson.M{
-		"_id": deviceID,
-	}).Select(bson.M{
-		"actuators": bson.M{
-			"$elemMatch": bson.M{
-				"id": actuatorID,
-			},
-		},
-	}).One(&device)
-
-	if err != nil || len(device.Actuators) == 0 {
-		http.Error(resp, "null", http.StatusNotFound)
-		return
-	}
-
-	value := device.Actuators[0].Value
-	data, _ := json.Marshal(value)
+	resp.Header().Set("Content-Type", "application/json")
+	data, _ := json.Marshal(actuator.Value)
 	resp.Write(data)
 }
 
-func getActuatorValues(resp http.ResponseWriter, deviceID string, actuatorID string, query *Query) {
+func getActuatorValues(resp http.ResponseWriter, deviceID string, actuatorID string, query *edge.Query) {
 
-	if DBActuatorValues == nil {
-		http.Error(resp, "Database unavailable.", http.StatusServiceUnavailable)
+	values := edge.GetActuatorValues(deviceID, actuatorID, query)
+	encoder := json.NewEncoder(resp)
+
+	value, err := values.Next()
+	if err != nil && err != io.EOF {
+		serveError(resp, err)
 		return
 	}
 
-	var value ActuatorValue
-	iter := DBActuatorValues.Find(bson.M{"deviceId": deviceID, "actuatorId": actuatorID}).Iter()
-	serveIter(resp, iter, &value)
+	resp.Header().Set("Content-Type", "application/json")
+	resp.Write([]byte{'['})
+	for err == nil {
+		encoder.Encode(value)
+		value, err = values.Next()
+		if err == nil {
+			resp.Write([]byte{','})
+		}
+	}
+	resp.Write([]byte{']'})
 }
 
 ////////////////////
@@ -116,107 +114,38 @@ func postActuatorValue(resp http.ResponseWriter, req *http.Request, deviceID str
 
 	val, err := getReqValue(req)
 	if err != nil {
-		http.Error(resp, "Bad Request - "+err.Error(), http.StatusBadRequest)
+		http.Error(resp, "bad request: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if DBActuatorValues == nil || DBDevices == nil {
-		http.Error(resp, "Database unavailable.", http.StatusServiceUnavailable)
-		return
-	}
-
-	value := ActuatorValue{
-		ID:         newID(val.Time),
-		Value:      val.Value,
-		DeviceID:   deviceID,
-		ActuatorID: actuatorID,
-	}
-
-	err = DBDevices.Update(bson.M{
-		"_id":          deviceID,
-		"actuators.id": actuatorID,
-	}, bson.M{
-		"$set": bson.M{
-			"actuators.$.value": val.Value,
-			"actuators.$.time":  val.Time,
-		},
-	})
-
+	err = edge.PostActuatorValue(deviceID, actuatorID, val)
 	if err != nil {
-		if err == mgo.ErrNotFound {
-			http.Error(resp, "Device or actuator not found.", http.StatusNotFound)
-			return
-		}
-		http.Error(resp, "Database Error - "+err.Error(), http.StatusInternalServerError)
+		serveError(resp, err)
 		return
 	}
 
-	err = DBActuatorValues.Insert(&value)
+	log.Printf("[DB   ] 1 value for %s/%s.\n", deviceID, actuatorID)
 
-	if err != nil {
-		http.Error(resp, "Database Error - "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	resp.Write([]byte{'"'})
-	resp.Write([]byte(value.ID.Hex()))
-	resp.Write([]byte{'"'})
+	clouds.FlagActuator(deviceID, actuatorID, val.Time)
 }
 
 func postActuatorValues(resp http.ResponseWriter, req *http.Request, deviceID string, actuatorID string) {
 
 	vals, err := getReqValues(req)
 	if err != nil {
-		http.Error(resp, "Bad Request - "+err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	if DBActuatorValues == nil || DBDevices == nil {
-		http.Error(resp, "Database unavailable.", http.StatusServiceUnavailable)
+		http.Error(resp, "bad request: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	if len(vals) != 0 {
-		values := make([]ActuatorValue, len(vals))
-		interf := make([]interface{}, len(vals))
-
-		for i, v := range vals {
-			values[i] = ActuatorValue{
-				ID:         newID(v.Time),
-				DeviceID:   deviceID,
-				ActuatorID: actuatorID,
-				Value:      v.Value,
-			}
-			interf[i] = values[i]
-		}
-
-		val := vals[len(vals)-1]
-
-		err := DBDevices.Update(bson.M{
-			"_id":          deviceID,
-			"actuators.id": actuatorID,
-		}, bson.M{
-			"$set": bson.M{
-				"actuators.$.value": val.Value,
-				"actuators.$.time":  val.Time,
-			},
-		})
-
+		err = edge.PostActuatorValues(deviceID, actuatorID, vals)
 		if err != nil {
-			if err == mgo.ErrNotFound {
-				http.Error(resp, "Device or actuator not found.", http.StatusNotFound)
-				return
-			}
-			http.Error(resp, "Database Error - "+err.Error(), http.StatusInternalServerError)
+			serveError(resp, err)
 			return
 		}
 
-		err = DBActuatorValues.Insert(interf...)
-		if err != nil {
-			http.Error(resp, "Database Error - "+err.Error(), http.StatusInternalServerError)
-			return
-		}
+		clouds.FlagActuator(deviceID, actuatorID, vals[0].Time)
 	}
 
-	resp.Write([]byte("true"))
+	log.Printf("[DB   ] %d values for %s/%s.\n", len(vals), deviceID, actuatorID)
 }

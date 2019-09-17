@@ -8,9 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strings"
 
-	"github.com/Waziup/wazigate-edge/api"
 	"github.com/Waziup/wazigate-edge/mqtt"
 	"github.com/Waziup/wazigate-edge/tools"
 )
@@ -19,70 +17,59 @@ type MQTTServer struct {
 	mqtt.Server
 }
 
-func (server *MQTTServer) Publish(client *mqtt.Client, msg *mqtt.Message) error {
+var MethodPublish = "PUBLISH"
 
-	if client != nil {
-
-		// TODO: check auth for PUBLISH
-
-		log.Printf("[MQTT ] Publish %q %q QoS:%d len:%d\n", client.Id, msg.Topic, msg.QoS, len(msg.Data))
-
-		body := tools.ClosingBuffer{bytes.NewBuffer(msg.Data)}
-		rurl, _ := url.Parse("/" + msg.Topic)
-		req := http.Request{
-			Method: "PUBLISH",
-			URL:    rurl,
-			Header: http.Header{
-				"X-Tag": []string{"MQTT "},
-			},
-			Body:          &body,
-			ContentLength: int64(len(msg.Data)),
-			RemoteAddr:    client.Id,
-			RequestURI:    msg.Topic,
-		}
-		resp := MQTTResponse{
-			status: 200,
-			header: make(http.Header),
-		}
-
-		Serve(&resp, &req)
-		if resp.status >= 200 && resp.status < 300 {
-			server.Server.Publish(client, msg)
-		}
-	} else {
-
-		server.Server.Publish(client, msg)
-	}
-
-	// Forward data to
-	if strings.Contains(msg.Topic, "/sensors/") || strings.HasSuffix(msg.Topic, "/sensors") {
-		pkt := mqtt.Publish(msg)
-		for _, cloud := range api.Clouds {
-			cloud.Queue.WritePacket(pkt)
-		}
-	}
-
-	return nil
+func mqttAuth(client *mqtt.Client, auth *mqtt.ConnectAuth) mqtt.ConnectCode {
+	client.Server = mqttServer
+	return mqtt.CodeAccepted
 }
 
-func (server *MQTTServer) Connect(client *mqtt.Client, auth *mqtt.ConnectAuth) byte {
+func (server *MQTTServer) Publish(sender mqtt.Sender, msg *mqtt.Message) int {
 
-	// TODO: check auth for CONNECT
+	if sender == nil {
+		// internal messages (no client as sender)
+		return server.Server.Publish(nil, msg)
+	}
 
-	log.Printf("[MQTT ] Connect %q %+v\n", client.Id, auth)
+	body := tools.ClosingBuffer{bytes.NewBuffer(msg.Data)}
+	uri := "/" + msg.Topic
+	rurl, _ := url.Parse(uri)
+	req := http.Request{
+		Method: MethodPublish,
+		URL:    rurl,
+		Header: http.Header{
+			"X-Tag": []string{"MQTT "},
+		},
+		Body:          &body,
+		ContentLength: int64(len(msg.Data)),
+		RemoteAddr:    sender.ID(),
+		RequestURI:    uri,
+	}
+	resp := MQTTResponse{
+		status: 200,
+		header: make(http.Header),
+	}
+
+	return Serve(&resp, &req)
+}
+
+/*
+
+func (server *MQTTServer) Connect(client *mqtt.Client, auth *mqtt.ConnectAuth) mqtt.ConnectCode {
+
 	return mqtt.CodeAccepted
 }
 
 func (server *MQTTServer) Disconnect(client *mqtt.Client, err error) {
 
-	log.Printf("[MQTT ] Disonnect %q %v\n", client.Id, err)
+	log.Printf("[MQTT ] Disonnect %q %v\n", client.ID(), err)
 }
 
 func (server *MQTTServer) Subscribe(recv mqtt.Reciever, topic string, qos byte) *mqtt.Subscription {
 
 	if client, ok := recv.(*mqtt.Client); ok {
 		// TODO: check auth for SUBSCRIBE
-		log.Printf("[MQTT ] Subscribe %q %q QoS:%d\n", client.Id, topic, qos)
+		log.Printf("[MQTT ] Subscribe %q %q QoS:%d\n", client.ID(), topic, qos)
 	}
 	return server.Server.Subscribe(recv, topic, qos)
 }
@@ -90,14 +77,15 @@ func (server *MQTTServer) Subscribe(recv mqtt.Reciever, topic string, qos byte) 
 func (server *MQTTServer) Unsubscribe(subs *mqtt.Subscription) {
 
 	if client, ok := subs.Recv.(*mqtt.Client); ok {
-		log.Printf("[MQTT ] Unsubscribe %q %q QoS:%d\n", client.Id, subs.Topic.FullName(), subs.QoS)
+		log.Printf("[MQTT ] Unsubscribe %q %q QoS:%d\n", client.ID(), subs.Topic.FullName(), subs.QoS)
 	}
 	server.Server.Unsubscribe(subs)
 }
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 
-var mqttServer = &MQTTServer{mqtt.NewServer()}
+var mqttServer *MQTTServer
 
 func ListenAndServerMQTT() {
 

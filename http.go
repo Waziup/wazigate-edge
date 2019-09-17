@@ -1,14 +1,13 @@
 package main
 
 import (
-	"bytes"
 	"crypto/tls"
 	"errors"
-	"io"
 	"log"
 	"net"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/Waziup/wazigate-edge/mqtt"
@@ -42,20 +41,57 @@ func ServeHTTPS(resp http.ResponseWriter, req *http.Request) {
 ////////////////////
 
 type wsWrapper struct {
-	tag    string
-	conn   *websocket.Conn
-	wc     io.WriteCloser
-	head   mqtt.FixedHeader
-	buf    *bytes.Buffer
-	remain int
+	conn    *websocket.Conn
+	mutex   sync.Mutex
+	version byte
+}
+
+var errTextMsg = errors.New("unexpected TEST message")
+
+func (w *wsWrapper) ReadPacket() (mqtt.Packet, error) {
+	messageType, data, err := w.conn.ReadMessage()
+	if err != nil {
+		w.conn.Close()
+		return nil, err
+	}
+	if messageType != websocket.BinaryMessage {
+		w.conn.Close()
+		return nil, errTextMsg
+	}
+	pkt, err := mqtt.ReadBuffer(data, w.version)
+	if pkt != nil {
+		if connectPacket, ok := pkt.(*mqtt.ConnectPacket); ok {
+			w.version = connectPacket.Version
+		}
+	}
+	return pkt, err
+}
+
+func (w *wsWrapper) WritePacket(pkt mqtt.Packet) (err error) {
+	w.mutex.Lock()
+	defer w.mutex.Unlock()
+
+	writer, err := w.conn.NextWriter(websocket.BinaryMessage)
+	if err != nil {
+		return err
+	}
+	_, err = pkt.WriteTo(writer, w.version)
+	if err != nil {
+		writer.Close()
+		return err
+	}
+	return writer.Close()
+}
+
+func (w *wsWrapper) SetTimeout(dur time.Duration) error {
+	return nil
 }
 
 func (w *wsWrapper) Close() error {
 	return w.conn.Close()
 }
 
-var nonBinaryMessage = errors.New("Unexpected TEXT message.")
-
+/*
 func (w *wsWrapper) Read(p []byte) (n int, err error) {
 
 	if w.buf == nil || w.buf.Len() == 0 {
@@ -100,6 +136,7 @@ func (w *wsWrapper) Write(data []byte) (int, error) {
 	}
 	return len(data), err
 }
+*/
 
 ////////////////////
 
@@ -126,15 +163,8 @@ func serveHTTP(resp http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		var tag string
-		if req.Header.Get("X-Secure") == "true" {
-			tag = "WSS  "
-		} else {
-			tag = "WS   "
-		}
-
-		wrapper := &wsWrapper{tag: tag, conn: conn}
-		mqtt.ServeConn(wrapper, mqttServer)
+		wrapper := &wsWrapper{conn: conn}
+		mqttServer.Serve(wrapper)
 	}
 }
 
@@ -157,7 +187,7 @@ func ListenAndServeHTTP() {
 	}
 
 	log.Printf("[HTTP ] HTTP Server at %q. Use \"http://\".", addr)
-	log.Printf("[WS   ] MQTT via WebSocket Server at%q. Use \"ws://\".", addr)
+	log.Printf("[WS   ] MQTT via WebSocket Server at %q. Use \"ws://\".", addr)
 
 	notifyDeamon()
 	err = srv.Serve(listener)

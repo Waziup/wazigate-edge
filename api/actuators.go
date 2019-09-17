@@ -4,10 +4,12 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
+	"github.com/Waziup/wazigate-edge/clouds"
+	"github.com/Waziup/wazigate-edge/edge"
 	"github.com/Waziup/wazigate-edge/tools"
-	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	routing "github.com/julienschmidt/httprouter"
 )
@@ -31,7 +33,7 @@ func GetDeviceActuator(resp http.ResponseWriter, req *http.Request, params routi
 // GetActuator implements GET /actuators/{actuatorID}
 func GetActuator(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
-	getDeviceActuator(resp, GetLocalID(), params.ByName("actuator_id"))
+	getDeviceActuator(resp, edge.LocalID(), params.ByName("actuator_id"))
 }
 
 // GetDeviceActuators implements GET /devices/{deviceID}/actuators
@@ -43,7 +45,7 @@ func GetDeviceActuators(resp http.ResponseWriter, req *http.Request, params rout
 // GetActuators implements GET /actuators
 func GetActuators(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
-	getDeviceActuators(resp, GetLocalID())
+	getDeviceActuators(resp, edge.LocalID())
 }
 
 // PostDeviceActuator implements POST /devices/{deviceID}/actuators
@@ -55,7 +57,7 @@ func PostDeviceActuator(resp http.ResponseWriter, req *http.Request, params rout
 // PostActuator implements POST /actuators
 func PostActuator(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
-	postDeviceActuator(resp, req, GetLocalID())
+	postDeviceActuator(resp, req, edge.LocalID())
 }
 
 // DeleteDeviceActuator implements DELETE /devices/{deviceID}/actuators/{actuatorID}
@@ -67,7 +69,7 @@ func DeleteDeviceActuator(resp http.ResponseWriter, req *http.Request, params ro
 // DeleteActuator implements DELETE /actuators/{actuatorID}
 func DeleteActuator(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
-	deleteDeviceActuator(resp, GetLocalID(), params.ByName("actuator_id"))
+	deleteDeviceActuator(resp, edge.LocalID(), params.ByName("actuator_id"))
 }
 
 // PostDeviceActuatorName implements POST /devices/{deviceID}/actuators/{actuatorID}/name
@@ -79,170 +81,98 @@ func PostDeviceActuatorName(resp http.ResponseWriter, req *http.Request, params 
 // PostActuatorName implements POST /actuators/{actuatorID}/name
 func PostActuatorName(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
-	postDeviceActuatorName(resp, req, GetLocalID(), params.ByName("actuator_id"))
+	postDeviceActuatorName(resp, req, edge.LocalID(), params.ByName("actuator_id"))
 }
 
 ////////////////////
 
 func getDeviceActuator(resp http.ResponseWriter, deviceID string, actuatorID string) {
 
-	if DBDevices == nil {
-		http.Error(resp, "Database unavailable.", http.StatusServiceUnavailable)
+	actuator, err := edge.GetActuator(deviceID, actuatorID)
+	if err != nil {
+		serveError(resp, err)
 		return
 	}
 
-	var device Device
-	err := DBDevices.Find(bson.M{
-		"_id": deviceID,
-	}).Select(bson.M{
-		"actuators": bson.M{
-			"$elemMatch": bson.M{
-				"id": actuatorID,
-			},
-		},
-	}).One(&device)
-
-	if err != nil || len(device.Actuators) == 0 {
-		http.Error(resp, "null", http.StatusNotFound)
-		return
-	}
-
-	actuator := device.Actuators[0]
+	resp.Header().Set("Content-Type", "application/json")
 	data, _ := json.Marshal(actuator)
 	resp.Write(data)
 }
 
 func getDeviceActuators(resp http.ResponseWriter, deviceID string) {
 
-	if DBDevices == nil {
-		http.Error(resp, "Database unavailable.", http.StatusServiceUnavailable)
-		return
-	}
-
-	var device Device
-	err := DBDevices.Find(bson.M{"_id": deviceID}).Select(bson.M{"actuators": 1}).One(&device)
+	device, err := edge.GetDevice(deviceID)
 	if err != nil {
-		http.Error(resp, "null", http.StatusNotFound)
+		serveError(resp, err)
 		return
 	}
 
+	resp.Header().Set("Content-Type", "application/json")
 	data, _ := json.Marshal(device.Actuators)
 	resp.Write(data)
 }
 
 func postDeviceActuator(resp http.ResponseWriter, req *http.Request, deviceID string) {
-	var err error
 
-	if DBDevices == nil {
-		http.Error(resp, "Database unavailable.", http.StatusServiceUnavailable)
+	var actuator edge.Actuator
+	if err := getReqActuator(req, &actuator); err != nil {
+		http.Error(resp, "bad request: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	var actuator Actuator
-	if err = getReqActuator(req, &actuator); err != nil {
-		http.Error(resp, "Bad Request: "+err.Error(), http.StatusBadRequest)
+	if err := edge.PostActuator(deviceID, &actuator); err != nil {
+		serveError(resp, err)
 		return
 	}
 
-	err = DBDevices.Update(bson.M{
-		"_id": deviceID,
-	}, bson.M{
-		"$push": bson.M{
-			"actuators": &actuator,
-		},
-	})
-	if err != nil {
-		http.Error(resp, "Database error: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
+	log.Printf("[DB   ] Actuator %s/%s created.\n", deviceID, actuator.ID)
+	clouds.FlagActuator(deviceID, actuator.ID, noTime)
 
-	log.Printf("[DB   ] created actuator %s/%s\n", deviceID, actuator.ID)
-
-	resp.Header().Set("Content-Type", "application/json")
-	resp.Write([]byte{'"'})
 	resp.Write([]byte(actuator.ID))
-	resp.Write([]byte{'"'})
 }
 
 func postDeviceActuatorName(resp http.ResponseWriter, req *http.Request, deviceID string, actuatorID string) {
+
 	body, err := tools.ReadAll(req.Body)
 	if err != nil {
-		http.Error(resp, "Bad Request: "+err.Error(), http.StatusBadRequest)
+		http.Error(resp, "bad request: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 	var name string
-	err = json.Unmarshal(body, &name)
-	if err != nil {
-		http.Error(resp, "Bad Request: "+err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	if DBDevices == nil {
-		http.Error(resp, "Database unavailable.", http.StatusServiceUnavailable)
-		return
-	}
-
-	err = DBDevices.Update(bson.M{
-		"_id":        deviceID,
-		"actuators.id": actuatorID,
-	}, bson.M{
-		"$set": bson.M{
-			"actuators.$.modified": time.Now(),
-			"actuators.$.name":     name,
-		},
-	})
-
-	if err != nil {
-		if err == mgo.ErrNotFound {
-			http.Error(resp, "Device or actuator not found.", http.StatusNotFound)
+	contentType := req.Header.Get("Content-Type")
+	if strings.HasSuffix(contentType, "application/json") {
+		err = json.Unmarshal(body, &name)
+		if err != nil {
+			http.Error(resp, "bad request: "+err.Error(), http.StatusBadRequest)
 			return
 		}
-		http.Error(resp, "Database Error - "+err.Error(), http.StatusInternalServerError)
+	} else {
+		name = string(body)
+	}
+
+	err = edge.SetActuatorName(deviceID, actuatorID, name)
+	if err != nil {
+		serveError(resp, err)
 		return
 	}
 
-	resp.Write([]byte("true"))
+	log.Printf("[DB   ] Actuator %s/%s name changed: %q", deviceID, actuatorID, name)
 }
 
 func deleteDeviceActuator(resp http.ResponseWriter, deviceID string, actuatorID string) {
 
-	if DBDevices == nil || DBActuatorValues == nil {
-		http.Error(resp, "Database unavailable.", http.StatusServiceUnavailable)
+	points, err := edge.DeleteActuator(deviceID, actuatorID)
+	if err != nil {
+		serveError(resp, err)
 		return
 	}
 
-	err1 := DBDevices.Update(bson.M{
-		"_id": deviceID,
-	}, bson.M{
-		"$pull": bson.M{
-			"actuators": bson.M{
-				"id": actuatorID,
-			},
-		},
-	})
-	info, err2 := DBActuatorValues.RemoveAll(bson.M{
-		"deviceId": deviceID,
-		"actuatorId": actuatorID,
-	})
-
-	if err1 != nil || err2 != nil {
-		err := err1
-		if err == nil {
-			err = err2
-		}
-		http.Error(resp, "Database Error: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	log.Printf("[DB   ] removed actuator %s/%s\n", deviceID, actuatorID)
-	log.Printf("[DB   ] removed %d values from %s/%s\n", info.Removed, deviceID, actuatorID)
-
-	resp.Write([]byte("true"))
+	log.Printf("[DB   ] Actuator %s/%s removed. (%d values)\n", deviceID, actuatorID, points)
 }
 
 ////////////////////
 
-func getReqActuator(req *http.Request, actuator *Actuator) error {
+func getReqActuator(req *http.Request, actuator *edge.Actuator) error {
 	body, err := tools.ReadAll(req.Body)
 	if err != nil {
 		return err
@@ -259,7 +189,7 @@ func getReqActuator(req *http.Request, actuator *Actuator) error {
 	}
 
 	if actuator.ID == "" {
-		actuator.ID = bson.NewObjectId().String()
+		actuator.ID = bson.NewObjectId().Hex()
 	}
 	return nil
 }

@@ -10,12 +10,11 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"time"
 
-	"github.com/Waziup/wazigate-edge/api"
+	"github.com/Waziup/wazigate-edge/clouds"
+	"github.com/Waziup/wazigate-edge/edge"
 	"github.com/Waziup/wazigate-edge/mqtt"
 	"github.com/Waziup/wazigate-edge/tools"
-	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 )
 
@@ -24,6 +23,30 @@ var static http.Handler
 func main() {
 	// Remove date and time from logs
 	log.SetFlags(log.Flags() &^ (log.Ldate | log.Ltime))
+
+	logSettings := os.Getenv("WAZIUP_LOG")
+	if strings.Contains(logSettings, "date") {
+		log.SetFlags(log.Flags() | log.Ldate)
+	}
+	if strings.Contains(logSettings, "time") {
+		log.SetFlags(log.Flags() | log.Ltime)
+	}
+	if strings.Contains(logSettings, "utc") {
+		log.SetFlags(log.Flags() | log.LUTC)
+	}
+
+	if strings.Contains(logSettings, "error") {
+		LogLevel = LogLevelErrors
+	}
+	if strings.Contains(logSettings, "warn") {
+		LogLevel = LogLevelWarnings
+	}
+	if strings.Contains(logSettings, "verb") {
+		LogLevel = LogLevelVerbose
+	}
+	if strings.Contains(logSettings, "debug") {
+		LogLevel = LogLevelDebug
+	}
 
 	////////////////////
 
@@ -72,32 +95,22 @@ func main() {
 
 	////////////////////
 
-	for i := 0; i < 5; i++ {
-		log.Printf("[DB   ] Dialing MongoDB at %q...\n", *dbAddr)
-		db, err := mgo.Dial("mongodb://" + *dbAddr + "/?connect=direct")
-		if err != nil {
-			log.Println("[DB   ] MongoDB client error:\n", err)
-			time.Sleep(time.Second * 2)
-			continue
-		} else {
-
-			db.SetSafe(&mgo.Safe{})
-			api.DBSensorValues = db.DB("waziup").C("sensor_values")
-			api.DBActuatorValues = db.DB("waziup").C("actuator_values")
-			api.DBDevices = db.DB("waziup").C("devices")
-			break
-		}
+	log.Printf("[DB   ] Dialing MongoDB at %q...\n", *dbAddr)
+	err = edge.Connect("mongodb://" + *dbAddr + "/?connect=direct")
+	if err != nil {
+		log.Fatalf("[DB   ] MongoDB client error: %v\n", err)
 	}
 
 	////////////////////
 
+	log.Printf("[     ] Local device ID is %q.\n", edge.LocalID())
+
 	initDevice()
 
-	////////////////////
+	initSync()
 
-	log.Printf("[     ] Local device id is %q.\n", api.GetLocalID())
-
-	api.ReadCloudConfig()
+	mqttLogger := log.New(&mqttPrefixWriter{}, "[MQTT ] ", 0)
+	mqttServer = &MQTTServer{mqtt.NewServer(mqttAuth, mqttLogger, mqtt.LogLevel(LogLevel))}
 
 	////////////////////
 
@@ -145,7 +158,7 @@ func (resp *ResponseWriter) WriteHeader(statusCode int) {
 
 ////////////////////
 
-func Serve(resp http.ResponseWriter, req *http.Request) {
+func Serve(resp http.ResponseWriter, req *http.Request) int {
 
 	if strings.HasSuffix(req.RequestURI, "/") {
 		req.RequestURI += "index.html"
@@ -169,7 +182,7 @@ func Serve(resp http.ResponseWriter, req *http.Request) {
 				wrapper.status,
 				req.Method,
 				req.RequestURI)
-			return
+			return 0
 		}
 	}
 
@@ -183,17 +196,21 @@ func Serve(resp http.ResponseWriter, req *http.Request) {
 		req.Body.Close()
 		if err != nil {
 			http.Error(resp, "400 Bad Request", http.StatusBadRequest)
-			return
+			return 0
 		}
 		req.Body = &tools.ClosingBuffer{
 			Buffer: bytes.NewBuffer(body),
 		}
+	} else if req.Method == MethodPublish {
+		if cbuf, ok := req.Body.(*tools.ClosingBuffer); ok {
+			size = cbuf.Len()
+		}
 	}
 
-	if req.Method == "PUBLISH" {
+	if req.Method == MethodPublish {
 		req.Method = http.MethodPost
 		router.ServeHTTP(&wrapper, req)
-		req.Method = "PUBLISH"
+		req.Method = MethodPublish
 	} else {
 		router.ServeHTTP(&wrapper, req)
 	}
@@ -206,20 +223,21 @@ func Serve(resp http.ResponseWriter, req *http.Request) {
 		req.RequestURI,
 		size)
 
-	if cbuf, ok := req.Body.(*tools.ClosingBuffer); ok {
-		// log.Printf("[DEBUG] Body: %s\n", cbuf.Bytes())
-		msg := &mqtt.Message{
-			QoS:   0,
-			Topic: req.RequestURI[1:],
-			Data:  cbuf.Bytes(),
-		}
+	if req.Method == MethodPublish || req.Method == http.MethodPut || req.Method == http.MethodPost {
 
-		// if wrapper.status >= 200 && wrapper.status < 300 {
-		if req.Method == http.MethodPut || req.Method == http.MethodPost {
-			mqttServer.Publish(nil, msg)
+		if wrapper.status >= 200 && wrapper.status < 300 {
+			if cbuf, ok := req.Body.(*tools.ClosingBuffer); ok {
+				// log.Printf("[DEBUG] Body: %s\n", cbuf.Bytes())
+				msg := &mqtt.Message{
+					QoS:   0,
+					Topic: req.RequestURI[1:],
+					Data:  cbuf.Bytes(),
+				}
+				return mqttServer.Server.Publish(nil, msg)
+			}
 		}
-		// }
 	}
+	return 0
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -227,43 +245,64 @@ func Serve(resp http.ResponseWriter, req *http.Request) {
 type mqttLogWriter struct{}
 
 func (w *mqttLogWriter) Write(data []byte) (n int, err error) {
+
 	if mqttServer != nil && len(data) != 0 {
-		data2 := make([]byte, len(data))
-		copy(data2, data)
-		if data2[len(data2)-1] == '\n' {
-			data2 = data2[:len(data2)-1]
+		if data[len(data)-1] == '\n' {
+			data = data[:len(data)-1]
 		}
-		go func(data []byte) {
-			msg := &mqtt.Message{
-				QoS:   0,
-				Topic: "sys/log",
-				Data:  data,
-			}
-			mqttServer.Publish(nil, msg)
-		}(data2)
+		msg := &mqtt.Message{
+			QoS:   0,
+			Topic: "sys/log",
+			Data:  data,
+		}
+		mqttServer.Server.Publish(nil, msg)
 	}
+	return len(data), nil
+}
+
+type mqttPrefixWriter struct{}
+
+func (w *mqttPrefixWriter) Write(data []byte) (n int, err error) {
+	log.Print(string(data))
 	return len(data), nil
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 func initDevice() {
-	if api.DBDevices == nil {
-		return
-	}
-
-	var device = api.Device{
-		ID:        api.GetLocalID(),
-		Name:      "Gateway " + api.GetLocalID(),
-		Sensors:   make([]*api.Sensor, 0),
-		Actuators: make([]*api.Actuator, 0),
-	}
-
-	err := api.DBDevices.Insert(&device)
+	local, err := edge.GetDevice(edge.LocalID())
 	if err != nil {
-		if mgo.IsDup(err) {
-			return
+		log.Fatalf("[DB   ] Err %v", err)
+	}
+	if local == nil {
+		err = edge.PostDevice(&edge.Device{
+			ID:   edge.LocalID(),
+			Name: "Gateway " + edge.LocalID(),
+		})
+		if err != nil {
+			log.Fatalf("[DB   ] Err %v", err)
 		}
-		log.Printf("[DB   ] Err insert current device: %s", err)
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+func getCloudsFile() string {
+	cloudsFile := os.Getenv("WAZIUP_CLOUDS_FILE")
+	if cloudsFile == "" {
+		return "clouds.json"
+	}
+	return cloudsFile
+}
+
+func initSync() {
+	cloudsFile := getCloudsFile()
+	file, err := os.Open(cloudsFile)
+	if err != nil {
+		log.Printf("[Err  ] Can not read %q: %s", cloudsFile, err.Error())
+	}
+	err = clouds.ReadCloudConfig(file)
+	if err != nil {
+		log.Printf("[Err  ] Can not read %q: %s", cloudsFile, err.Error())
 	}
 }

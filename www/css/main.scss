@@ -1,0 +1,373 @@
+html {
+    height: 100%;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: #f1f1f1;
+    font-family: 'Segoe UI',Roboto,'Helvetica Neue',Arial,'Noto Sans',sans-serif;
+    margin: 0;
+    
+    .code {
+        font-family: "monospace";
+    }
+
+    &.windows {
+        font-family: 'Segoe UI', Tahoma, sans-serif;
+        .code {
+            font-family: Consolas, Lucida Console, Courier New, monospace;
+        }
+    }
+
+    &.linux {
+        font-family: Roboto, Ubuntu, Arial, sans-serif;
+        .code {
+            font-family: "dejavu sans mono, monospace";
+        }
+    }
+
+    &.mac {
+        font-family: '.SFNSDisplay-Regular', 'Helvetica Neue', 'Lucida Grande', sans-serif;
+        .code {
+            font-family: Menlo, monospace;
+        }
+    }
+}
+
+#breadcrumbs {
+    font-size: 1em;
+    color: gray;
+    margin: 30px 0 0;
+    padding: 0 20px;
+    box-sizing: border-box;
+}
+
+#heading {
+    font-size: 2em;
+    color: gray;
+    font-weight: lighter;
+    margin: 5px 0 10px;
+    padding: 0 20px;
+    box-sizing: border-box;
+}
+
+.subheading {
+    font-size: 1.5em;
+    color: gray;
+    font-weight: lighter;
+    margin: 5px 0 10px;
+    padding: 0 20px;
+    box-sizing: border-box;
+
+    .virgin {
+        margin:  0 20px;
+        padding: 0 10px;
+        font-size: unset;
+        width: unset;
+    }
+}
+
+.inset {
+    margin: 0 auto;
+    width: 1100px;
+}
+
+@media (max-width: 1101px) {
+    .inset {
+        width: 720px;
+    }
+}
+
+@media (max-width: 741px) {
+    .inset {
+        width: 360px;
+    }
+}
+
+#content {
+    flex-grow: 1;
+    overflow: auto;
+}
+
+.content {
+    margin-bottom: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 1100px;
+    margin: 0 auto 20px;
+}
+
+
+a {
+    color: unset;
+    cursor: pointer;
+    text-decoration: none;
+
+    &:hover {
+        color: cornflowerblue;
+    }
+}
+
+.box {
+    display: inline-block;
+    width: 340px;
+    border: 1px solid #cccccc;
+    background: white;
+    margin: 10px;
+    position: relative;
+    box-sizing: border-box;
+
+    img {
+        margin: 10px;
+        width: 60px;
+        height: 60px;
+        display: inline-block;
+        vertical-align: top;
+    }
+
+    h2 {
+        margin: 10px;
+        display: inline-block;
+        font-weight: normal;
+        font-size: 1.4em;
+        padding: 0;
+        width: 238px;
+        vertical-align: top;
+    }
+
+    .id {
+        display: block;
+        padding: 2px 8px;
+        background: #f1f1f1;
+        color: #9c9c9c;
+        font-size: .75em;
+        line-height: 1.5em;
+        font-weight: lighter;
+        letter-spacing: 1px;
+        margin: 0;
+
+        &:hover {
+            background: #e5eefd;
+            color: cornflowerblue;
+        }
+    }
+
+    .floating {
+        opacity: 0;
+    }
+
+    &:hover .floating {
+        opacity: 1;
+    }
+}
+
+.virgin {
+    display: inline-block;
+    width: 340px;
+    border: 1px dashed #d6d6d6;
+    color: #929292;
+    margin: 10px;
+    font-size: 1.4em;
+    padding: 10px;
+    cursor: pointer;
+    box-sizing: border-box;
+
+    &:hover {
+        color: cornflowerblue;
+        border-color: cornflowerblue;
+    }
+}
+
+.floating {
+    position: absolute;
+    top: 0;
+    right: 2px;
+    color: blue;
+
+    img {
+        width: 16px;
+        height: 16px;
+        margin: 0;
+        padding: 2px;
+        cursor: pointer;
+        opacity: .5;
+
+        &:hover {
+            opacity: 1;
+        }
+    }
+}
+
+.property {
+    background: #f9f9f9;
+    color: gray;
+    white-space: pre;
+    padding: 0 4px 0 0;
+    display: block;
+
+    &::before {
+        content: attr(data-name);
+        display: inline-block;
+        text-align: center;
+        width: 40px;
+        padding: 0 6px;
+        margin-right: 6px;
+        background: #f1f1f1;
+    }
+}
+
+table {
+    border-collapse: collapse;
+}
+
+td {
+    border: 1px solid #d6d6d6;
+    padding: 3px 6px;
+}
+
+thead {
+    font-size: 1.2em;
+}
+
+#log {
+    position: fixed;
+    left: 100%;
+    top: 0;
+    height: 100%;
+    background: white;
+    color: #303030;
+    border-left: 1px solid #cccccc;
+    transition: transform .2s;
+    display: flex;
+    flex-direction: column;
+    max-width: 100%;
+
+    h3 {
+        padding: 2px 8px;
+        background: #f1f1f1;
+        color: #9c9c9c;
+        font-size: .75em;
+        line-height: 1.5em;
+        font-weight: lighter;
+        letter-spacing: 1px;
+        margin: 0;
+    }
+
+    .opener {
+        position: absolute;
+        white-space: nowrap;
+        right: 100%;
+        top: 50%;
+        border: 1px solid #cccccc;
+        background: white;
+        padding: 4px 27px 10px;
+        box-sizing: border-box;
+        transform: rotate(-90deg);
+        margin: -10px -50px;
+        cursor: pointer;
+    }
+}
+
+body.log-open #log {
+    transform: translateX(-100%);
+}
+
+@media (max-width: 741px) {
+    body.log-open #log .opener {
+        margin-right: -76px;
+    }
+}
+
+@media screen and (min-width: 1780px) {
+    body {
+        transition: margin .2s;
+        &.log-open {
+            margin-right: 680px;
+        }
+    }
+}
+
+#logtext {
+    width: 680px;
+    white-space: pre;
+    padding: 10px 0 20px 0;
+    font-size: .9em;
+    overflow: auto;
+    flex-grow: 1;
+
+    > .tag {
+        border-bottom: 1px solid #efefef;
+        padding: 1px 10px;
+    }
+
+    .tag-www {
+        color: brown;
+    }
+
+    .tag-mqtt,
+    .tag-mqtt {
+        color: cornflowerblue;
+    }
+
+    .tag-http,
+    .tag-http {
+        color: coral;
+    }
+
+    .tag-db {
+        color: limegreen;
+    }
+
+    .tag-err {
+        color: red;
+    }
+
+    .tag-up {
+        color: mediumorchid;
+    }
+}
+
+#statusbar {
+    border-top: 1px solid #cccccc;
+    font-size: .9em;
+    line-height: 1.6em;
+    color: #9c9c9c;
+
+    .inset > span {
+        border-left: 1px solid #cccccc;
+        padding: 0 10px;
+    }
+
+    &.ok {
+        background: #ccffbb;
+        color: #308637;
+        border-color: #67ff67;
+
+        .inset > span {
+            border-color: #67ff67;
+        }
+    }
+
+    &.err {
+        background: #ffcebb;
+        color: #863030;
+        border-color: #ff8367;
+
+        .inset > span {
+            border-color: #ff8367;
+        }
+    }
+       
+}
+
+@media (max-width: 741px) {
+    #statusbar span {
+        display: block;
+    }
+}
+
+#status {
+}

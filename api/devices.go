@@ -4,11 +4,12 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
-	"github.com/Waziup/wazigate-edge/mqtt"
+	"github.com/Waziup/wazigate-edge/clouds"
+	"github.com/Waziup/wazigate-edge/edge"
 	"github.com/Waziup/wazigate-edge/tools"
-	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	routing "github.com/julienschmidt/httprouter"
 )
@@ -30,15 +31,35 @@ type Device struct {
 // GetDevices implements GET /devices
 func GetDevices(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
-	if DBDevices == nil {
-		http.Error(resp, "Database unavailable.", http.StatusServiceUnavailable)
+	devices := edge.GetDevices()
+	encoder := json.NewEncoder(resp)
+
+	device, err := devices.Next()
+	if err != nil {
+		serveError(resp, err)
 		return
 	}
 
-	var device Device
 	resp.Header().Set("Content-Type", "application/json")
-	iter := DBDevices.Find(nil).Iter()
-	serveIter(resp, iter, &device)
+	resp.Write([]byte{'['})
+	for device != nil {
+		encoder.Encode(device)
+		device, _ = devices.Next()
+		if device != nil {
+			resp.Write([]byte{','})
+		}
+	}
+	resp.Write([]byte{']'})
+}
+
+func serveError(resp http.ResponseWriter, err error) {
+
+	if codeErr, ok := err.(edge.CodeError); ok {
+		http.Error(resp, codeErr.Text, codeErr.Code)
+		return
+	}
+
+	http.Error(resp, "internal server error", 500)
 }
 
 // GetDevice implements GET /devices/{deviceID}
@@ -50,14 +71,14 @@ func GetDevice(resp http.ResponseWriter, req *http.Request, params routing.Param
 // GetCurrentDevice implements GET /device
 func GetCurrentDevice(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
-	getDevice(resp, GetLocalID())
+	getDevice(resp, edge.LocalID())
 }
 
 // GetCurrentDeviceID implements GET /device/id
 func GetCurrentDeviceID(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
 	resp.Header().Set("Content-Type", "text/plain")
-	resp.Write([]byte(GetLocalID()))
+	resp.Write([]byte(edge.LocalID()))
 }
 
 // PostDevice implements POST /devices
@@ -75,7 +96,7 @@ func DeleteDevice(resp http.ResponseWriter, req *http.Request, params routing.Pa
 // DeleteCurrentDevice implements DELETE /device
 func DeleteCurrentDevice(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
-	deleteDevice(resp, GetLocalID())
+	deleteDevice(resp, edge.LocalID())
 }
 
 // PostDeviceName implements POST /devices/{deviceID}/name
@@ -87,114 +108,48 @@ func PostDeviceName(resp http.ResponseWriter, req *http.Request, params routing.
 // PostCurrentDeviceName implements POST /device/name
 func PostCurrentDeviceName(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
-	postDeviceName(resp, req, GetLocalID())
+	postDeviceName(resp, req, edge.LocalID())
 }
 
 ////////////////////
 
 func getDevice(resp http.ResponseWriter, deviceID string) {
 
-	if DBDevices == nil {
-		http.Error(resp, "Database unavailable.", http.StatusServiceUnavailable)
+	device, err := edge.GetDevice(deviceID)
+	if err != nil {
+		serveError(resp, err)
 		return
 	}
-
-	query := DBDevices.FindId(deviceID)
-	var device Device
+	if device == nil {
+		resp.WriteHeader(404)
+		resp.Write([]byte("not found"))
+		return
+	}
+	encoder := json.NewEncoder(resp)
 	resp.Header().Set("Content-Type", "application/json")
-	if err := query.One(&device); err != nil {
-		http.Error(resp, "null", http.StatusNotFound)
-		return
-	}
-	data, _ := json.Marshal(&device)
-	resp.Write(data)
+	encoder.Encode(device)
 }
 
 ////////////////////
 
 func postDevice(resp http.ResponseWriter, req *http.Request) {
-	var err error
 
-	if DBDevices == nil {
-		http.Error(resp, "Database unavailable.", http.StatusServiceUnavailable)
+	var device edge.Device
+	if err := getReqDevice(req, &device); err != nil {
+		http.Error(resp, "bad request: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	var device Device
-	if err = getReqDevice(req, &device); err != nil {
-		http.Error(resp, "Bad Request: "+err.Error(), http.StatusBadRequest)
+	if err := edge.PostDevice(&device); err != nil {
+		serveError(resp, err)
 		return
 	}
 
-	err = DBDevices.Insert(&device)
-	if err != nil {
-		http.Error(resp, "Database error: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
+	log.Printf("[DB   ] Created device %s.", device.ID)
 
-	if len(device.Sensors) != 0 && DBSensorValues != nil {
-		sensors := make([]interface{}, 0, len(device.Sensors))
-		for _, sensor := range device.Sensors {
-			if sensor.Value != nil {
-				sensors = append(sensors, &SensorValue{
-					ID:       newID(sensor.Time),
-					DeviceID: device.ID,
-					SensorID: sensor.ID,
-					Value:    sensor.Value,
-				})
-			}
-		}
-		DBSensorValues.Insert(sensors...)
-	}
+	clouds.FlagDevice(device.ID)
 
-	if len(device.Actuators) != 0 && DBActuatorValues != nil {
-		actuators := make([]interface{}, 0, len(device.Actuators))
-		for _, actuator := range device.Actuators {
-			if actuator.Value != nil {
-				actuators = append(actuators, &ActuatorValue{
-					ID:         newID(actuator.Time),
-					DeviceID:   device.ID,
-					ActuatorID: actuator.ID,
-					Value:      actuator.Value,
-				})
-			}
-		}
-		DBActuatorValues.Insert(actuators...)
-	}
-
-	log.Printf("[DB   ] created device %s\n", device.ID)
-
-	CloudsMutex.RLock()
-	for _, cloud := range Clouds {
-
-		topic := "devices/" + device.ID + "/actuators/#"
-		pkt := mqtt.Subscribe(0, []mqtt.TopicSubscription{
-			mqtt.TopicSubscription{
-				Name: topic,
-			},
-		})
-		cloud.Queue.WritePacket(pkt)
-	}
-	CloudsMutex.RUnlock()
-
-	resp.Header().Set("Content-Type", "application/json")
-	resp.Write([]byte{'"'})
 	resp.Write([]byte(device.ID))
-	resp.Write([]byte{'"'})
-
-	go fallbackSync()
-}
-
-// FALLBACK: create devices with REST
-func fallbackSync() {
-	CloudsMutex.RLock()
-	for _, cloud := range Clouds {
-		log.Println("[UP  F] (fallback) initial sync failed")
-		if !cloud.initialSync() {
-			log.Println("[UP  F] (fallback) initial sync failed")
-		}
-	}
-	CloudsMutex.RUnlock()
 }
 
 ////////////////////
@@ -202,87 +157,42 @@ func fallbackSync() {
 func postDeviceName(resp http.ResponseWriter, req *http.Request, deviceID string) {
 	body, err := tools.ReadAll(req.Body)
 	if err != nil {
-		http.Error(resp, "Bad Request: "+err.Error(), http.StatusBadRequest)
+		http.Error(resp, "bad request: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 	var name string
-	err = json.Unmarshal(body, &name)
-	if err != nil {
-		http.Error(resp, "Bad Request: "+err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	if DBDevices == nil {
-		http.Error(resp, "Database unavailable.", http.StatusServiceUnavailable)
-		return
-	}
-
-	err = DBDevices.Update(bson.M{
-		"_id": deviceID,
-	}, bson.M{
-		"$set": bson.M{
-			"modified": time.Now(),
-			"name":     name,
-		},
-	})
-
-	if err != nil {
-		if err == mgo.ErrNotFound {
-			http.Error(resp, "Device not found.", http.StatusNotFound)
+	contentType := req.Header.Get("Content-Type")
+	if strings.HasSuffix(contentType, "application/json") {
+		err = json.Unmarshal(body, &name)
+		if err != nil {
+			http.Error(resp, "bad request: "+err.Error(), http.StatusBadRequest)
 			return
 		}
-		http.Error(resp, "Database Error - "+err.Error(), http.StatusInternalServerError)
-		return
+	} else {
+		name = string(body)
 	}
 
-	resp.Write([]byte("true"))
+	if err := edge.SetDeviceName(deviceID, name); err != nil {
+		serveError(resp, err)
+	}
 }
 
 ////////////////////
 
 func deleteDevice(resp http.ResponseWriter, deviceID string) {
 
-	if DBDevices == nil || DBSensorValues == nil || DBActuatorValues == nil {
-		http.Error(resp, "Database unavailable.", http.StatusServiceUnavailable)
-		return
-	}
-
-	var device Device
-	devices := DBDevices.FindId(deviceID).Iter()
-	for devices.Next(&device) {
-		CloudsMutex.RLock()
-		for _, cloud := range Clouds {
-			topic := "devices/" + device.ID + "/actuators/#"
-			pkt := mqtt.Unsubscribe(0, []string{topic})
-			cloud.Queue.WritePacket(pkt)
-		}
-		CloudsMutex.RUnlock()
-	}
-	devices.Close()
-
-	err := DBDevices.RemoveId(deviceID)
-	info1, _ := DBSensorValues.RemoveAll(bson.M{"deviceId": deviceID})
-	info2, _ := DBActuatorValues.RemoveAll(bson.M{"deviceId": deviceID})
-	log.Printf("[DB   ] removed device %s\n", deviceID)
-	log.Printf("[DB   ] removed %d values from %s/* sensors\n", info1.Removed, deviceID)
-	log.Printf("[DB   ] removed %d values from %s/* actuators\n", info2.Removed, deviceID)
-
+	_, numS, numA, err := edge.DeleteDevice(deviceID)
 	if err != nil {
-		if err == mgo.ErrNotFound {
-			http.Error(resp, "null", http.StatusNotFound)
-			return
-		}
-
-		http.Error(resp, "Database Error: "+err.Error(), http.StatusInternalServerError)
+		serveError(resp, err)
 		return
 	}
 
-	resp.Write([]byte("null"))
+	log.Printf("[DB   ] Removed device %s (%d sensor values, %d actuator values).\n", deviceID, numS, numA)
 }
 
 ////////////////////
 
-func getReqDevice(req *http.Request, device *Device) error {
+func getReqDevice(req *http.Request, device *edge.Device) error {
 	body, err := tools.ReadAll(req.Body)
 	if err != nil {
 		return err

@@ -1,237 +1,358 @@
 package mqtt
 
 import (
-	"context"
 	"crypto/tls"
 	"errors"
-	"io"
 	"log"
 	"net"
 	"strings"
+	"sync"
 )
 
+// Reciever can get messages from subscriptions.
 type Reciever interface {
-	Publish(client *Client, msg *Message) error
+	Publish(msg *Message) error
+	ID() string
 }
 
-type Authenticator interface {
-	Authenticate(client *Client, auth *ConnectAuth) byte
+// The RecieverFunc type is an adapter to allow the use of
+// ordinary functions as Recievres.
+type RecieverFunc func(msg *Message) error
+
+// Publish calls func.
+func (f RecieverFunc) Publish(msg *Message) error {
+	return f(msg)
 }
+
+func (f RecieverFunc) ID() string {
+	return "<recieverFunc>"
+}
+
+var ErrServerClose = errors.New("server close")
+var ErrSessionOvertake = errors.New("session overtaken")
+
+/*
+// Subscription
+type Subscription interface {
+	// Topic is the topic name this subscription belongs to.
+	Topic() string
+	// QoS is the subspcition QoS.
+	QoS() byte
+}
+*/
+
+type Sender interface {
+	ID() string
+}
+
+// Server represents an MQTT server.
+type Server interface {
+	// Connect checks the ConnectAuth of a new client.
+	Connect(client *Client, auth *ConnectAuth) ConnectCode
+	// Close terminates the server an all client connection.
+	Close() error
+	// Serve makes the stream part of this server. This call is blocking and will read and write from the stream until the client or the server closes the connection.
+	Serve(stream Stream)
+	// Publish can be called from clients to emit new messages.
+	Publish(sender Sender, msg *Message) int
+	// Subscribe adds a new subscription to the topics tree.
+	Subscribe(recv Reciever, topic string, qos byte) *Subscription
+	// SubscribeAll adds a list of subscriptions to the topics tree.
+	SubscribeAll(recv Reciever, topics []TopicSubscription) []*Subscription
+	// Unsubscribe releases a subscription.
+	Unsubscribe(subs ...*Subscription)
+	// Disconnect removes a client that has diconnected.
+	Disconnect(client *Client, reason error)
+}
+
+type LogLevel int
 
 const (
-	actionCreate = 1
-	actionRemove = 2
+	LogLevelErrors   LogLevel = -2
+	LogLevelWarnings LogLevel = -1
+	LogLevelNormal   LogLevel = 0
+	LogLevelVerbose  LogLevel = 1
+	LogLevelDebug             = 2
 )
 
-type subscriptionChange struct {
-	action int
-	subs   *Subscription
-	topic  string
+type server struct {
+	topics      *topic
+	topicsMutex sync.RWMutex
+
+	auth Authenticate
+
+	MaxPending int
+
+	sessions      map[string]*Client
+	sessionsMutex sync.Mutex
+
+	log      *log.Logger
+	LogLevel LogLevel
 }
 
-type publication struct {
-	sender *Client
-	msg    *Message
-}
+// Authenticate is a simple function to check a client and its authentication.
+type Authenticate func(client *Client, auth *ConnectAuth) ConnectCode
 
-type connection struct {
-	stream io.ReadWriteCloser
-	packet *ConnectPacket
-	server Server
-}
+// NewServer creates a new server.
+func NewServer(auth Authenticate, log *log.Logger, ll LogLevel) Server {
 
-// The DefaultServer is as MQTT Server implementation with topics, subscriptions and all that.
-// It will accept all clients, so use the Auth interface for custom permission checking.
-type DefaultServer struct {
-	sigclose     chan (struct{})
-	subsQueue    chan subscriptionChange
-	pubQueue     chan publication
-	connectQueue chan connection
-
-	// Use a custom Authenticator to check each client for permissions.
-	Auth Authenticator
-	// The topics tree, holding all the subscriptions.
-	Topics *Topic
-}
-
-// An interface for use as a MQTT server, that can recieve Publish-Messages,
-// authenticate clients and manage subscriptions and unsubscriptions.
-type Server interface {
-	Reciever
-	Connect(client *Client, auth *ConnectAuth) byte
-	PreConnect(stream io.ReadWriteCloser, connect *ConnectPacket, server Server)
-	Disconnect(client *Client, err error)
-	Subscribe(recv Reciever, topic string, qos byte) *Subscription
-	Unsubscribe(subs *Subscription)
-}
-
-// Create a new MQTT server.
-func NewServer() *DefaultServer {
-	server := &DefaultServer{
-		sigclose:     make(chan struct{}),
-		subsQueue:    make(chan subscriptionChange),
-		pubQueue:     make(chan publication),
-		connectQueue: make(chan connection),
-		Topics:       NewTopic(nil, ""),
+	server := &server{
+		auth:       auth,
+		topics:     newTopic(nil, ""),
+		sessions:   make(map[string]*Client),
+		log:        log,
+		LogLevel:   ll,
+		MaxPending: MaxPending,
 	}
 
-	go server.schedule()
 	return server
 }
 
-func (server *DefaultServer) Publish(client *Client, msg *Message) error {
-	server.pubQueue <- publication{client, msg}
+func (server *server) Close() error {
+	server.sessionsMutex.Lock()
+	sessions := server.sessions
+	server.sessions = nil
+	for _, client := range sessions {
+		client.Disconnect()
+	}
+	server.sessionsMutex.Unlock()
+	for _, client := range sessions {
+		server.Disconnect(client, ErrServerClose)
+	}
 	return nil
 }
 
-func (server *DefaultServer) Connect(client *Client, auth *ConnectAuth) byte {
-	if server.Auth != nil {
-		return server.Auth.Authenticate(client, auth)
+func (server *server) Connect(client *Client, auth *ConnectAuth) ConnectCode {
+	if server.auth != nil {
+		return server.auth(client, auth)
 	}
 	return CodeAccepted
 }
 
-func (server *DefaultServer) PreConnect(stream io.ReadWriteCloser, connect *ConnectPacket, s Server) {
-	server.connectQueue <- connection{stream, connect, s}
+func (server *server) Serve(stream Stream) {
+
+	pkt, err := stream.ReadPacket()
+	if err != nil {
+		if server.log != nil && server.LogLevel >= LogLevelWarnings {
+			server.log.Printf("Err Pre-connect client %v", err)
+		}
+		stream.Close()
+		return
+	}
+
+	connectPkt, ok := pkt.(*ConnectPacket)
+	if !ok {
+		if server.log != nil && server.LogLevel >= LogLevelWarnings {
+			server.log.Printf("Err Handshake")
+		}
+		stream.Close()
+		return
+	}
+
+	id := connectPkt.ClientID
+
+	if server.log != nil && server.LogLevel >= LogLevelDebug {
+		server.log.Printf("%.24q > %v", id, connectPkt)
+	}
+
+	if !(connectPkt.Version == 4 && connectPkt.Protocol == "MQTT") &&
+		!(connectPkt.Version == 3 && connectPkt.Protocol == "MQIsdp") {
+
+		if server.log != nil && server.LogLevel >= LogLevelWarnings {
+			server.log.Printf("Err Client Protocol 0x%x %q", connectPkt.Version, connectPkt.Protocol)
+		}
+		stream.WritePacket(ConnAck(CodeUnacceptableProtoV, false))
+		return
+	}
+
+	client := &Client{
+		id:     id,
+		stream: stream,
+		will:   connectPkt.Will,
+
+		Server: server,
+
+		LogLevel: server.LogLevel,
+		log:      server.log,
+
+		subscriptions: make(map[string]*Subscription),
+
+		pending:    make(map[int]Packet),
+		MaxPending: server.MaxPending,
+	}
+
+	if code := server.Connect(client, connectPkt.Auth); code != CodeAccepted {
+		client.Send(ConnAck(code, false))
+		if server.log != nil && server.LogLevel >= LogLevelWarnings {
+			server.log.Printf("%.24q Rejected %s", id, code)
+		}
+		return
+	}
+
+	s := client.Server
+
+	if server.log != nil && server.LogLevel >= LogLevelNormal {
+		server.log.Printf("%.24q Connected Protocol 0x%x", id, connectPkt.Version)
+	}
+
+	connectPkt = nil
+
+	server.sessionsMutex.Lock()
+	oldClient := server.sessions[client.id]
+	server.sessions[client.id] = client
+	server.sessionsMutex.Unlock()
+
+	if oldClient != nil {
+		if server.log != nil && server.LogLevel >= LogLevelVerbose {
+			server.log.Printf("%.24q Session overtake", id)
+		}
+		oldClient.Disconnect()
+		s.Disconnect(oldClient, ErrSessionOvertake)
+	}
+
+	client.Send(ConnAck(CodeAccepted, false))
+
+	////////////////////
+
+	var msg *Message
+
+	for true {
+
+		msg, err = client.Message()
+		if err != nil {
+			if server.log != nil && server.LogLevel >= LogLevelNormal {
+				server.log.Printf("%.24q Err %v", id, err)
+			}
+			break
+		}
+		if msg == nil {
+			break
+		}
+		if server.log != nil {
+			if server.LogLevel >= LogLevelNormal {
+				server.log.Printf("%.24q Message %q s:%d r:%v q:%d", id, msg.Topic, len(msg.Data), msg.Retain, msg.QoS)
+			}
+			if server.LogLevel >= LogLevelDebug {
+				server.log.Printf("  Data: %q", msg.Data)
+			}
+		}
+		hit := s.Publish(client, msg)
+		if server.log != nil && server.LogLevel >= LogLevelVerbose {
+			server.log.Printf("  Hit %d subscribers", hit)
+		}
+	}
+
+	////////////////////
+
+	if len(client.subscriptions) != 0 {
+		if server.log != nil && server.LogLevel >= LogLevelDebug {
+			server.log.Printf("%.24q Release subscriptions:", id)
+		}
+		for _, subs := range client.subscriptions {
+			if server.log != nil && server.LogLevel >= LogLevelDebug {
+				server.log.Printf("  %q qos:%d", subs.Topic(), subs.QoS())
+			}
+			s.Unsubscribe(subs)
+		}
+	}
+
+	if err != nil {
+
+		if will := client.Will(); will != nil {
+			if server.log != nil && server.LogLevel >= LogLevelVerbose {
+				server.log.Printf("%.24q Will %q s:%d r:%v q:%d", id, will.Topic, len(will.Data), will.Retain, will.QoS)
+			}
+			hit := s.Publish(client, will)
+			if server.log != nil && server.LogLevel >= LogLevelVerbose {
+				server.log.Printf("  Hit %d subscribers", hit)
+			}
+		}
+	}
+
+	server.sessionsMutex.Lock()
+	oldClient = server.sessions[id]
+	if oldClient == client {
+		delete(server.sessions, id)
+	}
+	server.sessionsMutex.Unlock()
+
+	if oldClient == client {
+		client.Disconnect()
+		s.Disconnect(client, err)
+	}
 }
 
-func (server *DefaultServer) Disconnect(client *Client, err error) {
+func (server *server) Publish(sender Sender, msg *Message) int {
+
+	valid, hasWildcards := checkTopic(msg.Topic)
+	if !valid || hasWildcards {
+		if server.log != nil && server.LogLevel >= LogLevelWarnings {
+			server.log.Printf("Err Can not publish to %q", msg.Topic)
+		}
+		return 0
+	}
+	name := strings.Split(msg.Topic, "/")
+	server.topicsMutex.RLock()
+	hit := server.topics.publish(name, msg)
+	server.topicsMutex.RUnlock()
+	return hit
 }
 
-func (server *DefaultServer) Subscribe(recv Reciever, topic string, qos byte) *Subscription {
+func (server *server) Subscribe(recv Reciever, topic string, qos byte) *Subscription {
+	name := strings.Split(topic, "/")
+	subs := newSubscription(recv, qos)
+	server.topicsMutex.Lock()
+	server.topics.subscribe(name, subs)
+	server.topicsMutex.Unlock()
 
-	subs := NewSubscription(recv, qos)
-	server.subsQueue <- subscriptionChange{actionCreate, subs, topic}
+	if server.log != nil && server.LogLevel >= LogLevelNormal {
+		server.log.Printf("%.24q Subscribed %q qos:%d", recv.ID(), topic, qos)
+	}
 	return subs
 }
 
-func (server *DefaultServer) Unsubscribe(subs *Subscription) {
+func (server *server) SubscribeAll(recv Reciever, topics []TopicSubscription) []*Subscription {
+	subs := make([]*Subscription, len(topics))
+	server.topicsMutex.Lock()
 
-	server.subsQueue <- subscriptionChange{actionRemove, subs, ""}
+	for i, topic := range topics {
+		name := strings.Split(topic.Name, "/")
+		s := newSubscription(recv, topic.QoS)
+		server.topics.subscribe(name, s)
+		subs[i] = s
+	}
+
+	server.topicsMutex.Unlock()
+
+	if server.log != nil && server.LogLevel >= LogLevelNormal {
+		for i, topic := range topics {
+			server.log.Printf("%.24q Subscribed %q qos:%d", recv.ID(), topic.Name, subs[i].QoS())
+		}
+	}
+	return subs
 }
 
-func (server *DefaultServer) Close() {
-
-	close(server.sigclose)
+func (server *server) Unsubscribe(subs ...*Subscription) {
+	server.topicsMutex.Lock()
+	for _, sub := range subs {
+		sub.unsubscribe()
+	}
+	server.topicsMutex.Unlock()
 }
 
-////////////////////////////////////////////////////////////////////////////////
-
-type closer interface {
-	Close(err error)
-}
-
-var serverClosed = errors.New("Server closed.")
-
-func (server *DefaultServer) schedule() {
-
-RUN:
-	for {
-		select {
-		case <-server.sigclose:
-
-			close(server.subsQueue)
-			close(server.pubQueue)
-			close(server.connectQueue)
-
-			subs := server.Topics.Find([]string{"$SYS", "all"})
-			for ; subs != nil; subs = subs.Next {
-				if c, ok := subs.Recv.(closer); ok {
-					c.Close(serverClosed)
-				}
-			}
-
-			break RUN
-
-		case evt := <-server.subsQueue:
-
-			switch evt.action {
-			case actionCreate:
-				server.Topics.Subscribe(strings.Split(evt.topic, "/"), evt.subs)
-
-			case actionRemove:
-				evt.subs.Unsubscribe()
-			}
-
-			// log.Println("[DEBUG] Topics:", server.Topics)
-
-		case pub := <-server.pubQueue:
-
-			if strings.HasPrefix(pub.msg.Topic, "$SYS/") {
-				// we don't do that here..
-				return
-			}
-
-			// n := len(pub.msg.Data)
-			// if n > 30 {
-			// 	n = 30
-			// }
-
-			//if svr.debug {
-			//	log.Printf("[DEBUG] Publish: %q: %q", msg.Topic, string(msg.Buf[:n]))
-			//}
-			topic := strings.Split(pub.msg.Topic, "/")
-			server.Topics.Publish(topic, pub.sender, pub.msg)
-
-		case conn := <-server.connectQueue:
-
-			var client *Client
-			subs := server.Topics.Find([]string{"$SYS", "all"})
-			for ; subs != nil; subs = subs.Next {
-				if recv, ok := subs.Recv.(*Client); ok {
-					if conn.packet.ClientId == recv.Id {
-						if conn.packet.CleanSession {
-							recv.cleanup()
-						} else {
-							client = recv
-						}
-						break
-					}
-				}
-			}
-
-			if client == nil {
-				client = &Client{
-					Pending: make(map[int]Packet),
-					// queuePacket: make(chan Packet),
-					// queueWriter: make(chan io.Writer),
-					Closer:    conn.stream,
-					Server:    conn.server,
-					subs:      make(map[string]*Subscription),
-					State:     StateConnecting,
-					Context:   context.Background(),
-					sigServed: make(chan struct{}),
-					pktQueue: NewQueue(conn.packet.ClientId),
-				}
-
-				if err := client.connect(conn.packet, conn.stream); err != nil {
-					log.Println("[MQTT ] Err", err)
-					continue
-				}
-
-				client.sysall = NewSubscription(client, 0)
-				server.Topics.Subscribe([]string{"$SYS", "all"}, client.sysall)
-
-				go client.serveWriter(conn.stream)
-				go client.serveReader(conn.stream)
-
-			} else {
-
-				client.sigServed = make(chan struct{})
-				client.Closer = conn.stream
-				client.State = StateConnecting
-				if client.connect(conn.packet, conn.stream) == nil {
-
-					client.serveWriter(conn.stream)
-					go client.serveReader(conn.stream)
-				}
-			}
+func (server *server) Disconnect(client *Client, reason error) {
+	if server.log != nil {
+		if reason == nil {
+			server.log.Printf("%.24q Disconnected", client.id)
+		} else {
+			server.log.Printf("%.24q Err Disconnected: %v", client.id, reason)
 		}
 	}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
+// ListenAndServe listens at the give tcp address.
 func ListenAndServe(addr string, server Server) error {
 
 	listener, err := net.Listen("tcp", addr)
@@ -242,6 +363,7 @@ func ListenAndServe(addr string, server Server) error {
 	return Serve(listener, server)
 }
 
+// ListenAndServeTLS listens at the give tcp address.
 func ListenAndServeTLS(addr string, config *tls.Config, server Server) error {
 
 	listener, err := tls.Listen("tcp", addr, config)
@@ -252,39 +374,19 @@ func ListenAndServeTLS(addr string, config *tls.Config, server Server) error {
 	return Serve(listener, server)
 }
 
+// Serve accepts listeners and hands them over to the server.
 func Serve(listener net.Listener, server Server) error {
 
 	if server == nil {
-		server = NewServer()
+		server = NewServer(nil, nil, 0)
 	}
 
 	for {
 		conn, err := listener.Accept()
 		if err == nil {
-			go ServeConn(conn, server)
+			go server.Serve(NewStream(conn, 0))
 		} else {
 			return err
 		}
-	}
-}
-
-func ServeConn(stream io.ReadWriteCloser, server Server) {
-
-	if server == nil {
-		server = NewServer()
-	}
-
-	packet, _, err := Read(stream)
-	if err != nil {
-		log.Println("[MQTT ] Invalid handshake:", err)
-		stream.Close()
-		return
-	}
-
-	if connect, ok := packet.(*ConnectPacket); ok {
-		server.PreConnect(stream, connect, server)
-	} else {
-		log.Println("[MQTT ] Invalid handshake: Not a Connect-Packet:", packet.Header().MType)
-		stream.Close()
 	}
 }

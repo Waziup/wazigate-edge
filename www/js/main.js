@@ -68,7 +68,7 @@
 
   showDevices = async function() {
     var device, devices, resp, virgin;
-    resp = (await fetch("/devices"));
+    resp = (await fetch("devices"));
     if (!resp.ok) {
       showRespError(resp);
       return;
@@ -213,7 +213,7 @@
   //###################
   showDevice = async function(deviceID) {
     var actuator, device, ref, ref1, resp, sensor, virgin1, virgin2;
-    resp = (await fetch(`/devices/${deviceID}`));
+    resp = (await fetch(`devices/${deviceID}`));
     if (!resp.ok) {
       showRespError(resp);
       return;
@@ -240,7 +240,7 @@
             value: null,
             time: new Date()
           };
-          resp = (await fetch(`/devices/${deviceID}/sensors`, {
+          resp = (await fetch(`devices/${deviceID}/sensors`, {
             method: "POST",
             body: JSON.stringify(sensor)
           }));
@@ -278,7 +278,7 @@
             value: null,
             time: new Date()
           };
-          resp = (await fetch(`/devices/${deviceID}/actuators`, {
+          resp = (await fetch(`devices/${deviceID}/actuators`, {
             method: "POST",
             body: JSON.stringify(actuator)
           }));
@@ -524,14 +524,14 @@
   //###################
   showSensor = async function(deviceID, sensorID) {
     var resp, resp2, sensor, tbody, value, values, virgin;
-    resp = (await fetch(`/devices/${deviceID}/sensors/${sensorID}`));
+    resp = (await fetch(`devices/${deviceID}/sensors/${sensorID}`));
     if (!resp.ok) {
       showRespError(resp);
       return;
     }
     sensor = (await resp.json());
     heading.text(sensor.name);
-    resp2 = (await fetch(`/devices/${deviceID}/sensors/${sensorID}/values`));
+    resp2 = (await fetch(`devices/${deviceID}/sensors/${sensorID}/values`));
     if (!resp2.ok) {
       showRespError(resp2);
       return;
@@ -556,7 +556,7 @@
             }
             value = JSON.stringify(value);
           }
-          resp3 = (await fetch(`/devices/${deviceID}/sensors/${sensorID}/value`, {
+          resp3 = (await fetch(`devices/${deviceID}/sensors/${sensorID}/value`, {
             method: "POST",
             body: value
           }));
@@ -583,14 +583,14 @@
 
   showActuator = async function(deviceID, actuatorID) {
     var actuator, resp, resp2, tbody, value, values, virgin;
-    resp = (await fetch(`/devices/${deviceID}/actuators/${actuatorID}`));
+    resp = (await fetch(`devices/${deviceID}/actuators/${actuatorID}`));
     if (!resp.ok) {
       showRespError(resp);
       return;
     }
     actuator = (await resp.json());
     heading.text(actuator.name);
-    resp2 = (await fetch(`/devices/${deviceID}/actuators/${actuatorID}/values`));
+    resp2 = (await fetch(`devices/${deviceID}/actuators/${actuatorID}/values`));
     if (!resp2.ok) {
       showRespError(resp2);
       return;
@@ -615,7 +615,7 @@
             }
             value = JSON.stringify(value);
           }
-          resp3 = (await fetch(`/devices/${deviceID}/actuators/${actuatorID}/value`, {
+          resp3 = (await fetch(`devices/${deviceID}/actuators/${actuatorID}/value`, {
             method: "POST",
             body: value
           }));
@@ -729,7 +729,7 @@
   conncetMQTT = function() {
     var client, rnd;
     rnd = `${Math.random() * 1e6}`.slice(0, 6);
-    client = new MQTT.Client(location.hostname, 80, "dashboard-" + rnd);
+    client = new MQTT.Client(location.hostname, parseInt(location.port) || 80, "dashboard-" + rnd);
     client.onConnectionLost = function(resp) {
       if (resp.errorCode !== 0) {
         setStatus(false, `Connection lost: ${resp.errorMessage}`);

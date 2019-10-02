@@ -58,7 +58,7 @@ content2 = $ "#content2"
 subheading2 = $ "#subheading2"
 
 showDevices = () ->
-    resp = await fetch "/devices"
+    resp = await fetch "devices"
     if ! resp.ok
         showRespError resp
         return
@@ -158,7 +158,7 @@ inflateDevice = (device) ->
 ####################
 
 showDevice = (deviceID) ->
-    resp = await fetch "/devices/#{deviceID}"
+    resp = await fetch "devices/#{deviceID}"
     if ! resp.ok
         showRespError resp
         return
@@ -181,7 +181,7 @@ showDevice = (deviceID) ->
                 name: name
                 value: null
                 time: new Date()
-            resp = await fetch "/devices/#{deviceID}/sensors",
+            resp = await fetch "devices/#{deviceID}/sensors",
                 method: "POST"
                 body: JSON.stringify sensor
             if ! resp.ok
@@ -214,7 +214,7 @@ showDevice = (deviceID) ->
                 name: name
                 value: null
                 time: new Date()
-            resp = await fetch "/devices/#{deviceID}/actuators",
+            resp = await fetch "devices/#{deviceID}/actuators",
                 method: "POST"
                 body: JSON.stringify actuator
             if ! resp.ok
@@ -370,7 +370,7 @@ inflateActuator = (deviceID, actuator) ->
 ####################
 
 showSensor = (deviceID, sensorID) ->
-    resp = await fetch "/devices/#{deviceID}/sensors/#{sensorID}"
+    resp = await fetch "devices/#{deviceID}/sensors/#{sensorID}"
     if ! resp.ok
         showRespError resp
         return
@@ -378,7 +378,7 @@ showSensor = (deviceID, sensorID) ->
 
     heading.text sensor.name
 
-    resp2 = await fetch "/devices/#{deviceID}/sensors/#{sensorID}/values"
+    resp2 = await fetch "devices/#{deviceID}/sensors/#{sensorID}/values"
     if ! resp2.ok
         showRespError resp2
         return
@@ -397,7 +397,7 @@ showSensor = (deviceID, sensorID) ->
                 if ! confirm "Value is not valid JSON! Send as string (with quotation marks)?\nValue: \"#{value}\""
                     return
                 value = JSON.stringify value
-            resp3 = await fetch "/devices/#{deviceID}/sensors/#{sensorID}/value",
+            resp3 = await fetch "devices/#{deviceID}/sensors/#{sensorID}/value",
                 method: "POST"
                 body: value
             if ! resp3.ok
@@ -437,7 +437,7 @@ showSensor = (deviceID, sensorID) ->
     return
 
 showActuator = (deviceID, actuatorID) ->
-    resp = await fetch "/devices/#{deviceID}/actuators/#{actuatorID}"
+    resp = await fetch "devices/#{deviceID}/actuators/#{actuatorID}"
     if ! resp.ok
         showRespError resp
         return
@@ -445,7 +445,7 @@ showActuator = (deviceID, actuatorID) ->
 
     heading.text actuator.name
 
-    resp2 = await fetch "/devices/#{deviceID}/actuators/#{actuatorID}/values"
+    resp2 = await fetch "devices/#{deviceID}/actuators/#{actuatorID}/values"
     if ! resp2.ok
         showRespError resp2
         return
@@ -464,7 +464,7 @@ showActuator = (deviceID, actuatorID) ->
                 if ! confirm "Value is not valid JSON! Send as string (with quotation marks)?\nValue: \"#{value}\""
                     return
                 value = JSON.stringify value
-            resp3 = await fetch "/devices/#{deviceID}/actuators/#{actuatorID}/value",
+            resp3 = await fetch "devices/#{deviceID}/actuators/#{actuatorID}/value",
                 method: "POST"
                 body: value
             if ! resp3.ok
@@ -583,7 +583,7 @@ MQTT = Messaging
 conncetMQTT = () ->
 
     rnd = "#{Math.random()*1e6}"[...6]
-    client = new MQTT.Client location.hostname, 80, "dashboard-"+rnd
+    client = new MQTT.Client location.hostname, parseInt(location.port)||80, "dashboard-"+rnd
 
     client.onConnectionLost = (resp) ->
         if resp.errorCode != 0

@@ -729,7 +729,7 @@ func readSubAck(fh *FixedHeader, buf []byte) (Packet, error) {
 	pkt.ID = int(buf[0])<<8 + int(buf[1])
 	buf = buf[2:]
 
-	n := len(buf) - 1
+	n := len(buf)
 	pkt.Granted = make([]byte, n)
 	for i := 0; i < n; i++ {
 		qos := buf[i]

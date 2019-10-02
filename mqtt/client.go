@@ -403,6 +403,11 @@ func (client *Client) Publish(msg *Message) error {
 	return client.Send(Publish(client.counter, msg))
 }
 
+func (client *Client) SetLogger(logger *log.Logger, level LogLevel) {
+	client.LogLevel = level
+	client.log = logger
+}
+
 /*
 // WriteSession writes the Session State of this client to the io.Writer.
 // The Session State in the Client consists of:

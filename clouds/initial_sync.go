@@ -57,8 +57,6 @@ func (cloud *Cloud) initialSync() int {
 
 	addr := cloud.getRESTAddr()
 
-	log.Printf("[UP   ] Pushing gateway to the cloud ...")
-
 	localDevice, err := edge.GetDevice(edge.LocalID())
 	if err != nil {
 		cloud.setStatus(0, "Internal Error.\nCan not get local device.")
@@ -71,6 +69,8 @@ func (cloud *Cloud) initialSync() int {
 		Name:       localDevice.Name,
 		Visibility: "public",
 	}
+
+	log.Printf("[UP   ] Pushing gateway %q to the cloud ...", localDevice.ID)
 
 	body, _ := json.Marshal(gateway)
 	resp := fetch(addr+"/gateways", fetchInit{

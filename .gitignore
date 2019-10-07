@@ -6,3 +6,6 @@ log/*.txt
 
 # Debug Binary (vscode)
 __debug_bin
+
+# NPM
+node_modules

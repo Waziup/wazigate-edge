@@ -1,0 +1,1993 @@
+{
+  "sensingDevices": {
+    "Accelerometer": {
+      "label": "Accelerometer",
+      "quantities": [
+        "Acceleration",
+        "AccelerationInstantaneous"
+      ],
+      "icon": "meter"
+    },
+    "AirHumiditySensor": {
+      "label": "Air humidity sensor",
+      "quantities": [
+        "AirHumidity"
+      ],
+      "icon": "meter"
+    },
+    "AirPollutantSensor": {
+      "label": "Air pollutant sensor",
+      "quantities": [
+        "AirPollution"
+      ],
+      "icon": "meter"
+    },
+    "AirThermometer": {
+      "label": "Air thermometer",
+      "quantities": [
+        "AirTemperature"
+      ],
+      "icon": "thermometer"
+    },
+    "AlcoholLevelSensor": {
+      "label": "Alcohol level sensor",
+      "quantities": [
+        "AlcoholLevel"
+      ],
+      "icon": "meter"
+    },
+    "AtmosphericPressureSensor": {
+      "label": "Atmospheric pressure sensor",
+      "quantities": [
+        "AtmosphericPressure"
+      ],
+      "icon": "meter"
+    },
+    "BloodPressureSensor": {
+      "label": "Blood pressure sensor",
+      "quantities": [
+        "BloodPressure"
+      ],
+      "icon": "heartbeat"
+    },
+    "BoardThermometer": {
+      "label": "Board thermometer",
+      "quantities": [
+        "BoardTemperature"
+      ],
+      "icon": "thermometer"
+    },
+    "BoardVoltageSensor": {
+      "label": "Board voltage sensor",
+      "quantities": [
+        "Voltage"
+      ],
+      "icon": "electrical"
+    },
+    "BodyThermometer": {
+      "label": "Body thermometer",
+      "quantities": [
+        "BodyTemperature"
+      ],
+      "icon": "heartbeat"
+    },
+    "CholesterolSensor": {
+      "label": "Cholesterol sensor",
+      "quantities": [
+        "Cholesterol"
+      ],
+      "icon": "meter"
+    },
+    "Clock": {
+      "label": "Clock",
+      "quantities": [
+        "Timestamp"
+      ],
+      "icon": "clock"
+    },
+    "CloudCoverSensor": {
+      "label": "Cloud cover sensor",
+      "quantities": [
+        "CloudCover"
+      ],
+      "icon": "wind"
+    },
+    "CO2Sensor": {
+      "label": "CO2 sensor",
+      "quantities": [
+        "CO2"
+      ],
+      "icon": "gas-co2"
+    },
+    "ConductivitySensor": {
+      "label": "Conductivity sensor",
+      "quantities": [
+        "Conductivity"
+      ],
+      "icon": "electrical"
+    },
+    "COSensor": {
+      "label": "CO sensor",
+      "quantities": [
+        "ChemicalAgentAtmosphericConcentrationCO"
+      ],
+      "icon": "gas"
+    },
+    "Counter": {
+      "label": "Counter",
+      "quantities": [
+        "Count"
+      ],
+      "icon": "meter"
+    },
+    "CurrentSensor": {
+      "label": "Current sensor",
+      "quantities": [
+        "ElectricCurrent"
+      ],
+      "icon": "electrical"
+    },
+    "DeltaDewPointSensor": {
+      "label": "Delta dew point sensor",
+      "quantities": [
+        "DewPoint",
+        "DewPointTemperature"
+      ],
+      "icon": "meter"
+    },
+    "DeviceUptimeClock": {
+      "label": "Device uptime clock",
+      "quantities": [
+        "DeviceUptime"
+      ],
+      "icon": "clock"
+    },
+    "DewPointSensor": {
+      "label": "Dew point sensor",
+      "quantities": [
+        "DewPoint",
+        "DewPointTemperature"
+      ],
+      "icon": "meter"
+    },
+    "DirectionOfArrivalSensor": {
+      "label": "Direction of arrival sensor",
+      "quantities": [
+        "DirectionOfArrival"
+      ],
+      "icon": "pin"
+    },
+    "DistanceNextVehicleSensor": {
+      "label": "Distance next vehicle sensor",
+      "quantities": [
+        "DistanceNextVehicle"
+      ],
+      "icon": "car"
+    },
+    "DistanceSensor": {
+      "label": "Distance sensor",
+      "quantities": [
+        "Distance"
+      ],
+      "icon": "meter"
+    },
+    "DoorStateSensor": {
+      "label": "Door state sensor",
+      "quantities": [
+        "DoorStatus"
+      ],
+      "icon": "meter"
+    },
+    "DustSensor": {
+      "label": "Dust sensor",
+      "quantities": [
+        "ChemicalAgentAtmosphericConcentrationDust"
+      ],
+      "icon": "gas"
+    },
+    "ElectricalSensor": {
+      "label": "Electrical sensor",
+      "quantities": [
+        "ElectricalResistance",
+        "ElectricCharge",
+        "ElectricCurrent",
+        "ElectricField",
+        "ElectricPotential",
+        "ActivePower",
+        "BatteryLevel",
+        "Capacitance",
+        "ReactivePower"
+      ],
+      "icon": "electrical"
+    },
+    "ElectricFieldSensor": {
+      "label": "Electric field sensor",
+      "quantities": [
+        "ElectricField"
+      ],
+      "icon": "meter"
+    },
+    "EnergyMeter": {
+      "label": "Energy meter",
+      "quantities": [
+        "Energy"
+      ],
+      "icon": "meter"
+    },
+    "FallDetector": {
+      "label": "Fall detector",
+      "quantities": [
+        "Acceleration",
+        "AccelerationInstantaneous"
+      ],
+      "icon": "meter"
+    },
+    "FrequencySensor": {
+      "label": "Frequency sensor",
+      "quantities": [
+        "Frequency"
+      ],
+      "icon": "seismic"
+    },
+    "FuelLevel": {
+      "label": "Fuel level",
+      "quantities": [
+        "FillLevel",
+        "FillLevelGasTank"
+      ],
+      "icon": "meter"
+    },
+    "FuelConsumptionSensor": {
+      "label": "Fuel consumption sensor",
+      "quantities": [
+        "FuelConsumption",
+        "FuelConsumptionInstantaneous",
+        "FuelConsumptionTotal"
+      ],
+      "icon": "meter"
+    },
+    "GasDetector": {
+      "label": "Gas detector",
+      "quantities": [
+        "ChemicalAgentAtmosphericConcentration",
+        "ChemicalAgentAtmosphericConcentrationAirParticles",
+        "ChemicalAgentAtmosphericConcentrationCO",
+        "ChemicalAgentAtmosphericConcentrationDust",
+        "ChemicalAgentAtmosphericConcentrationNH3",
+        "ChemicalAgentAtmosphericConcentrationNO",
+        "ChemicalAgentAtmosphericConcentrationNO2",
+        "ChemicalAgentAtmosphericConcentrationO3",
+        "ChemicalAgentAtmosphericConcentrationSO2",
+        "ChemicalAgentAtmosphericConcentrationVOC"
+      ],
+      "icon": "gas"
+    },
+    "GaseousPollutantSensor": {
+      "label": "Gaseous pollutant sensor",
+      "quantities": [
+        "AirPollution",
+        "ChemicalAgentConcentration",
+        "ChemicalAgentAtmosphericConcentration",
+        "ChemicalAgentAtmosphericConcentrationAirParticles",
+        "ChemicalAgentAtmosphericConcentrationCO",
+        "ChemicalAgentAtmosphericConcentrationDust",
+        "ChemicalAgentAtmosphericConcentrationNH3",
+        "ChemicalAgentAtmosphericConcentrationNO",
+        "ChemicalAgentAtmosphericConcentrationNO2",
+        "ChemicalAgentAtmosphericConcentrationO3",
+        "ChemicalAgentAtmosphericConcentrationSO2",
+        "ChemicalAgentAtmosphericConcentrationVOC",
+        "AirQuality"
+      ],
+      "icon": "gas"
+    },
+    "Glucometer": {
+      "label": "Glucometer",
+      "quantities": [
+        "BloodGlucose"
+      ],
+      "icon": "meter"
+    },
+    "GPSSensor": {
+      "label": "GPS sensor",
+      "quantities": [
+        "Position"
+      ],
+      "icon": "meter"
+    },
+    "GyroscopeSensor": {
+      "label": "Gyroscope sensor",
+      "quantities": [
+        "AngularSpeed",
+        "RotationalSpeed",
+        "Orientation"
+      ],
+      "icon": "pin"
+    },
+    "HeartBeatSensor": {
+      "label": "Heart beat sensor",
+      "quantities": [
+        "HeartBeat"
+      ],
+      "icon": "heartbeat"
+    },
+    "HumanPresenceDetector": {
+      "label": "Human presence detector",
+      "quantities": [
+        "Presence"
+      ],
+      "icon": "meter"
+    },
+    "HumiditySensor": {
+      "label": "Humidity sensor",
+      "quantities": [
+        "Humidity",
+        "RelativeHumidity",
+        "SoilHumidity",
+        "AirHumidity"
+      ],
+      "icon": "water"
+    },
+    "Hydrophone": {
+      "label": "Hydrophone",
+      "quantities": [
+        "Sound",
+        "SoundPressureLevel",
+        "SoundPressureLevelAmbient"
+      ],
+      "icon": "meter"
+    },
+    "ImageSensor": {
+      "label": "Image sensor",
+      "quantities": [],
+      "icon": "camera"
+    },
+    "LeafWetnessSensor": {
+      "label": "Leaf wetness sensor",
+      "quantities": [
+        "LeafWetness"
+      ],
+      "icon": "meter"
+    },
+    "LightSensor": {
+      "label": "Light sensor",
+      "quantities": [
+        "LuminousFlux",
+        "LuminousIntensity",
+        "Illuminance",
+        "WeatherLuminosity"
+      ],
+      "icon": "sun"
+    },
+    "LoRaInterfaceEnergyMeter": {
+      "label": "LoRa interface energy meter",
+      "quantities": [
+        "Energy"
+      ],
+      "icon": "meter"
+    },
+    "Magnetometer": {
+      "label": "Magnetometer",
+      "quantities": [
+        "MagneticField",
+        "MagneticFluxDensity"
+      ],
+      "icon": "magnet"
+    },
+    "MotionSensor": {
+      "label": "Motion sensor",
+      "quantities": [
+        "Motion",
+        "MotionState",
+        "MotionStateVehicle"
+      ],
+      "icon": "meter"
+    },
+    "NH3Sensor": {
+      "label": "NH3 sensor",
+      "quantities": [
+        "ChemicalAgentAtmosphericConcentrationNH3"
+      ],
+      "icon": "gas"
+    },
+    "NO2Sensor": {
+      "label": "NO2 sensor",
+      "quantities": [
+        "ChemicalAgentAtmosphericConcentrationNO2"
+      ],
+      "icon": "gas"
+    },
+    "NOSensor": {
+      "label": "NO sensor",
+      "quantities": [
+        "ChemicalAgentAtmosphericConcentrationNO"
+      ],
+      "icon": "gas"
+    },
+    "O3Sensor": {
+      "label": "O3 sensor",
+      "quantities": [
+        "ChemicalAgentAtmosphericConcentrationO3"
+      ],
+      "icon": "gas"
+    },
+    "Odometer": {
+      "label": "Odometer",
+      "quantities": [
+        "Mileage",
+        "MileageDistanceToService",
+        "MileageTotal"
+      ],
+      "icon": "meter"
+    },
+    "OpticalDustSensor": {
+      "label": "Optical dust sensor",
+      "quantities": [
+        "ChemicalAgentAtmosphericConcentrationDust"
+      ],
+      "icon": "meter"
+    },
+    "OxidationReductionPotentialSensor": {
+      "label": "Oxidation reduction potential sensor",
+      "quantities": [
+        "Voltage"
+      ],
+      "icon": "meter"
+    },
+    "OxygenSensor": {
+      "label": "Oxygen sensor",
+      "quantities": [
+        "ChemicalAgentWaterConcentrationO2",
+        "SPO2"
+      ],
+      "icon": "gas"
+    },
+    "OtherSensor": {
+      "label": "Other sensor",
+      "quantities": [],
+      "icon": "meter"
+    },
+    "Pedometer": {
+      "label": "Pedometer",
+      "quantities": [
+        "Speed",
+        "SpeedAverage",
+        "SpeedInstantaneous"
+      ],
+      "icon": "pedometer"
+    },
+    "PeopleCountSensor": {
+      "label": "People count sensor",
+      "quantities": [
+        "Count",
+        "CountPeople"
+      ],
+      "icon": "meter"
+    },
+    "PHSensor": {
+      "label": "PH sensor",
+      "quantities": [
+        "PH"
+      ],
+      "icon": "meter"
+    },
+    "PrecipitationSensor": {
+      "label": "Precipitation sensor",
+      "quantities": [
+        "Precipitation"
+      ],
+      "icon": "meter"
+    },
+    "PresenceDetector": {
+      "label": "Presence detector",
+      "quantities": [
+        "Count",
+        "Presence",
+        "PresenceStatePeople",
+        "PresenceStateParking"
+      ],
+      "icon": "meter"
+    },
+    "PressureSensor": {
+      "label": "Pressure sensor",
+      "quantities": [
+        "Pressure",
+        "AtmosphericPressure"
+      ],
+      "icon": "meter"
+    },
+    "ProximitySensor": {
+      "label": "Proximity sensor",
+      "quantities": [
+        "Proximity"
+      ],
+      "icon": "meter"
+    },
+    "PulseOxymeter": {
+      "label": "Pulse oxymeter",
+      "quantities": [
+        "SPO2"
+      ],
+      "icon": "heartbeat"
+    },
+    "RadiationParticleDetector": {
+      "label": "Radiation particle detector",
+      "quantities": [
+        "IonisingRadiation"
+      ],
+      "icon": "nuclear"
+    },
+    "RainFallSensor": {
+      "label": "Rain fall sensor",
+      "quantities": [
+        "Rainfall"
+      ],
+      "icon": "water"
+    },
+    "RoadSurfaceThermometer": {
+      "label": "Road surface thermometer",
+      "quantities": [
+        "Temperature",
+        "RoadTemperature"
+      ],
+      "icon": "thermometer"
+    },
+    "SaltMeter": {
+      "label": "Salt meter",
+      "quantities": [
+        "Salinity"
+      ],
+      "icon": "meter"
+    },
+    "Seismometer": {
+      "label": "Seismometer",
+      "quantities": [
+        "Motion"
+      ],
+      "icon": "seismic"
+    },
+    "SkinConductanceSensor": {
+      "label": "Skin conductance sensor",
+      "quantities": [
+        "Conductivity"
+      ],
+      "icon": "meter"
+    },
+    "SmokeDetector": {
+      "label": "Smoke detector",
+      "quantities": [
+        "ChemicalAgentAtmosphericConcentrationAirParticles",
+        "ChemicalAgentAtmosphericConcentrationDust"
+      ],
+      "icon": "gas"
+    },
+    "SO2Sensor": {
+      "label": "SO2 sensor",
+      "quantities": [
+        "ChemicalAgentAtmosphericConcentrationSO2"
+      ],
+      "icon": "gas"
+    },
+    "SoilHumiditySensor": {
+      "label": "Soil humidity sensor",
+      "quantities": [
+        "Humidity",
+        "RelativeHumidity",
+        "SoilHumidity",
+        "SoilMoistureTension"
+      ],
+      "icon": "meter"
+    },
+    "SoilThermometer": {
+      "label": "Soil thermometer",
+      "quantities": [
+        "Temperature",
+        "SoilTemperature"
+      ],
+      "icon": "water"
+    },
+    "SolarRadiationSensor": {
+      "label": "Solar radiation sensor",
+      "quantities": [
+        "SolarRadiation"
+      ],
+      "icon": "sun"
+    },
+    "SoundSensor": {
+      "label": "Sound sensor",
+      "quantities": [
+        "Sound",
+        "SoundPressureLevel",
+        "SoundPressureLevelAmbient"
+      ],
+      "icon": "meter"
+    },
+    "SpeedSensor": {
+      "label": "Speed sensor",
+      "quantities": [
+        "Speed",
+        "SpeedAverage",
+        "SpeedInstantaneous"
+      ],
+      "icon": "car"
+    },
+    "SunPositionDirectionSensor": {
+      "label": "Sun position direction sensor",
+      "quantities": [
+        "SunPositionDirection"
+      ],
+      "icon": "sun"
+    },
+    "SunPositionElevationSensor": {
+      "label": "Sun position elevation sensor",
+      "quantities": [
+        "SunPositionElevation"
+      ],
+      "icon": "sun"
+    },
+    "Thermometer": {
+      "label": "Thermometer",
+      "quantities": [
+        "AirTemperature",
+        "BoardTemperature",
+        "BodyTemperature",
+        "BuildingTemperature",
+        "DewPointTemperature",
+        "FoodTemperature",
+        "HouseholdApplianceTemperature",
+        "RoadTemperature",
+        "RoomTemperature",
+        "SoilTemperature",
+        "Temperature",
+        "TemperatureEngine",
+        "TemperatureWasteContainer",
+        "WaterTemperature"
+      ],
+      "icon": "thermometer"
+    },
+    "TimeOfArrivalNextVehicleSensor": {
+      "label": "Time of arrival next vehicle sensor",
+      "quantities": [
+        "TimeOfArrivalNextVehicle"
+      ],
+      "icon": "car"
+    },
+    "TimeOfArrivalSensor": {
+      "label": "Time of arrival sensor",
+      "quantities": [
+        "TimeOfArrival"
+      ],
+      "icon": "clock"
+    },
+    "TouchSensor": {
+      "label": "Touch sensor",
+      "quantities": [
+        "SkinConductance",
+        "Capacitance"
+      ],
+      "icon": "meter"
+    },
+    "UltrasonicSensor": {
+      "label": "Ultrasonic sensor",
+      "quantities": [
+        "Sound",
+        "SoundPressureLevel",
+        "SoundPressureLevelAmbient"
+      ],
+      "icon": "meter"
+    },
+    "VehicleCountSensor": {
+      "label": "Vehicle count sensor",
+      "quantities": [
+        "Count",
+        "CountAvailableVehicles",
+        "CountEmptyDockingPoints",
+        "TrafficIntensity"
+      ],
+      "icon": "camera"
+    },
+    "VehiclePresenceDetector": {
+      "label": "Vehicle presence detector",
+      "quantities": [
+        "Count",
+        "CountAvailableVehicles",
+        "CountEmptyDockingPoints"
+      ],
+      "icon": "camera"
+    },
+    "VisibilitySensor": {
+      "label": "Visibility sensor",
+      "quantities": [
+        "Visibility"
+      ],
+      "icon": "meter"
+    },
+    "VOCSensor": {
+      "label": "VOC sensor",
+      "quantities": [
+        "ChemicalAgentAtmosphericConcentrationVOC"
+      ],
+      "icon": "meter"
+    },
+    "VoiceCommandSensor": {
+      "label": "Voice command sensor",
+      "quantities": [
+        "VoiceCommand"
+      ],
+      "icon": "meter"
+    },
+    "VoltageSensor": {
+      "label": "Voltage sensor",
+      "quantities": [
+        "Voltage",
+        "ElectricPotential"
+      ],
+      "icon": "electrical"
+    },
+    "WasteLevelSensor": {
+      "label": "Waste level sensor",
+      "quantities": [
+        "FillLevelWasteContainer"
+      ],
+      "icon": "meter"
+    },
+    "WaterLevel": {
+      "label": "Water level sensor",
+      "quantities": [
+        "WaterLevel"
+      ],
+      "icon": "buoy"
+    },
+    "WaterConductivitySensor": {
+      "label": "Water conductivity sensor",
+      "quantities": [
+        "Conductivity"
+      ],
+      "icon": "water"
+    },
+    "WaterNH4IonSensor": {
+      "label": "Water NH4 ion sensor",
+      "quantities": [
+        "ChemicalAgentWaterConcentrationNH4Ion"
+      ],
+      "icon": "water"
+    },
+    "WaterNO3IonSensor": {
+      "label": "Water NO3 ion sensor",
+      "quantities": [
+        "ChemicalAgentWaterConcentrationNO3Ion"
+      ],
+      "icon": "water"
+    },
+    "WaterO2IonSensor": {
+      "label": "Water O2 ion sensor",
+      "quantities": [
+        "ChemicalAgentWaterConcentrationO2"
+      ],
+      "icon": "water"
+    },
+    "WaterPHSensor": {
+      "label": "Water PH sensor",
+      "quantities": [
+        "PH"
+      ],
+      "icon": "water"
+    },
+    "WaterPollutantSensor": {
+      "label": "Water pollutant sensor",
+      "quantities": [
+        "ChemicalAgentWaterConcentration"
+      ],
+      "icon": "water"
+    },
+    "WaterThermometer": {
+      "label": "Water thermometer",
+      "quantities": [
+        "Temperature",
+        "WaterTemperature"
+      ],
+      "icon": "thermometer"
+    },
+    "WeightSensor": {
+      "label": "Weight sensor",
+      "quantities": [
+        "Weight",
+        "Mass"
+      ],
+      "icon": "meter"
+    },
+    "WiFiInterfaceEnergyMeter": {
+      "label": "WiFi interface energy meter",
+      "quantities": [
+        "Energy"
+      ],
+      "icon": "meter"
+    },
+    "WindChillSensor": {
+      "label": "Wind chill sensor",
+      "quantities": [
+        "WindChill"
+      ],
+      "icon": "wind"
+    },
+    "WindDirectionSensor": {
+      "label": "Wind direction sensor",
+      "quantities": [
+        "WindDirection"
+      ],
+      "icon": "wind"
+    },
+    "WindSpeedSensor": {
+      "label": "Wind speed sensor",
+      "quantities": [
+        "WindSpeed"
+      ],
+      "icon": "wind"
+    }
+  },
+  "quantities": {
+    "Acceleration": {
+      "label": "Acceleration",
+      "units": [
+        "MetrePerSecondSquare"
+      ]
+    },
+    "AccelerationInstantaneous": {
+      "label": "Acceleration instantaneous",
+      "units": [
+        "MetrePerSecondSquare"
+      ]
+    },
+    "ActivePower": {
+      "label": "Active power",
+      "units": [
+        "Watt"
+      ]
+    },
+    "AirPollution": {
+      "label": "Air pollution",
+      "units": [
+        "PartsPerBillion"
+      ]
+    },
+    "AirQuality": {
+      "label": "Air quality",
+      "units": [
+        "EAQI"
+      ]
+    },
+    "AirTemperature": {
+      "label": "Air temperature",
+      "units": [
+        "DegreeCelsius",
+        "DegreeFahrenheit"
+      ]
+    },
+    "AirHumidity": {
+      "label": "Air humidity",
+      "units": [
+        "Percent"
+      ]
+    },
+    "AlcoholLevel": {
+      "label": "Alcohol level",
+      "units": [
+        "Percent"
+      ]
+    },
+    "AngularSpeed": {
+      "label": "Angular speed",
+      "units": [
+        "RadianPerSecond",
+        "RevolutionsPerMinute"
+      ]
+    },
+    "AtmosphericPressure": {
+      "label": "Atmospheric pressure",
+      "units": [
+        "Pascal",
+        "Bar",
+        "Centibar",
+        "Millibar",
+        "MillimetreMercure"
+      ]
+    },
+    "BatteryLevel": {
+      "label": "Battery level",
+      "units": [
+        "Volt",
+        "Millivolt",
+        "Microvolt"
+      ]
+    },
+    "BloodGlucose": {
+      "label": "Blood glucose",
+      "units": [
+        "MilliMolPerLitre"
+      ]
+    },
+    "BloodPressure": {
+      "label": "Blood pressure",
+      "units": [
+        "MillimetreMercure",
+        "Pascal"
+      ]
+    },
+    "BoardTemperature": {
+      "label": "Board temperature",
+      "units": [
+        "DegreeCelsius",
+        "DegreeFahrenheit"
+      ]
+    },
+    "BodyTemperature": {
+      "label": "Body temperature",
+      "units": [
+        "DegreeCelsius",
+        "DegreeFahrenheit"
+      ]
+    },
+    "BuildingTemperature": {
+      "label": "Building temperature",
+      "units": [
+        "DegreeCelsius",
+        "DegreeFahrenheit"
+      ]
+    },
+    "Capacitance": {
+      "label": "Capacitance",
+      "units": [
+        "Farad"
+      ]
+    },
+    "ChemicalAgentAtmosphericConcentration": {
+      "label": "Chemical agent atmospheric concentration",
+      "units": [
+        "MicrogramPerCubicMetre",
+        "MilligramPerCubicMetre",
+        "PartsPerBillion",
+        "PartsPerMillion"
+      ]
+    },
+    "ChemicalAgentAtmosphericConcentrationAirParticles": {
+      "label": "Chemical agent atmospheric concentration air particles",
+      "units": [
+        "MicrogramPerCubicMetre",
+        "MilligramPerCubicMetre",
+        "PartsPerBillion",
+        "PartsPerMillion"
+      ]
+    },
+    "ChemicalAgentAtmosphericConcentrationCO": {
+      "label": "Chemical agent atmospheric concentration CO",
+      "units": [
+        "MicrogramPerCubicMetre",
+        "MilligramPerCubicMetre",
+        "PartsPerBillion",
+        "PartsPerMillion"
+      ]
+    },
+    "ChemicalAgentAtmosphericConcentrationDust": {
+      "label": "Chemical agent atmospheric concentration Dust",
+      "units": [
+        "MicrogramPerCubicMetre",
+        "MilligramPerCubicMetre",
+        "PartsPerBillion",
+        "PartsPerMillion"
+      ]
+    },
+    "ChemicalAgentAtmosphericConcentrationNH3": {
+      "label": "Chemical agent atmospheric concentration NH3",
+      "units": [
+        "MicrogramPerCubicMetre",
+        "MilligramPerCubicMetre",
+        "PartsPerBillion",
+        "PartsPerMillion"
+      ]
+    },
+    "ChemicalAgentAtmosphericConcentrationNO": {
+      "label": "Chemical agent atmospheric concentration NO",
+      "units": [
+        "MicrogramPerCubicMetre",
+        "MilligramPerCubicMetre",
+        "PartsPerBillion",
+        "PartsPerMillion"
+      ]
+    },
+    "ChemicalAgentAtmosphericConcentrationNO2": {
+      "label": "Chemical agent atmospheric concentration NO2",
+      "units": [
+        "MicrogramPerCubicMetre",
+        "MilligramPerCubicMetre",
+        "PartsPerBillion",
+        "PartsPerMillion"
+      ]
+    },
+    "ChemicalAgentAtmosphericConcentrationO3": {
+      "label": "Chemical agent atmospheric concentration O3",
+      "units": [
+        "MicrogramPerCubicMetre",
+        "MilligramPerCubicMetre",
+        "PartsPerBillion",
+        "PartsPerMillion"
+      ]
+    },
+    "ChemicalAgentAtmosphericConcentrationSO2": {
+      "label": "Chemical agent atmospheric concentration SO2",
+      "units": [
+        "MicrogramPerCubicMetre",
+        "MilligramPerCubicMetre",
+        "PartsPerBillion",
+        "PartsPerMillion"
+      ]
+    },
+    "ChemicalAgentAtmosphericConcentrationVOC": {
+      "label": "Chemical agent atmospheric concentration VOC",
+      "units": [
+        "MicrogramPerCubicMetre",
+        "MilligramPerCubicMetre",
+        "PartsPerBillion",
+        "PartsPerMillion"
+      ]
+    },
+    "ChemicalAgentConcentration": {
+      "label": "Chemical agent concentration",
+      "units": [
+        "MicrogramPerCubicMetre",
+        "MilligramPerCubicMetre",
+        "PartsPerBillion",
+        "PartsPerMillion"
+      ]
+    },
+    "ChemicalAgentWaterConcentration": {
+      "label": "Chemical agent water concentration",
+      "units": [
+        "MilligramPerLitre",
+        "MilligramPerCubicMetre",
+        "GramPerLitre"
+      ]
+    },
+    "ChemicalAgentWaterConcentrationNH4Ion": {
+      "label": "Chemical agent water concentration NH4 ion",
+      "units": [
+        "MilligramPerLitre",
+        "MilligramPerCubicMetre",
+        "GramPerLitre"
+      ]
+    },
+    "ChemicalAgentWaterConcentrationNO3Ion": {
+      "label": "Chemical agent water concentration NO3 ion",
+      "units": [
+        "MilligramPerLitre",
+        "MilligramPerCubicMetre",
+        "GramPerLitre"
+      ]
+    },
+    "ChemicalAgentWaterConcentrationO2": {
+      "label": "Chemical agent water concentration O2",
+      "units": [
+        "MilligramPerLitre",
+        "MilligramPerCubicMetre",
+        "GramPerLitre"
+      ]
+    },
+    "Cholesterol": {
+      "label": "Cholesterol",
+      "units": [
+        "MilliMolPerLitre",
+        "MilligramPerDecilitre",
+        "MilligramPerLitre"
+      ]
+    },
+    "CloudCover": {
+      "label": "Cloud cover",
+      "units": [
+        "Okta"
+      ]
+    },
+    "CO2": {
+      "label": "CO2",
+      "units": [
+        "PartsPerMillion",
+        "Percent"
+      ]
+    },
+    "Conductivity": {
+      "label": "Conductivity",
+      "units": [
+        "SiemensPerMetre"
+      ]
+    },
+    "Count": {
+      "label": "Count",
+      "units": [
+        "Dimensionless"
+      ]
+    },
+    "CountAvailableVehicles": {
+      "label": "Count available vehicles",
+      "units": [
+        "Dimensionless"
+      ]
+    },
+    "CountEmptyDockingPoints": {
+      "label": "Count empty docking points",
+      "units": [
+        "Dimensionless"
+      ]
+    },
+    "CountPeople": {
+      "label": "Count people",
+      "units": [
+        "Dimensionless"
+      ]
+    },
+    "DeltaDewPoint": {
+      "label": "Delta dew point",
+      "units": [
+        "DegreeCelsius",
+        "DegreeFahrenheit"
+      ]
+    },
+    "DeviceUptime": {
+      "label": "Device uptime",
+      "units": [
+        "SecondTime",
+        "MinuteTime",
+        "Hour",
+        "Year"
+      ]
+    },
+    "DewPoint": {
+      "label": "Dew point",
+      "units": [
+        "DegreeCelsius",
+        "DegreeFahrenheit"
+      ]
+    },
+    "DewPointTemperature": {
+      "label": "Dew point temperature",
+      "units": [
+        "DegreeCelsius",
+        "DegreeFahrenheit"
+      ]
+    },
+    "DirectionOfArrival": {
+      "label": "Direction of arrival",
+      "units": [
+        "DegreeAngle",
+        "Radian"
+      ]
+    },
+    "Distance": {
+      "label": "Distance",
+      "units": [
+        "Metre",
+        "Kilometre",
+        "Millimetre",
+        "Centimetre"
+      ]
+    },
+    "DistanceNextVehicle": {
+      "label": "Distance next vehicle",
+      "units": [
+        "Metre",
+        "Kilometre",
+        "Millimetre",
+        "Centimetre"
+      ]
+    },
+    "DoorStatus": {
+      "label": "Door status",
+      "units": [
+        "Dimensionless"
+      ]
+    },
+    "ElectricalResistance": {
+      "label": "Electrical resistance",
+      "units": [
+        "Ohm"
+      ]
+    },
+    "ElectricCharge": {
+      "label": "Electric charge",
+      "units": [
+        "Coulomb"
+      ]
+    },
+    "ElectricCurrent": {
+      "label": "Electric current",
+      "units": [
+        "Ampere"
+      ]
+    },
+    "ElectricField": {
+      "label": "Electric field",
+      "units": [
+        "VoltPerMetre"
+      ]
+    },
+    "ElectricPotential": {
+      "label": "Electric potential",
+      "units": [
+        "Volt"
+      ]
+    },
+    "Energy": {
+      "label": "Energy",
+      "units": [
+        "Joule",
+        "KiloWattHour"
+      ]
+    },
+    "FillLevel": {
+      "label": "Fill level",
+      "units": [
+        "Percent"
+      ]
+    },
+    "FillLevelGasTank": {
+      "label": "Fill level gas tank",
+      "units": [
+        "Percent"
+      ]
+    },
+    "FillLevelWasteContainer": {
+      "label": "Fill level waste container",
+      "units": [
+        "Percent"
+      ]
+    },
+    "FoodTemperature": {
+      "label": "Food temperature",
+      "units": [
+        "DegreeCelsius",
+        "DegreeFahrenheit"
+      ]
+    },
+    "Frequency": {
+      "label": "Frequency",
+      "units": [
+        "Hertz"
+      ]
+    },
+    "FuelConsumption": {
+      "label": "Fuel consumption",
+      "units": [
+        "Litre",
+        "LitrePer100Kilometres"
+      ]
+    },
+    "FuelConsumptionInstantaneous": {
+      "label": "Fuel consumption instantaneous",
+      "units": [
+        "Litre",
+        "LitrePer100Kilometres"
+      ]
+    },
+    "FuelConsumptionTotal": {
+      "label": "Fuel consumption total",
+      "units": [
+        "Litre",
+        "LitrePer100Kilometres"
+      ]
+    },
+    "HeartBeat": {
+      "label": "Heart beat",
+      "units": [
+        "BeatPerMinute"
+      ]
+    },
+    "HouseholdApplianceTemperature": {
+      "label": "Household appliance temperature",
+      "units": [
+        "DegreeCelsius",
+        "DegreeFahrenheit"
+      ]
+    },
+    "Humidity": {
+      "label": "Humidity",
+      "units": [
+        "Percent"
+      ]
+    },
+    "Illuminance": {
+      "label": "Illuminance",
+      "units": [
+        "Lux"
+      ]
+    },
+    "IonisingRadiation": {
+      "label": "Ionising radiation",
+      "units": [
+        "RadiationParticlesPerMinute"
+      ]
+    },
+    "LeafWetness": {
+      "label": "Leaf wetness",
+      "units": []
+    },
+    "LuminousFlux": {
+      "label": "Luminous flux",
+      "units": [
+        "Lumen"
+      ]
+    },
+    "LuminousIntensity": {
+      "label": "Luminous intensity",
+      "units": [
+        "Candela"
+      ]
+    },
+    "MagneticField": {
+      "label": "Magnetic field",
+      "units": [
+        "Tesla"
+      ]
+    },
+    "MagneticFluxDensity": {
+      "label": "Magnetic flux density",
+      "units": [
+        "Weber"
+      ]
+    },
+    "Mass": {
+      "label": "Mass",
+      "units": [
+        "Kilogram",
+        "Gram"
+      ]
+    },
+    "Mileage": {
+      "label": "Mileage",
+      "units": [
+        "Metre",
+        "Kilometre"
+      ]
+    },
+    "MileageDistanceToService": {
+      "label": "Mileage distance to service",
+      "units": [
+        "Metre",
+        "Kilometre"
+      ]
+    },
+    "MileageTotal": {
+      "label": "Mileage total",
+      "units": [
+        "Metre",
+        "Kilometre"
+      ]
+    },
+    "Motion": {
+      "label": "Motion",
+      "units": [
+        "Dimensionless"
+      ]
+    },
+    "MotionState": {
+      "label": "Motion state",
+      "units": [
+        "Dimensionless"
+      ]
+    },
+    "MotionStateVehicle": {
+      "label": "Motion state vehicle",
+      "units": [
+        "Dimensionless"
+      ]
+    },
+    "Orientation": {
+      "label": "Orientation",
+      "units": [
+        "DegreeAngle",
+        "Radian"
+      ]
+    },
+    "Other": {
+      "label": "Other",
+      "units": [
+        "Other"
+      ]
+    },
+    "PH": {
+      "label": "PH",
+      "units": [
+        "Dimensionless"
+      ]
+    },
+    "Position": {
+      "label": "Position",
+      "units": [
+        "Metre",
+        "Kilometre"
+      ]
+    },
+    "Power": {
+      "label": "Power",
+      "units": [
+        "Watt"
+      ]
+    },
+    "Precipitation": {
+      "label": "Precipitation",
+      "units": [
+        "Millilitre"
+      ]
+    },
+    "Presence": {
+      "label": "Presence",
+      "units": [
+        "Dimensionless"
+      ]
+    },
+    "PresenceStateParking": {
+      "label": "Presence state parking",
+      "units": [
+        "Dimensionless"
+      ]
+    },
+    "PresenceStatePeople": {
+      "label": "Presence state people",
+      "units": [
+        "Dimensionless"
+      ]
+    },
+    "Pressure": {
+      "label": "Pressure",
+      "units": [
+        "Pascal",
+        "Bar",
+        "Centibar",
+        "Millibar",
+        "MillimetreMercure"
+      ]
+    },
+    "Proximity": {
+      "label": "Proximity",
+      "units": [
+        "Metre",
+        "Dimensionless"
+      ]
+    },
+    "Rainfall": {
+      "label": "Rainfall",
+      "units": [
+        "Millilitre"
+      ]
+    },
+    "ReactivePower": {
+      "label": "Reactive power",
+      "units": [
+        "VoltAmpereReactive"
+      ]
+    },
+    "RelativeHumidity": {
+      "label": "Relative humidity",
+      "units": [
+        "Percent"
+      ]
+    },
+    "RoadTemperature": {
+      "label": "Road temperature",
+      "units": [
+        "DegreeCelsius",
+        "DegreeFahrenheit"
+      ]
+    },
+    "RoomTemperature": {
+      "label": "Room temperature",
+      "units": [
+        "DegreeCelsius",
+        "DegreeFahrenheit"
+      ]
+    },
+    "RotationalSpeed": {
+      "label": "Rotational speed",
+      "units": [
+        "RadianPerSecond",
+        "DegreeAnglePerSecond"
+      ]
+    },
+    "Salinity": {
+      "label": "Salinity",
+      "units": [
+        "MilligramPerLitre",
+        "PartsPerMillion"
+      ]
+    },
+    "SkinConductance": {
+      "label": "Skin conductance",
+      "units": [
+        "MicroSiemens"
+      ]
+    },
+    "SoilHumidity": {
+      "label": "Soil humidity",
+      "units": [
+        "Percent"
+      ]
+    },
+    "SoilMoistureTension": {
+      "label": "Soil moisture tension",
+      "units": [
+        "KiloPascal",
+        "Bar"
+      ]
+    },
+    "SoilTemperature": {
+      "label": "Soil temperature",
+      "units": [
+        "DegreeCelsius",
+        "DegreeFahrenheit"
+      ]
+    },
+    "SolarRadiation": {
+      "label": "Solar radiation",
+      "units": [
+        "WattPerSquareMetre"
+      ]
+    },
+    "Sound": {
+      "label": "Sound",
+      "units": [
+        "Decibel",
+        "DecibelA"
+      ]
+    },
+    "SoundPressureLevel": {
+      "label": "Sound pressure level",
+      "units": [
+        "Pascal"
+      ]
+    },
+    "SoundPressureLevelAmbient": {
+      "label": "Sound pressure level ambient",
+      "units": [
+        "Pascal"
+      ]
+    },
+    "Speed": {
+      "label": "Speed",
+      "units": [
+        "MetrePerSecond",
+        "KilometrePerHour",
+        "MillimetrePerHour"
+      ]
+    },
+    "SpeedAverage": {
+      "label": "Speed average",
+      "units": [
+        "MetrePerSecond",
+        "KilometrePerHour",
+        "MillimetrePerHour"
+      ]
+    },
+    "SpeedInstantaneous": {
+      "label": "Speed instantaneous",
+      "units": [
+        "MetrePerSecond",
+        "KilometrePerHour",
+        "MillimetrePerHour"
+      ]
+    },
+    "SPO2": {
+      "label": "SPO2",
+      "units": [
+        "Percent"
+      ]
+    },
+    "SunPositionDirection": {
+      "label": "Sun position direction",
+      "units": [
+        "DegreeAngle",
+        "Radian"
+      ]
+    },
+    "SunPositionElevation": {
+      "label": "Sun position elevation",
+      "units": [
+        "DegreeAngle",
+        "Radian"
+      ]
+    },
+    "Temperature": {
+      "label": "Temperature",
+      "units": [
+        "DegreeCelsius",
+        "DegreeFahrenheit"
+      ]
+    },
+    "TemperatureEngine": {
+      "label": "Temperature engine",
+      "units": [
+        "DegreeCelsius",
+        "DegreeFahrenheit"
+      ]
+    },
+    "TemperatureWasteContainer": {
+      "label": "Temperature waste container",
+      "units": [
+        "DegreeCelsius",
+        "DegreeFahrenheit"
+      ]
+    },
+    "TimeOfArrival": {
+      "label": "Time of arrival",
+      "units": [
+        "SecondTime",
+        "MinuteTime",
+        "Hour"
+      ]
+    },
+    "TimeOfArrivalNextVehicle": {
+      "label": "Time of arrival next vehicle",
+      "units": [
+        "SecondTime",
+        "MinuteTime",
+        "Hour"
+      ]
+    },
+    "Timestamp": {
+      "label": "Timestamp",
+      "units": [
+        "SecondTime",
+        "MinuteTime",
+        "Hour"
+      ]
+    },
+    "TrafficIntensity": {
+      "label": "Traffic intensity",
+      "units": [
+        "Hertz"
+      ]
+    },
+    "Visibility": {
+      "label": "Visibility",
+      "units": [
+        "Metre"
+      ]
+    },
+    "VoiceCommand": {
+      "label": "Voice command",
+      "units": [
+        "Dimensionless"
+      ]
+    },
+    "Voltage": {
+      "label": "Voltage",
+      "units": [
+        "Volt"
+      ]
+    },
+    "WaterLevel": {
+      "label": "Water level",
+      "units": [
+        "Percent",
+        "Metre",
+        "Centimetre",
+        "Millimetre"
+      ]
+    },
+    "WaterTemperature": {
+      "label": "Water temperature",
+      "units": [
+        "DegreeCelsius",
+        "DegreeFahrenheit"
+      ]
+    },
+    "WeatherLuminosity": {
+      "label": "Weather luminosity",
+      "units": []
+    },
+    "WeatherPrecipitation": {
+      "label": "Weather precipitation",
+      "units": [
+        "Millilitre"
+      ]
+    },
+    "Weight": {
+      "label": "Weight",
+      "units": [
+        "Kilogram",
+        "Gram"
+      ]
+    },
+    "WindChill": {
+      "label": "Wind chill",
+      "units": [
+        "DegreeCelsius",
+        "DegreeFahrenheit"
+      ]
+    },
+    "WindDirection": {
+      "label": "Wind direction",
+      "units": [
+        "DegreeAngle",
+        "Radian"
+      ]
+    },
+    "WindSpeed": {
+      "label": "Wind speed",
+      "units": [
+        "MetrePerSecond",
+        "KilometrePerHour"
+      ]
+    },
+    "WorkingState": {
+      "label": "Working state",
+      "units": [
+        "Dimensionless"
+      ]
+    }
+  },
+  "units": {
+    "Ampere": {
+      "label": "A"
+    },
+    "Bar": {
+      "label": "bar"
+    },
+    "BeatPerMinute": {
+      "label": "BeatPerMinute"
+    },
+    "Candela": {
+      "label": "cd"
+    },
+    "Centibar": {
+      "label": "centibar"
+    },
+    "Centimetre": {
+      "label": "cm"
+    },
+    "Coulomb": {
+      "label": "C"
+    },
+    "Day": {
+      "label": "d"
+    },
+    "Decibel": {
+      "label": "dB"
+    },
+    "DecibelA": {
+      "label": "dB(A)"
+    },
+    "DecibelMilliwatt": {
+      "label": "dBm"
+    },
+    "DegreeAngle": {
+      "label": "°"
+    },
+    "DegreeAnglePerSecond": {
+      "label": "°/s"
+    },
+    "DegreeCelsius": {
+      "label": "°C"
+    },
+    "DegreeFahrenheit": {
+      "label": "°F"
+    },
+    "Dimensionless": {
+      "label": ""
+    },
+    "EAQI": {
+      "label": "EAQI"
+    },
+    "Farad": {
+      "label": "F"
+    },
+    "Gauss": {
+      "label": "G"
+    },
+    "Gram": {
+      "label": "g"
+    },
+    "GramPerCubicMetre": {
+      "label": "g/m³"
+    },
+    "GramPerLitre": {
+      "label": "g/L"
+    },
+    "Hertz": {
+      "label": "Hz"
+    },
+    "Hour": {
+      "label": "h"
+    },
+    "Joule": {
+      "label": "J"
+    },
+    "Kelvin": {
+      "label": "K"
+    },
+    "KilobitsPerSecond": {
+      "label": "Kbit/s"
+    },
+    "Kilogram": {
+      "label": "kg"
+    },
+    "KilogramPerCubicMetre": {
+      "label": "kg/m³"
+    },
+    "Kilometre": {
+      "label": "km"
+    },
+    "KilometrePerHour": {
+      "label": "km/h"
+    },
+    "KiloPascal": {
+      "label": "kPa"
+    },
+    "KiloWattHour": {
+      "label": "kWh"
+    },
+    "Litre": {
+      "label": "L"
+    },
+    "LitrePer100Kilometres": {
+      "label": "L/100km"
+    },
+    "Lumen": {
+      "label": "lm"
+    },
+    "Lux": {
+      "label": "lx"
+    },
+    "Metre": {
+      "label": "m"
+    },
+    "MetrePerSecond": {
+      "label": "m/s"
+    },
+    "MetrePerSecondSquare": {
+      "label": "m/s²"
+    },
+    "Microampere": {
+      "label": "μA"
+    },
+    "Microgram": {
+      "label": "μg"
+    },
+    "MicrogramPerCubicMetre": {
+      "label": "μg/m³"
+    },
+    "MicroSiemens": {
+      "label": "μS"
+    },
+    "Microvolt": {
+      "label": "μV"
+    },
+    "Microwatt": {
+      "label": "μW"
+    },
+    "MicrowattPerSquareCentimetre": {
+      "label": "μW/cm²"
+    },
+    "Milliampere": {
+      "label": "mA"
+    },
+    "Millibar": {
+      "label": "mbar"
+    },
+    "Milligram": {
+      "label": "mg"
+    },
+    "MilligramPerCubicMetre": {
+      "label": "mg/m³"
+    },
+    "MilligramPerLitre": {
+      "label": "mg/L"
+    },
+    "MilligramPerDecilitre": {
+      "label": "mg/dL"
+    },
+    "MilligramPerSquareMetre": {
+      "label": "mg/m²"
+    },
+    "Millilitre": {
+      "label": "mL"
+    },
+    "Millimetre": {
+      "label": "mm"
+    },
+    "MillimetreMercure": {
+      "label": "mmHg"
+    },
+    "MillimetrePerHour": {
+      "label": "mm/h"
+    },
+    "MilliMolPerLitre": {
+      "label": "mmol/L"
+    },
+    "Millisecond": {
+      "label": "ms"
+    },
+    "Millivolt": {
+      "label": "mV"
+    },
+    "MillivoltPerMetre": {
+      "label": "mV/m"
+    },
+    "Milliwatt": {
+      "label": "mW"
+    },
+    "MinuteAngle": {
+      "label": "arcmin"
+    },
+    "MinuteTime": {
+      "label": "min"
+    },
+    "Ohm": {
+      "label": "Ω"
+    },
+    "Okta": {
+      "label": "Okta"
+    },
+    "Other": {
+      "label": ""
+    },
+    "PartsPerBillion": {
+      "label": "ppb"
+    },
+    "PartsPerMillion": {
+      "label": "ppm"
+    },
+    "Pascal": {
+      "label": "P"
+    },
+    "Percent": {
+      "label": "%"
+    },
+    "Radian": {
+      "label": "rad"
+    },
+    "RadianPerSecond": {
+      "label": "rad/s"
+    },
+    "RadiationParticlesPerMinute": {
+      "label": "cpm"
+    },
+    "RevolutionsPerMinute": {
+      "label": "rpm"
+    },
+    "SecondAngle": {
+      "label": "secarc"
+    },
+    "SecondTime": {
+      "label": "s"
+    },
+    "Siemens": {
+      "label": "S"
+    },
+    "SiemensPerMetre": {
+      "label": "S/m"
+    },
+    "Tesla": {
+      "label": "T"
+    },
+    "Tonne": {
+      "label": "t"
+    },
+    "Volt": {
+      "label": "V"
+    },
+    "VoltAmpereReactive": {
+      "label": "var"
+    },
+    "VoltPerMetre": {
+      "label": "V/m"
+    },
+    "Watt": {
+      "label": "W"
+    },
+    "WattPerSquareMetre": {
+      "label": "W/m²"
+    },
+    "Weber": {
+      "label": "Wb"
+    },
+    "Year": {
+      "label": "a"
+    }
+  }
+}

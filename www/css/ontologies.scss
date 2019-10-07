@@ -1,0 +1,107 @@
+body {
+    background: #f1f1f1;
+    color: #313131;
+    font-family: 'Segoe UI',Roboto,'Helvetica Neue',Arial,'Noto Sans',sans-serif;
+
+    .code {
+        font-family: "monospace";
+    }
+
+    &.windows {
+        font-family: 'Segoe UI', Tahoma, sans-serif;
+        .code {
+            font-family: Consolas, Lucida Console, Courier New, monospace;
+        }
+    }
+
+    &.linux {
+        font-family: Roboto, Ubuntu, Arial, sans-serif;
+        .code {
+            font-family: "dejavu sans mono, monospace";
+        }
+    }
+
+    &.mac {
+        font-family: '.SFNSDisplay-Regular', 'Helvetica Neue', 'Lucida Grande', sans-serif;
+        .code {
+            font-family: Menlo, monospace;
+        }
+    }
+}
+
+.sensing-device {
+    background: white;
+    border: 1px solid #d4d4d4;
+    display: inline-block;
+    width: 400px;
+    margin: 10px;
+    padding: 0 0 20px 0;
+    text-align: left;
+}
+
+.icon {
+    width: 60px;
+    height: 60px;
+    margin: 20px 10px;
+    float: left;
+}
+
+h2 {
+    margin: 0;
+    padding: 10px 10px 0 80px;
+    font-weight: normal;
+    font-size: 1.5em;
+}
+
+h3 {
+    margin: 0;
+    padding: 5px 10px 0 80px;
+    font-weight: normal;
+    font-size: 1.2em;
+}
+
+ul {
+    font-size: 1em;
+    margin: 0;
+    padding: 0 10px 0 100px;
+}
+
+.unit {
+    display: inline-block;
+    font-size: .8em;
+    border: 1px solid #cacaca;
+    padding: 0 0.4em;
+    margin: 0 0 0 .4em;
+    color: gray;
+}
+
+h1 {
+    margin: 0;
+    padding: 20px;
+    font-size: 3em;
+    letter-spacing: 2px;
+    color: #c1c1c1;
+    font-weight: lighter;
+}
+
+.logo {
+    vertical-align: sub;
+    height: 1.3em;
+}
+
+#ontologies {
+    column-count: 3;
+    text-align: center;
+}
+
+@media (max-width: 1260px) {
+    #ontologies {
+        column-count: 2;
+    }
+}
+
+@media (max-width: 860px) {
+    #ontologies {
+        column-count: 1;
+    }
+}

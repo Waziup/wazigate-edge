@@ -169,6 +169,7 @@ func Serve(resp http.ResponseWriter, req *http.Request) int {
 	if static != nil {
 
 		if strings.HasSuffix(req.RequestURI, ".js") ||
+			strings.HasSuffix(req.RequestURI, ".json") ||
 			strings.HasSuffix(req.RequestURI, ".css") ||
 			strings.HasSuffix(req.RequestURI, ".map") ||
 			strings.HasSuffix(req.RequestURI, ".png") ||

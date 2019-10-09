@@ -24,7 +24,7 @@ func (cloud *Cloud) authenticate() int {
 	}
 
 	addr := cloud.getRESTAddr()
-	log.Printf("[UP   ] Authentication ...")
+	log.Printf("[UP   ] Authentication as %q ...", cloud.Credentials.Username)
 
 	body, _ := json.Marshal(credentials)
 	resp := fetch(addr+"/auth/token", fetchInit{

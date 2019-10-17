@@ -77,7 +77,7 @@ func (cloud *Cloud) sync() {
 
 	////
 
-	go cloud.mqttSync()
+	activeMQTT := false
 
 	////
 
@@ -105,6 +105,11 @@ INITIAL_SYNC:
 		break
 	}
 
+	if !activeMQTT && !cloud.Pausing {
+		activeMQTT = true
+		go cloud.mqttSync()
+	}
+
 	for !cloud.Pausing {
 
 		status := cloud.persistentSync()
@@ -127,4 +132,7 @@ INITIAL_SYNC:
 	}
 
 	cloud.Pausing = false
+	if !activeMQTT {
+		cloud.PausingMQTT = false
+	}
 }

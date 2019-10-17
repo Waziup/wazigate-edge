@@ -18,6 +18,9 @@ import (
 	"github.com/globalsign/mgo/bson"
 )
 
+var branch string  // set by compiler
+var version string // set by compiler
+
 var static http.Handler
 
 func main() {
@@ -51,6 +54,9 @@ func main() {
 	////////////////////
 
 	log.Println("Waziup API Server")
+	if branch != "" {
+		log.Printf("This is a %q build, version %q.", branch, version)
+	}
 	log.Println("--------------------")
 
 	////////////////////

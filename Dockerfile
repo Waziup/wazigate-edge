@@ -10,7 +10,10 @@ RUN mkdir -p $PROJECT_PATH
 COPY . $PROJECT_PATH
 WORKDIR $PROJECT_PATH
 
-RUN go build -o build/wazigate-edge .
+RUN export branch=$(git rev-parse --abbrev-ref HEAD);
+RUN export version=$(git describe --always);
+
+RUN go build -ldflags "-s -w -X main.version=$version -X main.branch=$branch" -o build/wazigate-edge .
 
 FROM alpine:latest AS production
 

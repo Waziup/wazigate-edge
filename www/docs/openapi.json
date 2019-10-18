@@ -1,0 +1,2164 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "description": "This is the API specication for the [Wazigte Edge](https://github.com/Waziup/wazigate-edge).",
+    "version": "1.0.0",
+    "title": "Wazigate Edge",
+    "termsOfService": "http://swagger.io/terms/",
+    "contact": {
+      "email": "johann.forster@waziup.org"
+    },
+    "license": {
+      "name": "Apache 2.0",
+      "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+    }
+  },
+  "tags": [
+    {
+      "name": "Your Gateway",
+      "description": "Local Device Management"
+    },
+    {
+      "name": "Devices",
+      "description": "Device Management"
+    },
+    {
+      "name": "Sensors",
+      "description": "Sensor Management and Sensor Values"
+    },
+    {
+      "name": "Actuators",
+      "description": "Actuator Management and Actuator Values"
+    },
+    {
+      "name": "Clouds",
+      "description": "Clouds and Synchronization"
+    },
+    {
+      "name": "System",
+      "description": "System Information"
+    }
+  ],
+  "paths": {
+    "/device/id": {
+      "get": {
+        "tags": [
+          "Your Gateway"
+        ],
+        "summary": "Your Gateway's ID",
+        "description": "Return the ID of this Gateway. It is generated from the physical MAC Address and is unique for each device.",
+        "responses": {
+          "200": {
+            "description": "Successful Operation",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ID"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/device": {
+      "get": {
+        "tags": [
+          "Your Gateway"
+        ],
+        "summary": "Your Gateway",
+        "description": "Return the local device (gateway).",
+        "responses": {
+          "200": {
+            "description": "Successful Operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Device"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sensors": {
+      "get": {
+        "tags": [
+          "Your Gateway"
+        ],
+        "summary": "List Gateway Sensors",
+        "description": "Return a list of sensors for this device.",
+        "responses": {
+          "200": {
+            "description": "Successful Operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Sensor"
+                  },
+                  "example": [
+                    {
+                      "id": "5da45ed64b9f614d30e93ab3",
+                      "name": "Tempature Sensor",
+                      "created": "2019-10-14T11:41:10.814Z",
+                      "time": "2019-10-14T11:41:10.811Z",
+                      "value": 40.21
+                    },
+                    {
+                      "id": "5da97e3813474778618e2289",
+                      "name": "Water Level Sensor",
+                      "created": "2019-10-18T08:56:59.635Z",
+                      "time": "2019-10-18T08:57:12.250Z",
+                      "value": 0.52
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Your Gateway"
+        ],
+        "summary": "Declare a Sensor",
+        "description": "Create a new sensor on this device.",
+        "requestBody": {
+          "description": "Sensor to be declared. The Sensor ID is not required - the Edge API will generate an ID for you.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "Sensor ID",
+                    "example": "201c85cdbda3"
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "Sensor Name",
+                    "example": "Temperature Sensor"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sensor created. The Sensor ID will be returned.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ID"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. The sensor could not be created, maybe because a sensor with that ID already exists."
+          }
+        }
+      }
+    },
+    "/sensors/{id}": {
+      "get": {
+        "tags": [
+          "Your Gateway"
+        ],
+        "summary": "Get a single Sensor",
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of the sensor",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Sensor"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No sensor with that ID found."
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Your Gateway"
+        ],
+        "summary": "Delete a single Sensor",
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of the sensor",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Operation"
+          },
+          "404": {
+            "description": "No sensor with that ID found."
+          }
+        }
+      }
+    },
+    "/sensors/{id}/value": {
+      "get": {
+        "tags": [
+          "Your Gateway"
+        ],
+        "summary": "Last Sensor Value",
+        "description": "Get the last sensor value.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of the sensor",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Can be any value - string, number, boolean, array or object.",
+                  "example": 45.2
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No sensor with that ID found."
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Your Gateway"
+        ],
+        "summary": "Set a Sensor Value",
+        "description": "Upload a new value for this sensor.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of the sensor",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "The new sensor value. You can upload either a **value+time** or only a **value** (then the API uses the server time).",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "description": "Can be any value - string, number, boolean, array or object.",
+                    "example": 7.25
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "value": {
+                        "description": "Can be any value - string, number, boolean, array or object.",
+                        "example": 7.25
+                      },
+                      "time": {
+                        "type": "string",
+                        "description": "Value time",
+                        "format": "date-time",
+                        "example": "2019-10-18T08:57:12.250Z"
+                      }
+                    }
+                  }
+                ]
+              },
+              "examples": {
+                "single": {
+                  "value": 7.2,
+                  "summary": "Single value (without time)"
+                },
+                "time": {
+                  "value": {
+                    "value": 7.25,
+                    "time": "2019-10-18T08:57:12.250Z"
+                  },
+                  "summary": "Value and Time"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sensor value created."
+          },
+          "400": {
+            "description": "Bad Request. There may be no sensor with that id."
+          }
+        }
+      }
+    },
+    "/sensors/{id}/values": {
+      "get": {
+        "tags": [
+          "Your Gateway"
+        ],
+        "summary": "Sensor Values",
+        "description": "List sensor values.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of the sensor",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Time this value was recieved."
+                      },
+                      "value": {
+                        "description": "Can be any value - string, number, boolean, array or object."
+                      }
+                    }
+                  },
+                  "example": [
+                    {
+                      "time": "2019-05-13T13:00:00",
+                      "value": 7
+                    },
+                    {
+                      "time": "2019-05-13T13:01:00",
+                      "value": 8
+                    },
+                    {
+                      "time": "2019-05-13T13:02:00",
+                      "value": 7.5
+                    },
+                    {
+                      "time": "2019-05-13T13:03:00",
+                      "value": 7
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No sensor with that ID found."
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Your Gateway"
+        ],
+        "summary": "Upload multiple Values",
+        "description": "Upload multiple new values for this sensor.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of the sensor",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "The new sensor values. You can upload either a list of **values+times** or only **values** (then the API uses the server time).",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "array",
+                    "items": {
+                      "description": "Can be any value - string, number, boolean, array or object.",
+                      "example": 7.25
+                    }
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "value": {
+                          "description": "Can be any value - string, number, boolean, array or object.",
+                          "example": 7.25
+                        },
+                        "time": {
+                          "type": "string",
+                          "description": "Value time",
+                          "format": "date-time",
+                          "example": "2019-10-18T08:57:12.250Z"
+                        }
+                      }
+                    }
+                  }
+                ]
+              },
+              "examples": {
+                "single": {
+                  "value": [
+                    7.2,
+                    7.9,
+                    8.1
+                  ],
+                  "summary": "Values only"
+                },
+                "time": {
+                  "value": [
+                    {
+                      "value": 7.25,
+                      "time": "2019-10-18T08:57:00.000Z"
+                    },
+                    {
+                      "value": 7.9,
+                      "time": "2019-10-18T08:58:00.000Z"
+                    },
+                    {
+                      "value": 8.1,
+                      "time": "2019-10-18T08:59:00.000Z"
+                    }
+                  ],
+                  "summary": "Value and Time"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sensor values created."
+          },
+          "400": {
+            "description": "Bad Request. There may be no sensor with that id."
+          }
+        }
+      }
+    },
+    "/actuators": {
+      "get": {
+        "tags": [
+          "Your Gateway"
+        ],
+        "summary": "List Gateway Actuators",
+        "description": "Return a list of actuators for this device.",
+        "responses": {
+          "200": {
+            "description": "Successful Operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Actuator"
+                  },
+                  "example": [
+                    {
+                      "id": "5da45ed64b9f614d30e93ab3",
+                      "name": "Volt Level",
+                      "created": "2019-10-14T11:41:10.814Z",
+                      "time": "2019-10-14T11:41:10.811Z",
+                      "value": 5
+                    },
+                    {
+                      "id": "5da97e3813474778618e2289",
+                      "name": "LCD Output",
+                      "created": "2019-10-18T08:56:59.635Z",
+                      "time": "2019-10-18T08:57:12.250Z",
+                      "value": "Hello World"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Your Gateway"
+        ],
+        "summary": "Declare an Actuator",
+        "description": "Create a new actuator on this device.",
+        "requestBody": {
+          "description": "Actuator to be declared. The Actuator ID is not required - the Edge API will generate an ID for you.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "Actuator ID",
+                    "example": "201c85cdbda3"
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "Actuator Name",
+                    "example": "Volt Level"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Actuator created. The Actuator ID will be returned.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ID"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. The actuator could not be created, maybe because a actuator with that ID already exists."
+          }
+        }
+      }
+    },
+    "/actuators/{id}": {
+      "get": {
+        "tags": [
+          "Your Gateway"
+        ],
+        "summary": "Get a single Actuator",
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of the actuator",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Actuator"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No actuator with that ID found."
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Your Gateway"
+        ],
+        "summary": "Delete a single Actuator",
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of the actuator",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Operation"
+          },
+          "404": {
+            "description": "No actuator with that ID found."
+          }
+        }
+      }
+    },
+    "/actuators/{id}/value": {
+      "get": {
+        "tags": [
+          "Your Gateway"
+        ],
+        "summary": "Actuator Value",
+        "description": "Get the actuator value.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of the actuator",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Can be any value - string, number, boolean, array or object.",
+                  "example": 45.2
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No atuator with that ID found."
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Your Gateway"
+        ],
+        "summary": "Set an Actuator Value",
+        "description": "Change the value of this actuator.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of the actuator",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "The new actuator value.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "value": {
+                        "description": "Can be any value - string, number, boolean, array or object.",
+                        "example": 45.2
+                      },
+                      "time": {
+                        "type": "string",
+                        "description": "Value time",
+                        "format": "date-time",
+                        "example": "2019-10-18T08:57:12.250Z"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Actuator value created."
+          },
+          "400": {
+            "description": "Bad Request. The actuator could not be created, maybe because a actuator with that ID already exists."
+          }
+        }
+      }
+    },
+    "/devices": {
+      "get": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "List all Devices",
+        "description": "Returns a list of all devices.",
+        "responses": {
+          "200": {
+            "description": "Successful Operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Device"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "Declare a new Device",
+        "description": "Add a new deivce to the list of devices.",
+        "requestBody": {
+          "description": "Device to be declared. Device and Sensor/Actuator IDs are not required - the Edge API will generate an ID for you.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "Gateway ID",
+                    "example": "201c85cdbda3"
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "Gateway Name",
+                    "example": "My New Gateway"
+                  },
+                  "sensors": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "Sensor ID",
+                          "example": "201c85cdbda3"
+                        },
+                        "name": {
+                          "type": "string",
+                          "description": "Sensor Name",
+                          "example": "Temperature Sensor"
+                        }
+                      }
+                    },
+                    "example": [
+                      {
+                        "id": "5da45ed64b9f614d30e93ab3",
+                        "name": "Temperature Sensor"
+                      },
+                      {
+                        "id": "5da97e3813474778618e2289",
+                        "name": "Water Level Sensor"
+                      }
+                    ]
+                  },
+                  "actuators": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "Actuator ID",
+                          "example": "5da9950370942108c65b73c6"
+                        },
+                        "name": {
+                          "type": "string",
+                          "description": "Actuator Name",
+                          "example": "Volt Level"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Operation",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ID"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/devices/{id}": {
+      "get": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "Get a Device",
+        "description": "This deletes the device, its sensors and actuators. This also removes all stored values of the sensors and actuators.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of the device",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Device"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No device with that ID found."
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "Delete a Device",
+        "description": "This deletes the device, its sensors and actuators. This also removes all stored values of the sensors and actuators.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of the device",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Operation"
+          },
+          "404": {
+            "description": "No device with that ID found."
+          }
+        }
+      }
+    },
+    "/devices/{id}/name": {
+      "post": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "Change Device Name",
+        "description": "Change the name of this device.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of the device",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "new device name",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "string",
+                "example": "New Name 2"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Operation"
+          },
+          "404": {
+            "description": "No device with that ID found."
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "Delete a Device",
+        "description": "This deletes the device, its sensors and actuators. This also removes all stored values of the sensors and actuators.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of the device",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Operation"
+          },
+          "404": {
+            "description": "No device with that ID found."
+          }
+        }
+      }
+    },
+    "/devices/{deviceID}/sensors": {
+      "get": {
+        "tags": [
+          "Sensors"
+        ],
+        "summary": "List Device Sensors",
+        "description": "Return a list of sensors for this device.",
+        "parameters": [
+          {
+            "name": "deviceID",
+            "in": "path",
+            "description": "ID of the device",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Sensor"
+                  },
+                  "example": [
+                    {
+                      "id": "5da45ed64b9f614d30e93ab3",
+                      "name": "Tempature Sensor",
+                      "created": "2019-10-14T11:41:10.814Z",
+                      "time": "2019-10-14T11:41:10.811Z",
+                      "value": 40.21
+                    },
+                    {
+                      "id": "5da97e3813474778618e2289",
+                      "name": "Water Level Sensor",
+                      "created": "2019-10-18T08:56:59.635Z",
+                      "time": "2019-10-18T08:57:12.250Z",
+                      "value": 0.52
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Sensors"
+        ],
+        "summary": "Declare a Sensor",
+        "description": "Create a new sensor on this device.",
+        "parameters": [
+          {
+            "name": "deviceID",
+            "in": "path",
+            "description": "ID of the device",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Sensor to be declared. The Sensor ID is not required - the Edge API will generate an ID for you.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "Sensor ID",
+                    "example": "201c85cdbda3"
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "Sensor Name",
+                    "example": "Temperature Sensor"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sensor created. The Sensor ID will be returned.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ID"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. The sensor could not be created, maybe because a sensor with that ID already exists."
+          }
+        }
+      }
+    },
+    "/devices/{deviceID}/sensors/{sensorID}": {
+      "get": {
+        "tags": [
+          "Sensors"
+        ],
+        "summary": "Get a single Sensor",
+        "description": "",
+        "parameters": [
+          {
+            "name": "deviceID",
+            "in": "path",
+            "description": "ID of the device",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sensorID",
+            "in": "path",
+            "description": "ID of the sensor",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Sensor"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No device and sensor with that ID found."
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Sensors"
+        ],
+        "summary": "Delete a Sensor",
+        "description": "This deletes the sensor and all its values.",
+        "parameters": [
+          {
+            "name": "deviceID",
+            "in": "path",
+            "description": "ID of the device",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sensorID",
+            "in": "path",
+            "description": "ID of the sensor",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Operation"
+          },
+          "404": {
+            "description": "No device with that ID found."
+          }
+        }
+      }
+    },
+    "/devices/{deviceID}/sensors/{sensorID}/value": {
+      "get": {
+        "tags": [
+          "Sensors"
+        ],
+        "summary": "Last Sensor Value",
+        "description": "Get the last sensor value.",
+        "parameters": [
+          {
+            "name": "deviceID",
+            "in": "path",
+            "description": "ID of the device",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sensorID",
+            "in": "path",
+            "description": "ID of the sensor",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Can be any value - string, number, boolean, array or object.",
+                  "example": 45.2
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No sensor with that ID found."
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Sensors"
+        ],
+        "summary": "Set a Sensor Value",
+        "description": "Upload a new value for this sensor.",
+        "parameters": [
+          {
+            "name": "deviceID",
+            "in": "path",
+            "description": "ID of the device",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sensorID",
+            "in": "path",
+            "description": "ID of the sensor",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "The new sensor value. You can upload either a **value+time** or only a **value** (then the API uses the server time).",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "description": "Can be any value - string, number, boolean, array or object.",
+                    "example": 7.25
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "value": {
+                        "description": "Can be any value - string, number, boolean, array or object.",
+                        "example": 7.25
+                      },
+                      "time": {
+                        "type": "string",
+                        "description": "Value time",
+                        "format": "date-time",
+                        "example": "2019-10-18T08:57:12.250Z"
+                      }
+                    }
+                  }
+                ]
+              },
+              "examples": {
+                "single": {
+                  "value": 7.2,
+                  "summary": "Single value (without time)"
+                },
+                "time": {
+                  "value": {
+                    "value": 7.25,
+                    "time": "2019-10-18T08:57:12.250Z"
+                  },
+                  "summary": "Value and Time"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sensor value created."
+          },
+          "400": {
+            "description": "Bad Request. There may be no sensor with that id."
+          }
+        }
+      }
+    },
+    "/devices/{deviceID}/sensors/{sensorID}/values": {
+      "get": {
+        "tags": [
+          "Sensors"
+        ],
+        "summary": "Sensor Values",
+        "description": "List sensor values.",
+        "parameters": [
+          {
+            "name": "deviceID",
+            "in": "path",
+            "description": "ID of the device",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sensorID",
+            "in": "path",
+            "description": "ID of the sensor",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Time this value was recieved."
+                      },
+                      "value": {
+                        "description": "Can be any value - string, number, boolean, array or object."
+                      }
+                    }
+                  },
+                  "example": [
+                    {
+                      "time": "2019-05-13T13:00:00",
+                      "value": 7
+                    },
+                    {
+                      "time": "2019-05-13T13:01:00",
+                      "value": 8
+                    },
+                    {
+                      "time": "2019-05-13T13:02:00",
+                      "value": 7.5
+                    },
+                    {
+                      "time": "2019-05-13T13:03:00",
+                      "value": 7
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No sensor with that ID found."
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Sensors"
+        ],
+        "summary": "Upload multiple Values",
+        "description": "Upload multiple new values for this sensor.",
+        "parameters": [
+          {
+            "name": "deviceID",
+            "in": "path",
+            "description": "ID of the device",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sensorID",
+            "in": "path",
+            "description": "ID of the sensor",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "The new sensor values. You can upload either a list of **values+times** or only **values** (then the API uses the server time).",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "array",
+                    "items": {
+                      "description": "Can be any value - string, number, boolean, array or object.",
+                      "example": 7.25
+                    }
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "value": {
+                          "description": "Can be any value - string, number, boolean, array or object.",
+                          "example": 7.25
+                        },
+                        "time": {
+                          "type": "string",
+                          "description": "Value time",
+                          "format": "date-time",
+                          "example": "2019-10-18T08:57:12.250Z"
+                        }
+                      }
+                    }
+                  }
+                ]
+              },
+              "examples": {
+                "single": {
+                  "value": [
+                    7.2,
+                    7.9,
+                    8.1
+                  ],
+                  "summary": "Values only"
+                },
+                "time": {
+                  "value": [
+                    {
+                      "value": 7.25,
+                      "time": "2019-10-18T08:57:00.000Z"
+                    },
+                    {
+                      "value": 7.9,
+                      "time": "2019-10-18T08:58:00.000Z"
+                    },
+                    {
+                      "value": 8.1,
+                      "time": "2019-10-18T08:59:00.000Z"
+                    }
+                  ],
+                  "summary": "Value and Time"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sensor values created."
+          },
+          "400": {
+            "description": "Bad Request. There may be no sensor with that id."
+          }
+        }
+      }
+    },
+    "/devices/{deviceID}/actuators": {
+      "get": {
+        "tags": [
+          "Actuators"
+        ],
+        "summary": "List Device Actuators",
+        "description": "Return a list of actuators for this device.",
+        "parameters": [
+          {
+            "name": "deviceID",
+            "in": "path",
+            "description": "ID of the device",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Actuator"
+                  },
+                  "example": [
+                    {
+                      "id": "5da45ed64b9f614d30e93ab3",
+                      "name": "LCD Display",
+                      "created": "2019-10-14T11:41:10.814Z",
+                      "time": "2019-10-14T11:41:10.811Z",
+                      "value": "Hello World"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Actuators"
+        ],
+        "summary": "Declare an Actuator",
+        "description": "Create a new actuator on this device.",
+        "parameters": [
+          {
+            "name": "deviceID",
+            "in": "path",
+            "description": "ID of the device",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Actuator to be declared. The Actuator ID is not required - the Edge API will generate an ID for you.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "Actuator ID",
+                    "example": "201c85cdbda3"
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "Sensor Name",
+                    "example": "LCD Display"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Actuator created. The Actuator ID will be returned.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ID"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. The actuator could not be created, maybe because an actuator with that ID already exists."
+          }
+        }
+      }
+    },
+    "/devices/{deviceID}/actuators/{actuatorID}": {
+      "get": {
+        "tags": [
+          "Actuators"
+        ],
+        "summary": "Get a single Actuator",
+        "description": "",
+        "parameters": [
+          {
+            "name": "deviceID",
+            "in": "path",
+            "description": "ID of the device",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "actuatorID",
+            "in": "path",
+            "description": "ID of the actuator",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Actuator"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No device and actuator with that ID found."
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Actuators"
+        ],
+        "summary": "Delete an Actuator",
+        "description": "This deletes the actuator.",
+        "parameters": [
+          {
+            "name": "deviceID",
+            "in": "path",
+            "description": "ID of the device",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "actuatorID",
+            "in": "path",
+            "description": "ID of the actuator",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Operation"
+          },
+          "404": {
+            "description": "No device with that ID found."
+          }
+        }
+      }
+    },
+    "/devices/{deviceID}/sensors/{actuatorID}/value": {
+      "get": {
+        "tags": [
+          "Actuators"
+        ],
+        "summary": "Last Actuator Value",
+        "description": "Get the last actuator value.",
+        "parameters": [
+          {
+            "name": "deviceID",
+            "in": "path",
+            "description": "ID of the device",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "actuatorID",
+            "in": "path",
+            "description": "ID of the actuator",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Can be any value - string, number, boolean, array or object.",
+                  "example": 45.2
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No actuator with that ID found."
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Actuators"
+        ],
+        "summary": "Set an Actuator Value",
+        "description": "Upload a new value for this actuator.",
+        "parameters": [
+          {
+            "name": "deviceID",
+            "in": "path",
+            "description": "ID of the device",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "actuatorID",
+            "in": "path",
+            "description": "ID of the actuator",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "The new actuator value. You can upload either a **value+time** or only a **value** (then the API uses the server time).",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "description": "Can be any value - string, number, boolean, array or object.",
+                    "example": 7.25
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "value": {
+                        "description": "Can be any value - string, number, boolean, array or object.",
+                        "example": 7.25
+                      },
+                      "time": {
+                        "type": "string",
+                        "description": "Value time",
+                        "format": "date-time",
+                        "example": "2019-10-18T08:57:12.250Z"
+                      }
+                    }
+                  }
+                ]
+              },
+              "examples": {
+                "single": {
+                  "value": 7.2,
+                  "summary": "Single value (without time)"
+                },
+                "time": {
+                  "value": {
+                    "value": 7.25,
+                    "time": "2019-10-18T08:57:12.250Z"
+                  },
+                  "summary": "Value and Time"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Actuator value created."
+          },
+          "400": {
+            "description": "Bad Request. There may be no actuator with that id."
+          }
+        }
+      }
+    },
+    "/clouds": {
+      "get": {
+        "tags": [
+          "Clouds"
+        ],
+        "summary": "List Clouds",
+        "description": "Return a list of clouds this gateway is synchronizing.",
+        "responses": {
+          "200": {
+            "description": "Successful Operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "$ref": "#/components/schemas/Cloud"
+                  },
+                  "example": {
+                    "5cebcfa04b9f6119688b3cdc": {
+                      "id": "5cebcfa04b9f6119688b3cdc",
+                      "paused": true,
+                      "pausing": false,
+                      "pausing_mqtt": false,
+                      "rest": "//api.waziup.io/api/v2",
+                      "mqtt": "",
+                      "credentials": {
+                        "username": "your username",
+                        "token": "your password"
+                      },
+                      "statusCode": 0,
+                      "statusText": ""
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Clouds"
+        ],
+        "summary": "Declare a Cloud",
+        "description": "Create a new cloud configuration to enable synchronization.",
+        "requestBody": {
+          "description": "Cloud configuration. If `paused: false` then the Gateway will start synchonization immediately.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "Cloud ID",
+                    "example": "5cebcfa04b9f6119688b3cdc"
+                  },
+                  "paused": {
+                    "type": "boolean",
+                    "description": "Paused Synchonization",
+                    "example": true
+                  },
+                  "rest": {
+                    "type": "string",
+                    "description": "Waziup Cloud REST address",
+                    "example": "//api.waziup.io/api/v2"
+                  },
+                  "mqtt": {
+                    "type": "string",
+                    "description": "Waziup Cloud MQTT address (can be empty)",
+                    "example": ""
+                  },
+                  "credentials": {
+                    "type": "object",
+                    "properties": {
+                      "username": {
+                        "type": "string",
+                        "description": "Username",
+                        "example": "my username"
+                      },
+                      "token": {
+                        "type": "string",
+                        "description": "Password",
+                        "example": "my password"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sensor created. The Sensor ID will be returned.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ID"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. The sensor could not be created, maybe because a sensor with that ID already exists."
+          }
+        }
+      }
+    },
+    "/clouds/{id}/paused": {
+      "post": {
+        "tags": [
+          "Clouds"
+        ],
+        "summary": "Start & Stop synchonization",
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of the cloud",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Use `paused: true` to stop synchonization and `paused: false` to start synchonization.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "boolean"
+              },
+              "examples": {
+                "start": {
+                  "value": true,
+                  "summary": "stop synchonization"
+                },
+                "stop": {
+                  "value": false,
+                  "summary": "start synchonization"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Operation"
+          },
+          "404": {
+            "description": "Bad Request. There may be no cloud with that id."
+          }
+        }
+      }
+    },
+    "/clouds/{id}/credentials": {
+      "post": {
+        "tags": [
+          "Clouds"
+        ],
+        "summary": "Change Credentials",
+        "description": "Change your credentials that are used for the synchronization.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of the cloud",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Your credentials: Username and password.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": {
+                    "type": "string",
+                    "description": "Username",
+                    "example": "my username"
+                  },
+                  "token": {
+                    "type": "string",
+                    "description": "Password",
+                    "example": "my password"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Operation"
+          },
+          "404": {
+            "description": "Bad Request. There may be no cloud with that id."
+          }
+        }
+      }
+    },
+    "/sys/uptime": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Uptime",
+        "description": "System Uptime",
+        "responses": {
+          "200": {
+            "description": "System Uptime",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "example": "4h23m2.6939534s"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ID": {
+        "type": "string",
+        "example": "201c85cdbda3"
+      },
+      "Sensor": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Sensor ID",
+            "example": "201c85cdbda3"
+          },
+          "name": {
+            "type": "string",
+            "description": "Sensor Name",
+            "example": "Temperature Sensor"
+          },
+          "modified": {
+            "type": "string",
+            "description": "Last time the sensor was modified by changing the name.",
+            "format": "date-time",
+            "example": "2019-10-14T11:41:10.814Z"
+          },
+          "created": {
+            "type": "string",
+            "description": "Time the sensor was created.",
+            "format": "date-time",
+            "example": "2019-10-14T11:41:10.814Z"
+          },
+          "time": {
+            "type": "string",
+            "description": "Last time a value was recieved.",
+            "format": "date-time",
+            "example": "2019-10-14T11:41:10.814Z"
+          },
+          "value": {
+            "description": "Can be any value - string, number, boolean, array or object."
+          }
+        }
+      },
+      "Actuator": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Actuator ID",
+            "example": "201c85cdbda3"
+          },
+          "name": {
+            "type": "string",
+            "description": "Actuator Name",
+            "example": "Volt Level"
+          },
+          "modified": {
+            "type": "string",
+            "description": "Last time the actuator was modified by changing the name.",
+            "format": "date-time",
+            "example": "2019-10-14T11:41:10.814Z"
+          },
+          "created": {
+            "type": "string",
+            "description": "Time the actuator was created.",
+            "format": "date-time",
+            "example": "2019-10-14T11:41:10.814Z"
+          },
+          "time": {
+            "type": "string",
+            "description": "Last time a value was recieved.",
+            "format": "date-time",
+            "example": "2019-10-14T11:41:10.814Z"
+          },
+          "value": {
+            "description": "Can be any value - string, number, boolean, array or object."
+          }
+        }
+      },
+      "Device": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Device ID",
+            "example": "00155d00641b"
+          },
+          "name": {
+            "type": "string",
+            "description": "Device Name",
+            "example": "My Gateway"
+          },
+          "modified": {
+            "type": "string",
+            "description": "Last time the gateway was modified by changing the name.",
+            "format": "date-time",
+            "example": "2019-10-14T11:41:10.814Z"
+          },
+          "created": {
+            "type": "string",
+            "description": "Time the gateway was created.",
+            "format": "date-time",
+            "example": "2019-10-14T11:41:10.814Z"
+          },
+          "sensors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Sensor"
+            }
+          },
+          "actuators": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Actuator"
+            }
+          }
+        }
+      },
+      "Cloud": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Cloud ID",
+            "example": "5cebcfa04b9f6119688b3cdc"
+          },
+          "paused": {
+            "type": "boolean",
+            "description": "If the Cloud is paused (not synchronizing).",
+            "example": true
+          },
+          "pausing": {
+            "type": "boolean",
+            "description": "If the Cloud is about to stop synchronizing.",
+            "example": false
+          },
+          "pausing_mqtt": {
+            "type": "boolean",
+            "description": "If the Cloud is about to stop synchronizing via mqtt.",
+            "example": false
+          },
+          "rest": {
+            "type": "string",
+            "description": "Waziup Cloud REST address",
+            "example": "//api.waziup.io/api/v2"
+          },
+          "mqtt": {
+            "type": "string",
+            "description": "Waziup Cloud MQTT address (can be empty)",
+            "example": ""
+          },
+          "credentials": {
+            "type": "object",
+            "description": "Your Cloud Credentials",
+            "properties": {
+              "username": {
+                "type": "string",
+                "description": "Username",
+                "example": "my username"
+              },
+              "token": {
+                "type": "string",
+                "description": "Password",
+                "example": "my password"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "externalDocs": {
+    "description": "Find out more about Swagger",
+    "url": "http://swagger.io"
+  }
+}

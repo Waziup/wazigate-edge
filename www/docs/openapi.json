@@ -350,6 +350,40 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "description": "Only values newer (not including) than this time.",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "description": "Only values older (including) than this time.",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limt",
+            "description": "Maximum number of values to return.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "size",
+            "description": "Maximum memory size of the response.",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -1302,6 +1336,40 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "description": "Only values newer (not including) than this time.",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "description": "Only values older (including) than this time.",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limt",
+            "description": "Maximum number of values to return.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "size",
+            "description": "Maximum memory size of the response.",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -1860,6 +1928,84 @@
           },
           "400": {
             "description": "Bad Request. The sensor could not be created, maybe because a sensor with that ID already exists."
+          }
+        }
+      }
+    },
+    "/clouds/{id}": {
+      "get": {
+        "tags": [
+          "Clouds"
+        ],
+        "summary": "Get a Cloud",
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of the cloud",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "$ref": "#/components/schemas/Cloud"
+                  },
+                  "example": {
+                    "id": "5cebcfa04b9f6119688b3cdc",
+                    "paused": true,
+                    "pausing": false,
+                    "pausing_mqtt": false,
+                    "rest": "//api.waziup.io/api/v2",
+                    "mqtt": "",
+                    "credentials": {
+                      "username": "your username",
+                      "token": "your password"
+                    },
+                    "statusCode": 0,
+                    "statusText": ""
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bad Request. There may be no cloud with that id."
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Clouds"
+        ],
+        "summary": "Remove a Cloud",
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of the cloud",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Operation"
+          },
+          "404": {
+            "description": "Bad Request. There may be no cloud with that id."
           }
         }
       }

@@ -54,7 +54,7 @@ type Cloud struct {
 
 // Clouds lists all clouds that we synchronize.
 // Changes must be made using CloudsMutex.
-var clouds map[string]*Cloud
+var clouds = map[string]*Cloud{}
 
 // CloudsMutex guards Clouds.
 var cloudsMutex sync.RWMutex
@@ -220,13 +220,14 @@ func ReadCloudConfig(r io.Reader) error {
 		return err
 	}
 	err = json.Unmarshal(data, &clouds)
-	if err != nil {
-		clouds = make(map[string]*Cloud)
-	}
-	for _, cloud := range clouds {
-		if !cloud.Paused {
-			go cloud.sync()
+	if err == nil {
+		for _, cloud := range clouds {
+			if !cloud.Paused {
+				go cloud.sync()
+			}
 		}
+	} else {
+		clouds = make(map[string]*Cloud)
 	}
 	cloudsMutex.Unlock()
 	return err

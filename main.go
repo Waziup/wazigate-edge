@@ -306,10 +306,19 @@ func initSync() {
 	cloudsFile := getCloudsFile()
 	file, err := os.Open(cloudsFile)
 	if err != nil {
-		log.Printf("[Err  ] Can not read %q: %s", cloudsFile, err.Error())
+		log.Printf("[Err  ] Can not open %q: %s", cloudsFile, err.Error())
+		return
 	}
 	err = clouds.ReadCloudConfig(file)
 	if err != nil {
 		log.Printf("[Err  ] Can not read %q: %s", cloudsFile, err.Error())
+		return
 	}
+
+	ids := make([]string, 0, 8)
+	for _, cloud := range clouds.GetClouds() {
+		ids = append(ids, cloud.ID)
+	}
+	numClouds := len(clouds.GetClouds())
+	log.Printf("[Up   ] Read %d from %q: %s", numClouds, cloudsFile, strings.Join(ids, ", "))
 }

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"regexp"
@@ -57,8 +58,12 @@ func getReqValue(req *http.Request) (edge.Value, error) {
 		Value: nil,
 		Time:  time.Now(),
 	}
-	err = json.Unmarshal(body, &val)
+	decoder := json.NewDecoder(bytes.NewBuffer(body))
+	decoder.DisallowUnknownFields()
+	err = decoder.Decode(&val)
 	if err != nil {
+		val.Time = time.Now()
+		val.Value = nil
 		err := json.Unmarshal(body, &val.Value)
 		if err != nil {
 			return val, err
@@ -74,10 +79,12 @@ func getReqValues(req *http.Request) ([]edge.Value, error) {
 		return nil, err
 	}
 	var values []edge.Value
-	err = json.Unmarshal(body, &values)
+	decoder := json.NewDecoder(bytes.NewBuffer(body))
+	decoder.DisallowUnknownFields()
+	err = decoder.Decode(&values)
 	if err != nil {
 		var plains []interface{}
-		err := json.Unmarshal(body, &values)
+		err := json.Unmarshal(body, &plains)
 		if err != nil {
 			return nil, err
 		}

@@ -49,7 +49,29 @@ func GetSensor(deviceID string, sensorID string) (*Sensor, error) {
 // PostSensor creates a new sensor for this device.
 func PostSensor(deviceID string, sensor *Sensor) error {
 
-	err := dbDevices.Update(bson.M{
+	var device Device
+	err := dbDevices.Find(bson.M{
+		"_id": deviceID,
+	}).Select(bson.M{
+		"sensors": bson.M{
+			"$elemMatch": bson.M{
+				"id": sensor.ID,
+			},
+		},
+	}).One(&device)
+
+	if err != nil {
+		if err == mgo.ErrNotFound {
+			return errNotFound
+		}
+		return CodeError{500, "database error: " + err.Error()}
+	}
+
+	if len(device.Sensors) != 0 {
+		return CodeError{409, "sensor already exists"}
+	}
+
+	err = dbDevices.Update(bson.M{
 		"_id": deviceID,
 	}, bson.M{
 		"$push": bson.M{

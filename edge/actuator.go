@@ -1,8 +1,8 @@
 package edge
 
 import (
-	"time"
 	"io"
+	"time"
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
@@ -49,7 +49,29 @@ func GetActuator(deviceID string, actuatorID string) (*Actuator, error) {
 // PostActuator creates a new actuator for this device.
 func PostActuator(deviceID string, actuator *Actuator) error {
 
-	err := dbDevices.Update(bson.M{
+	var device Device
+	err := dbDevices.Find(bson.M{
+		"_id": deviceID,
+	}).Select(bson.M{
+		"actuators": bson.M{
+			"$elemMatch": bson.M{
+				"id": actuator.ID,
+			},
+		},
+	}).One(&device)
+
+	if err != nil {
+		if err == mgo.ErrNotFound {
+			return errNotFound
+		}
+		return CodeError{500, "database error: " + err.Error()}
+	}
+
+	if len(device.Sensors) != 0 {
+		return CodeError{409, "actuator already exists"}
+	}
+
+	err = dbDevices.Update(bson.M{
 		"_id": deviceID,
 	}, bson.M{
 		"$push": bson.M{
@@ -148,7 +170,7 @@ func GetActuatorValues(deviceID string, actuatorID string, query *Query) ValueIt
 	// var value ActuatorValue
 
 	m := bson.M{
-		"deviceId": deviceID,
+		"deviceId":   deviceID,
 		"actuatorId": actuatorID,
 	}
 	var noTime = time.Time{}

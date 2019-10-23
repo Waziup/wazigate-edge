@@ -15,7 +15,7 @@ import (
 
 func (cloud *Cloud) nextSensor() (entity, *remote) {
 
-	for true {
+	for !cloud.Pausing {
 		cloud.remoteMutex.Lock()
 		if len(cloud.remote) != 0 {
 			cloud.remoteMutex.Unlock()
@@ -24,6 +24,10 @@ func (cloud *Cloud) nextSensor() (entity, *remote) {
 		cloud.remoteMutex.Unlock()
 		cloud.setStatus(200, "Queue drained. Cloud is up-to-date.")
 		<-cloud.sigDirty
+	}
+
+	if cloud.Pausing {
+		return entity{}, nil
 	}
 
 	var nextEntity entity
@@ -75,13 +79,11 @@ func (cloud *Cloud) persistentSync() int {
 		cloud.remoteMutex.Lock()
 		delete(cloud.remote, ent)
 		cloud.remoteMutex.Unlock()
-		return 0
-	case status == http.StatusBadRequest, status == http.StatusNotFound:
+	case status >= 400 && status < 500:
 		log.Printf("[UP   ] Entity removed from sync queue due to an error.")
 		cloud.remoteMutex.Lock()
 		delete(cloud.remote, ent)
 		cloud.remoteMutex.Unlock()
-		return 0
 	}
 	return status
 }
@@ -184,6 +186,7 @@ func (cloud *Cloud) postDevice(device *edge.Device) int {
 	var syncDev v2Device
 	syncDev.ID = device.ID
 	syncDev.Name = device.Name
+	syncDev.Gateway = edge.LocalID()
 	syncDev.Sensors = make([]v2Sensor, len(device.Sensors))
 	for i, sensor := range device.Sensors {
 		syncDev.Sensors[i].ID = sensor.ID

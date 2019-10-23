@@ -25,6 +25,7 @@ type v2Device struct {
 	ID        string       `json:"id"`
 	Sensors   []v2Sensor   `json:"sensors"`
 	Actuators []v2Actuator `json:"actuators"`
+	Gateway   string       `json:"gateway_id"`
 }
 
 type v2Gateway struct {

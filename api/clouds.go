@@ -16,8 +16,13 @@ import (
 // GetClouds implements GET /clouds
 func GetClouds(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
+	data, err := json.Marshal(clouds.GetClouds())
+	if err != nil {
+		log.Printf("[ERR  ] Error %v", err)
+		http.Error(resp, "internal server error", http.StatusInternalServerError)
+		return
+	}
 	resp.Header().Set("Content-Type", "application/json")
-	data, _ := json.Marshal(clouds.GetClouds())
 	resp.Write(data)
 }
 
@@ -71,7 +76,7 @@ func DeleteCloud(resp http.ResponseWriter, req *http.Request, params routing.Par
 	log.Printf("[CLOUD] Deleted.")
 }
 
-// GetCloud implements GET /clouds/{cloudID}/config
+// GetCloud implements GET /clouds/{cloudID}
 func GetCloud(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
 	cloudID := params.ByName("cloud_id")
@@ -162,18 +167,22 @@ func PostCloudCredentials(resp http.ResponseWriter, req *http.Request, params ro
 		return
 	}
 
-	if !cloud.Paused || cloud.Pausing {
-		http.Error(resp, "bad request: cloud is paused or pausing", http.StatusBadRequest)
-		return
-	}
-
 	decoder := json.NewDecoder(req.Body)
-	err := decoder.Decode(&cloud.Credentials)
+	creds := struct {
+		Username string `json:"username"`
+		Token    string `json:"token"`
+	}{}
+	err := decoder.Decode(&creds)
 	if err != nil {
 		http.Error(resp, "bad request: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-
+	status, err := cloud.SetCredentials(creds.Username, creds.Token)
+	if err != nil {
+		http.Error(resp, err.Error(), status)
+		return
+	}
+	resp.WriteHeader(status)
 	writeCloudFile()
 }
 

@@ -38,6 +38,7 @@ func (cloud *Cloud) mqttSync() {
 
 	cloud.mqttPersistentSync() // blocking
 	cloud.PausingMQTT = false
+	log.Println("[UP   ] MQTT sync is now paused.")
 }
 
 func (cloud *Cloud) mqttPersistentSync() {

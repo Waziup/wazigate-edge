@@ -30,6 +30,11 @@ func (cloud *Cloud) SetPaused(paused bool) {
 			cloud.client.Disconnect()
 		}
 		cloud.mqttMutex.Unlock()
+
+		select {
+		case cloud.sigDirty <- struct{}{}:
+		default: // channel full
+		}
 	} else {
 		cloud.Paused = false
 		go cloud.sync()
@@ -132,7 +137,9 @@ INITIAL_SYNC:
 	}
 
 	cloud.Pausing = false
+	log.Println("[UP   ] REST sync is now paused.")
 	if !activeMQTT {
 		cloud.PausingMQTT = false
+		log.Println("[UP   ] MQTT sync is now paused.")
 	}
 }

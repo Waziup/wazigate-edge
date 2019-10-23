@@ -1,11 +1,14 @@
 package clouds
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"net/url"
 	"strings"
 	"sync"
@@ -23,6 +26,12 @@ type entity struct {
 type remote struct {
 	time   time.Time
 	exists bool
+}
+
+type Status struct {
+	Code   int         `json:"code"`
+	Name   string      `json:"name"`
+	Detail interface{} `json:"detail"`
 }
 
 // Cloud represents a configuration to access a Waziup Cloud.
@@ -45,6 +54,8 @@ type Cloud struct {
 
 	StatusCode int    `json:"statusCode"`
 	StatusText string `json:"statusText"`
+
+	Status map[string]Status
 
 	remote      map[entity]*remote
 	remoteMutex sync.Mutex
@@ -209,6 +220,36 @@ func (cloud *Cloud) setStatus(code int, text string) {
 	log.Printf("[UP   ] [%d] %s", code, strings.ReplaceAll(text, "\n", " - "))
 	cloud.StatusCode = code
 	cloud.StatusText = text
+}
+
+var errCloudNoPause = errors.New("cloud pausing or not paused")
+
+func (cloud *Cloud) SetCredentials(username string, token string) (int, error) {
+
+	if !cloud.Paused || cloud.Pausing {
+		return http.StatusLocked, errCloudNoPause
+	}
+	addr := cloud.getRESTAddr()
+	credentials := struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}{username, token}
+	body, _ := json.Marshal(credentials)
+	resp := fetch(addr+"/auth/token", fetchInit{
+		method: http.MethodPost,
+		headers: map[string]string{
+			"Content-Type": "application/json",
+		},
+		body: bytes.NewBuffer(body),
+	})
+	if resp.status == 0 {
+		return http.StatusAccepted, nil
+	}
+	if !resp.ok {
+		return resp.status, fmt.Errorf("can not login: server says: %v", resp.status)
+	}
+
+	return resp.status, nil
 }
 
 // ReadCloudConfig reads clouds.json into the current configuration.

@@ -20,6 +20,10 @@ navigate = (hash) ->
     if hash == "devices"
         showDevices()
         return
+
+    if hash == "clouds"
+        showClouds()
+        return
     
     match = hash.match /^devices\/(\w+)$/
     if match != null
@@ -46,7 +50,7 @@ navigate = (hash) ->
         showActuator match[1], match[2]
         return
 
-    location.hash = "#devices"
+    # location.hash = "#devices"
     return
 
 ################################################################################
@@ -138,7 +142,7 @@ inflateDevice = (device) ->
                     src: "img/delete.svg"
                     title: "Delete"
                 on: click: () ->
-                    if confirm "Delete \"#{device.name}\?\nThis will also delete all device data points."
+                    if confirm "Delete \"#{device.name}\"?\nThis will also delete all device data points."
                         resp = await fetch "devices/#{device.id}",
                             method: "DELETE"
                         if ! resp.ok
@@ -272,7 +276,7 @@ inflateSensor = (deviceID, sensor) ->
                     src: "img/delete.svg"
                     title: "Delete"
                 on: click: () ->
-                    if confirm "Delete \"#{sensor.name}\?\nThis will also delete all sensor data points."
+                    if confirm "Delete \"#{sensor.name}\"?\nThis will also delete all sensor data points."
                         resp = await fetch "devices/#{deviceID}/sensors/#{sensor.id}",
                             method: "DELETE"
                         if ! resp.ok
@@ -340,7 +344,7 @@ inflateActuator = (deviceID, actuator) ->
                     src: "img/delete.svg"
                     title: "Delete"
                 on: click: () ->
-                    if confirm "Delete \"#{actuator.name}\?\nThis will also delete all actuator data points."
+                    if confirm "Delete \"#{actuator.name}\"?\nThis will also delete all actuator data points."
                         resp = await fetch "devices/#{deviceID}/actuators/#{actuator.id}",
                             method: "DELETE"
                         if ! resp.ok
@@ -502,6 +506,195 @@ showActuator = (deviceID, actuatorID) ->
     subheading2.hide()
     content2.hide()
     return
+
+####################
+
+showClouds = () ->
+    resp = await fetch "clouds"
+    if ! resp.ok
+        showRespError resp
+        return
+    clouds = await resp.json()
+
+    heading.text "#{Object.keys(clouds).length} Clouds"
+
+    subheading1.hide()
+    subheading2.hide()
+    content1.show().text ""
+    content2.hide()
+
+    for id, cloud of clouds
+        content1.append inflateCloud cloud
+    ###
+    virgin =  $.box
+        className: "virgin"
+        on: click: () ->
+            name = prompt "Please enter device name:", "New Device"
+            return if ! name
+            device = 
+                name: name
+                sensors: []
+                actuators: []
+            resp = await fetch "devices",
+                method: "POST"
+                body: JSON.stringify device
+            if ! resp.ok
+                text = await resp.text()
+                alert "Error:\n"+text
+                return
+            id = await resp.text()
+            device.id = id
+            inflated = inflateDevice device
+            content1.$.insertBefore inflated, virgin
+            devices.push device
+            heading.text "#{devices.length} Devices"
+            return        
+    , [$.text "Create new Device"]
+
+    content1.append virgin
+    ###
+    return
+
+inflateCloud = (cloud) ->
+    inflated = $.box
+        className: "box"
+    , [
+        $.create "img",
+            props: src: "img/device.png"
+        $.create "h2", {}
+        , [
+            $.create "a",
+                props: href: "#clouds/#{cloud.id}"
+            , [ nameText = $.text cloud.id ]
+        ]
+        $.box
+            className: "floating",
+        , [
+            $.create "img",
+                props:
+                    src: "img/delete.svg"
+                    title: "Delete"
+                on: click: () ->
+                    if confirm "Delete \"#{cloud.id}\"?"
+                        resp = await fetch "clouds/#{cloud.id}",
+                            method: "DELETE"
+                        if ! resp.ok
+                            text = await resp.text()
+                            alert "Error:\n"+text
+                            return
+                        $(inflated).remove()
+                    return
+        ]
+        $.box
+            className: "attr"
+        , [
+            $.create "label", 
+                className: "label"
+            , [$.text "Sync. Paused:"]
+            checkPaused = $.create "input",
+                attr: type: "checkbox"
+                props: checked: cloud.paused
+        ]
+        $.box 
+            className: "attr"
+        , [
+            $.create "label", 
+                className: "label"
+            , [$.text "Username:"]
+            inputUsername = $.create "input",
+                attr: type: "text"
+                props: value: cloud.credentials.username
+        ]
+        $.box 
+            className: "attr"
+        , [
+            $.create "label", 
+                className: "label"
+            , [$.text "Password:"]
+            inputToken = $.create "input",
+                attr: type: "text"
+                props: value: cloud.credentials.token
+        ]
+        $.box 
+            className: "attr"
+        , [
+            $.create "label", 
+                className: "label"
+            , [$.text "REST:"]
+            inputREST = $.create "input",
+                attr: type: "text"
+                props: value: cloud.rest
+        ]
+        $.box 
+            className: "attr"
+        , [
+            $.create "label", 
+                className: "label"
+            , [$.text "MQTT:"]
+            inputMQTT = $.create "input",
+                attr: type: "text"
+                props: value: cloud.mqtt
+        ]
+        $.box 
+            className: "attr"
+        , [
+            $.create "button", 
+                className: "button"
+                on: click: () =>
+                    paused = checkPaused.checked
+                    resp = await fetch "/clouds/#{cloud.id}/paused",
+                        method: "POST"
+                        body: JSON.stringify paused
+                    if resp.ok
+                        alert "OK"
+                    else
+                        text = await resp.text()
+                        alert "Can not save:\n"+text
+                    return
+            , [$.text "Save Paused"]
+            $.create "button", 
+                className: "button"
+                on: click: () =>
+                    creds = 
+                        username: inputUsername.value
+                        token: inputToken.value
+                    resp = await fetch "/clouds/#{cloud.id}/credentials",
+                        method: "POST"
+                        body: JSON.stringify creds
+                    if resp.ok
+                        alert "OK"
+                    else
+                        text = await resp.text()
+                        alert "Can not save:\n"+text
+                    return
+            , [$.text "Save Cred."]
+            $.create "button", 
+                className: "button"
+                on: click: () =>
+                    resp = await fetch "/clouds/#{cloud.id}/rest",
+                        method: "POST"
+                        body: JSON.stringify inputREST.value
+                    if ! resp.ok
+                        text = await resp.text()
+                        alert "Can not save:\n"+text
+                        return
+                    resp = await fetch "/clouds/#{cloud.id}/mqtt",
+                        method: "POST"
+                        body: JSON.stringify inputMQTT.value
+                    if resp.ok
+                        alert "OK"
+                    else
+                        text = await resp.text()
+                        alert "Can not save:\n"+text
+                    return
+            , [$.text "Save Addr."]
+        ]
+        $.create "a",
+            className: "id"
+            props: href: "#clouds/#{cloud.id}"
+        , [ $.text "ID #{cloud.id}" ]
+    ]
+    return inflated
 
 ####################
 

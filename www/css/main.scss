@@ -136,6 +136,8 @@ a {
         padding: 0;
         width: 238px;
         vertical-align: top;
+        text-overflow: ellipsis;
+        overflow: hidden;
     }
 
     .id {
@@ -230,6 +232,30 @@ td {
 
 thead {
     font-size: 1.2em;
+}
+
+.attr {
+    padding: .25em .5em;
+    line-height: 1.5em;
+}
+
+.label {
+    margin-right: .5em;
+}
+
+.button {
+    background: #f1f1f1;
+    color: #9c9c9c;
+    border: none;
+    border: 1px solid #cccccc;
+    padding: .25em .5em;
+    margin: 0 .25em;
+    cursor: pointer;
+
+    &:hover {
+        background: #e5eefd;
+        color: cornflowerblue;
+    }
 }
 
 #log {

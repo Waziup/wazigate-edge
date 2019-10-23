@@ -1,5 +1,34 @@
 (function() {
-  var MQTT, breadcrumbs, conncetMQTT, content1, content2, formatTime, heading, inflateActuator, inflateDevice, inflateLog, inflateSensor, log, logOpener, navigate, refreshUptime, setStatus, showActuator, showBreadcrumbs, showDevice, showDevices, showSensor, status, statusbar, subheading1, subheading2, tagRegexp, timeSuffixes, uptimeText, uptimeTicker;
+
+  /*
+  virgin =  $.box
+  className: "virgin"
+  on: click: () ->
+  name = prompt "Please enter device name:", "New Device"
+  return if ! name
+  device = 
+      name: name
+      sensors: []
+      actuators: []
+  resp = await fetch "devices",
+      method: "POST"
+      body: JSON.stringify device
+  if ! resp.ok
+      text = await resp.text()
+      alert "Error:\n"+text
+      return
+  id = await resp.text()
+  device.id = id
+  inflated = inflateDevice device
+  content1.$.insertBefore inflated, virgin
+  devices.push device
+  heading.text "#{devices.length} Devices"
+  return        
+  , [$.text "Create new Device"]
+
+  content1.append virgin
+  */
+  var MQTT, breadcrumbs, conncetMQTT, content1, content2, formatTime, heading, inflateActuator, inflateCloud, inflateDevice, inflateLog, inflateSensor, log, logOpener, navigate, refreshUptime, setStatus, showActuator, showBreadcrumbs, showClouds, showDevice, showDevices, showSensor, status, statusbar, subheading1, subheading2, tagRegexp, timeSuffixes, uptimeText, uptimeTicker;
 
   switch ($.platform()) {
     case "windows":
@@ -27,6 +56,10 @@
       showDevices();
       return;
     }
+    if (hash === "clouds") {
+      showClouds();
+      return;
+    }
     match = hash.match(/^devices\/(\w+)$/);
     if (match !== null) {
       showDevice(match[1]);
@@ -52,10 +85,10 @@
       showActuator(match[1], match[2]);
       return;
     }
-    location.hash = "#devices";
   };
 
   //###############################################################################
+  // location.hash = "#devices"
   heading = $("#heading");
 
   content1 = $("#content1");
@@ -182,7 +215,7 @@
             click: async function() {
               var resp,
         text;
-              if (confirm(`Delete "${device.name}\?\nThis will also delete all device data points.`)) {
+              if (confirm(`Delete "${device.name}"?\nThis will also delete all device data points.`)) {
                 resp = (await fetch(`devices/${device.id}`,
         {
                   method: "DELETE"
@@ -367,7 +400,7 @@
             click: async function() {
               var resp,
         text;
-              if (confirm(`Delete "${sensor.name}\?\nThis will also delete all sensor data points.`)) {
+              if (confirm(`Delete "${sensor.name}"?\nThis will also delete all sensor data points.`)) {
                 resp = (await fetch(`devices/${deviceID}/sensors/${sensor.id}`,
         {
                   method: "DELETE"
@@ -479,7 +512,7 @@
             click: async function() {
               var resp,
         text;
-              if (confirm(`Delete "${actuator.name}\?\nThis will also delete all actuator data points.`)) {
+              if (confirm(`Delete "${actuator.name}"?\nThis will also delete all actuator data points.`)) {
                 resp = (await fetch(`devices/${deviceID}/actuators/${actuator.id}`,
         {
                   method: "DELETE"
@@ -638,6 +671,273 @@
     }
     subheading2.hide();
     content2.hide();
+  };
+
+  //###################
+  showClouds = async function() {
+    var cloud, clouds, id, resp;
+    resp = (await fetch("clouds"));
+    if (!resp.ok) {
+      showRespError(resp);
+      return;
+    }
+    clouds = (await resp.json());
+    heading.text(`${(Object.keys(clouds).length)} Clouds`);
+    subheading1.hide();
+    subheading2.hide();
+    content1.show().text("");
+    content2.hide();
+    for (id in clouds) {
+      cloud = clouds[id];
+      content1.append(inflateCloud(cloud));
+    }
+  };
+
+  inflateCloud = function(cloud) {
+    var checkPaused, inflated, inputMQTT, inputREST, inputToken, inputUsername, nameText;
+    inflated = $.box({
+      className: "box"
+    }, [
+      $.create("img",
+      {
+        props: {
+          src: "img/device.png"
+        }
+      }),
+      $.create("h2",
+      {},
+      [
+        $.create("a",
+        {
+          props: {
+            href: `#clouds/${cloud.id}`
+          }
+        },
+        [nameText = $.text(cloud.id)])
+      ]),
+      $.box({
+        className: "floating"
+      },
+      [
+        $.create("img",
+        {
+          props: {
+            src: "img/delete.svg",
+            title: "Delete"
+          },
+          on: {
+            click: async function() {
+              var resp,
+        text;
+              if (confirm(`Delete "${cloud.id}"?`)) {
+                resp = (await fetch(`clouds/${cloud.id}`,
+        {
+                  method: "DELETE"
+                }));
+                if (!resp.ok) {
+                  text = (await resp.text());
+                  alert("Error:\n" + text);
+                  return;
+                }
+                $(inflated).remove();
+              }
+            }
+          }
+        })
+      ]),
+      $.box({
+        className: "attr"
+      },
+      [
+        $.create("label",
+        {
+          className: "label"
+        },
+        [$.text("Sync. Paused:")]),
+        checkPaused = $.create("input",
+        {
+          attr: {
+            type: "checkbox"
+          },
+          props: {
+            checked: cloud.paused
+          }
+        })
+      ]),
+      $.box({
+        className: "attr"
+      },
+      [
+        $.create("label",
+        {
+          className: "label"
+        },
+        [$.text("Username:")]),
+        inputUsername = $.create("input",
+        {
+          attr: {
+            type: "text"
+          },
+          props: {
+            value: cloud.credentials.username
+          }
+        })
+      ]),
+      $.box({
+        className: "attr"
+      },
+      [
+        $.create("label",
+        {
+          className: "label"
+        },
+        [$.text("Password:")]),
+        inputToken = $.create("input",
+        {
+          attr: {
+            type: "text"
+          },
+          props: {
+            value: cloud.credentials.token
+          }
+        })
+      ]),
+      $.box({
+        className: "attr"
+      },
+      [
+        $.create("label",
+        {
+          className: "label"
+        },
+        [$.text("REST:")]),
+        inputREST = $.create("input",
+        {
+          attr: {
+            type: "text"
+          },
+          props: {
+            value: cloud.rest
+          }
+        })
+      ]),
+      $.box({
+        className: "attr"
+      },
+      [
+        $.create("label",
+        {
+          className: "label"
+        },
+        [$.text("MQTT:")]),
+        inputMQTT = $.create("input",
+        {
+          attr: {
+            type: "text"
+          },
+          props: {
+            value: cloud.mqtt
+          }
+        })
+      ]),
+      $.box({
+        className: "attr"
+      },
+      [
+        $.create("button",
+        {
+          className: "button",
+          on: {
+            click: async() => {
+              var paused,
+        resp,
+        text;
+              paused = checkPaused.checked;
+              resp = (await fetch(`/clouds/${cloud.id}/paused`,
+        {
+                method: "POST",
+                body: JSON.stringify(paused)
+              }));
+              if (resp.ok) {
+                alert("OK");
+              } else {
+                text = (await resp.text());
+                alert("Can not save:\n" + text);
+              }
+            }
+          }
+        },
+        [$.text("Save Paused")]),
+        $.create("button",
+        {
+          className: "button",
+          on: {
+            click: async() => {
+              var creds,
+        resp,
+        text;
+              creds = {
+                username: inputUsername.value,
+                token: inputToken.value
+              };
+              resp = (await fetch(`/clouds/${cloud.id}/credentials`,
+        {
+                method: "POST",
+                body: JSON.stringify(creds)
+              }));
+              if (resp.ok) {
+                alert("OK");
+              } else {
+                text = (await resp.text());
+                alert("Can not save:\n" + text);
+              }
+            }
+          }
+        },
+        [$.text("Save Cred.")]),
+        $.create("button",
+        {
+          className: "button",
+          on: {
+            click: async() => {
+              var resp,
+        text;
+              resp = (await fetch(`/clouds/${cloud.id}/rest`,
+        {
+                method: "POST",
+                body: JSON.stringify(inputREST.value)
+              }));
+              if (!resp.ok) {
+                text = (await resp.text());
+                alert("Can not save:\n" + text);
+                return;
+              }
+              resp = (await fetch(`/clouds/${cloud.id}/mqtt`,
+        {
+                method: "POST",
+                body: JSON.stringify(inputMQTT.value)
+              }));
+              if (resp.ok) {
+                alert("OK");
+              } else {
+                text = (await resp.text());
+                alert("Can not save:\n" + text);
+              }
+            }
+          }
+        },
+        [$.text("Save Addr.")])
+      ]),
+      $.create("a",
+      {
+        className: "id",
+        props: {
+          href: `#clouds/${cloud.id}`
+        }
+      },
+      [$.text(`ID ${cloud.id}`)])
+    ]);
+    return inflated;
   };
 
   //###################

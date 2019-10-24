@@ -78,10 +78,22 @@ func PostDeviceActuatorName(resp http.ResponseWriter, req *http.Request, params 
 	postDeviceActuatorName(resp, req, params.ByName("device_id"), params.ByName("actuator_id"))
 }
 
+// PostDeviceActuatorMeta implements POST /devices/{deviceID}/actuators/{actuatorID}/meta
+func PostDeviceActuatorMeta(resp http.ResponseWriter, req *http.Request, params routing.Params) {
+
+	postDeviceActuatorMeta(resp, req, params.ByName("device_id"), params.ByName("actuator_id"))
+}
+
 // PostActuatorName implements POST /actuators/{actuatorID}/name
 func PostActuatorName(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
 	postDeviceActuatorName(resp, req, edge.LocalID(), params.ByName("actuator_id"))
+}
+
+// PostActuatorMeta implements POST /actuators/{actuatorID}/meta
+func PostActuatorMeta(resp http.ResponseWriter, req *http.Request, params routing.Params) {
+
+	postDeviceActuatorMeta(resp, req, edge.LocalID(), params.ByName("actuator_id"))
 }
 
 ////////////////////
@@ -126,7 +138,7 @@ func postDeviceActuator(resp http.ResponseWriter, req *http.Request, deviceID st
 	}
 
 	log.Printf("[DB   ] Actuator %s/%s created.\n", deviceID, actuator.ID)
-	clouds.FlagActuator(deviceID, actuator.ID, noTime)
+	clouds.FlagActuator(deviceID, actuator.ID, clouds.ActionCreate, noTime)
 
 	resp.Write([]byte(actuator.ID))
 }
@@ -159,6 +171,29 @@ func postDeviceActuatorName(resp http.ResponseWriter, req *http.Request, deviceI
 	log.Printf("[DB   ] Actuator %s/%s name changed: %q", deviceID, actuatorID, name)
 }
 
+func postDeviceActuatorMeta(resp http.ResponseWriter, req *http.Request, deviceID string, actuatorID string) {
+
+	body, err := tools.ReadAll(req.Body)
+	if err != nil {
+		http.Error(resp, "bad request: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	var meta map[string]interface{}
+	err = json.Unmarshal(body, &meta)
+	if err != nil {
+		http.Error(resp, "bad request: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	err = edge.SetActuatorMeta(deviceID, actuatorID, meta)
+	if err != nil {
+		serveError(resp, err)
+		return
+	}
+
+	log.Printf("[DB   ] Actuator %s/%s meta changed: %q", deviceID, actuatorID, meta)
+}
+
 func deleteDeviceActuator(resp http.ResponseWriter, deviceID string, actuatorID string) {
 
 	points, err := edge.DeleteActuator(deviceID, actuatorID)
@@ -179,7 +214,7 @@ func getReqActuator(req *http.Request, actuator *edge.Actuator) error {
 	}
 
 	now := time.Now()
-	actuator.Time = now
+	actuator.Time = noTime
 	actuator.Modified = now
 	actuator.Created = now
 

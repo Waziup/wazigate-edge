@@ -126,7 +126,7 @@ func postActuatorValue(resp http.ResponseWriter, req *http.Request, deviceID str
 
 	log.Printf("[DB   ] 1 value for %s/%s.\n", deviceID, actuatorID)
 
-	clouds.FlagActuator(deviceID, actuatorID, val.Time)
+	clouds.FlagActuator(deviceID, actuatorID, clouds.ActionSync, val.Time)
 }
 
 func postActuatorValues(resp http.ResponseWriter, req *http.Request, deviceID string, actuatorID string) {
@@ -144,7 +144,7 @@ func postActuatorValues(resp http.ResponseWriter, req *http.Request, deviceID st
 			return
 		}
 
-		clouds.FlagActuator(deviceID, actuatorID, vals[0].Time)
+		clouds.FlagActuator(deviceID, actuatorID, clouds.ActionSync, vals[0].Time)
 	}
 
 	log.Printf("[DB   ] %d values for %s/%s.\n", len(vals), deviceID, actuatorID)

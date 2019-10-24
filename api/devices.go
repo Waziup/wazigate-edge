@@ -147,7 +147,7 @@ func postDevice(resp http.ResponseWriter, req *http.Request) {
 
 	log.Printf("[DB   ] Created device %s.", device.ID)
 
-	clouds.FlagDevice(device.ID)
+	clouds.FlagDevice(device.ID, clouds.ActionCreate)
 
 	resp.Write([]byte(device.ID))
 }

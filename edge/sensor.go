@@ -10,12 +10,13 @@ import (
 
 // Sensor represents a Waziup sensor
 type Sensor struct {
-	ID       string      `json:"id" bson:"id"`
-	Name     string      `json:"name" bson:"name"`
-	Modified time.Time   `json:"modified" bson:"modified"`
-	Created  time.Time   `json:"created" bson:"created"`
-	Time     time.Time   `json:"time" bson:"time"`
-	Value    interface{} `json:"value" bson:"value"`
+	ID       string                 `json:"id" bson:"id"`
+	Name     string                 `json:"name" bson:"name"`
+	Modified time.Time              `json:"modified" bson:"modified"`
+	Created  time.Time              `json:"created" bson:"created"`
+	Time     time.Time              `json:"time" bson:"time"`
+	Value    interface{}            `json:"value" bson:"value"`
+	Meta     map[string]interface{} `json:"meta" bson:"meta"`
 }
 
 // GetSensor returns the Waziup sensor.
@@ -97,6 +98,29 @@ func SetSensorName(deviceID string, sensorID string, name string) error {
 		"$set": bson.M{
 			"sensors.$.modified": time.Now(),
 			"sensors.$.name":     name,
+		},
+	})
+
+	if err != nil {
+		if err == mgo.ErrNotFound {
+			return errNotFound
+		}
+		return CodeError{500, "database error: " + err.Error()}
+	}
+
+	return nil
+}
+
+// SetSensorMeta changes this sensors metadata.
+func SetSensorMeta(deviceID string, sensorID string, meta map[string]interface{}) error {
+
+	err := dbDevices.Update(bson.M{
+		"_id":        deviceID,
+		"sensors.id": sensorID,
+	}, bson.M{
+		"$set": bson.M{
+			"sensors.$.modified": time.Now(),
+			"sensors.$.meta":     meta,
 		},
 	})
 

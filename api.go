@@ -32,6 +32,7 @@ func init() {
 	router.POST("/devices/:device_id/sensors", api.PostDeviceSensor)
 	router.DELETE("/devices/:device_id/sensors/:sensor_id", api.DeleteDeviceSensor)
 	router.POST("/devices/:device_id/sensors/:sensor_id/name", api.PostDeviceSensorName)
+	router.POST("/devices/:device_id/sensors/:sensor_id/meta", api.PostDeviceSensorMeta)
 
 	router.GET("/devices/:device_id/sensors/:sensor_id/value", api.GetDeviceSensorValue)
 	router.GET("/devices/:device_id/sensors/:sensor_id/values", api.GetDeviceSensorValues)
@@ -47,6 +48,7 @@ func init() {
 	router.POST("/devices/:device_id/actuators", api.PostDeviceActuator)
 	router.DELETE("/devices/:device_id/actuators/:actuator_id", api.DeleteDeviceActuator)
 	router.POST("/devices/:device_id/actuators/:actuator_id/name", api.PostDeviceActuatorName)
+	router.POST("/devices/:device_id/actuators/:actuator_id/meta", api.PostDeviceActuatorMeta)
 
 	router.GET("/devices/:device_id/actuators/:actuator_id/value", api.GetDeviceActuatorValue)
 	router.GET("/devices/:device_id/actuators/:actuator_id/values", api.GetDeviceActuatorValues)
@@ -61,18 +63,22 @@ func init() {
 	router.POST("/device/name", api.PostCurrentDeviceName)
 
 	router.GET("/sensors", api.GetSensors)
+	router.POST("/sensors", api.PostSensor)
 	router.GET("/sensors/:sensor_id", api.GetSensor)
 	router.DELETE("/sensors/:sensor_id", api.DeleteSensor)
 	router.GET("/sensors/:sensor_id/value", api.GetSensorValue)
 	router.GET("/sensors/:sensor_id/values", api.GetSensorValues)
+	router.POST("/sensors/:sensor_id/name", api.PostSensorName)
+	router.POST("/sensors/:sensor_id/meta", api.PostSensorMeta)
 
 	router.GET("/actuators", api.GetActuators)
+	router.POST("/actuators", api.PostActuator)
 	router.GET("/actuators/:actuator_id", api.GetActuator)
 	router.DELETE("/actuators/:actuator_id", api.DeleteActuator)
 	router.GET("/actuators/:actuator_id/value", api.GetActuatorValue)
 	router.GET("/actuators/:actuator_id/values", api.GetActuatorValues)
-
-	router.POST("/sensors", api.PostSensor)
+	router.POST("/actuators/:actuator_id/name", api.PostActuatorName)
+	router.POST("/actuators/:actuator_id/meta", api.PostActuatorMeta)
 
 	router.POST("/sensors/:sensor_id/value", api.PostSensorValue)
 	router.POST("/sensors/:sensor_id/values", api.PostSensorValues)

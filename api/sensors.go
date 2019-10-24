@@ -78,10 +78,22 @@ func PostDeviceSensorName(resp http.ResponseWriter, req *http.Request, params ro
 	postDeviceSensorName(resp, req, params.ByName("device_id"), params.ByName("sensor_id"))
 }
 
+// PostDeviceSensorMeta implements POST /devices/{deviceID}/sensors/{sensorID}/meta
+func PostDeviceSensorMeta(resp http.ResponseWriter, req *http.Request, params routing.Params) {
+
+	postDeviceSensorMeta(resp, req, params.ByName("device_id"), params.ByName("sensor_id"))
+}
+
 // PostSensorName implements POST /sensors/{sensorID}/name
 func PostSensorName(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
 	postDeviceSensorName(resp, req, edge.LocalID(), params.ByName("sensor_id"))
+}
+
+// PostSensorMeta implements POST /sensors/{sensorID}/meta
+func PostSensorMeta(resp http.ResponseWriter, req *http.Request, params routing.Params) {
+
+	postDeviceSensorMeta(resp, req, edge.LocalID(), params.ByName("sensor_id"))
 }
 
 ////////////////////
@@ -126,7 +138,7 @@ func postDeviceSensor(resp http.ResponseWriter, req *http.Request, deviceID stri
 	}
 
 	log.Printf("[DB   ] Sensor %s/%s created.\n", deviceID, sensor.ID)
-	clouds.FlagSensor(deviceID, sensor.ID, noTime)
+	clouds.FlagSensor(deviceID, sensor.ID, clouds.ActionCreate, noTime)
 
 	resp.Write([]byte(sensor.ID))
 }
@@ -157,6 +169,31 @@ func postDeviceSensorName(resp http.ResponseWriter, req *http.Request, deviceID 
 	}
 
 	log.Printf("[DB   ] Sensor %s/%s name changed: %q", deviceID, sensorID, name)
+	clouds.FlagSensor(deviceID, sensorID, clouds.ActionModify, noTime)
+}
+
+func postDeviceSensorMeta(resp http.ResponseWriter, req *http.Request, deviceID string, sensorID string) {
+
+	body, err := tools.ReadAll(req.Body)
+	if err != nil {
+		http.Error(resp, "bad request: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	var meta map[string]interface{}
+	err = json.Unmarshal(body, &meta)
+	if err != nil {
+		http.Error(resp, "bad request: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	err = edge.SetSensorMeta(deviceID, sensorID, meta)
+	if err != nil {
+		serveError(resp, err)
+		return
+	}
+
+	log.Printf("[DB   ] Sensor %s/%s meta changed: %q", deviceID, sensorID, meta)
+	clouds.FlagSensor(deviceID, sensorID, clouds.ActionModify, noTime)
 }
 
 func deleteDeviceSensor(resp http.ResponseWriter, deviceID string, sensorID string) {
@@ -179,7 +216,7 @@ func getReqSensor(req *http.Request, sensor *edge.Sensor) error {
 	}
 
 	now := time.Now()
-	sensor.Time = now
+	sensor.Time = noTime
 	sensor.Modified = now
 	sensor.Created = now
 

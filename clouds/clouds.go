@@ -17,21 +17,61 @@ import (
 	"github.com/Waziup/wazigate-edge/mqtt"
 )
 
-type entity struct {
-	deviceID   string
-	sensorID   string
-	actuatorID string
+// A Entity is either a Device, Sensor or Actuator.
+type Entity struct {
+	Device   string `json:"device,omitempty"`
+	Sensor   string `json:"sensor,omitempty"`
+	Actuator string `json:"actuator,omitempty"`
 }
 
-type remote struct {
-	time   time.Time
-	exists bool
+func (ent Entity) String() string {
+	if ent.Sensor == "" {
+		if ent.Actuator == "" {
+			return "/devices/" + ent.Device
+		}
+		return "/devices/" + ent.Device + "/actuators/" + ent.Actuator
+	}
+	return "/devices/" + ent.Device + "/sensors/" + ent.Sensor
 }
 
+// A Action is performed by the cloud manager to resolve differences between the local stat and the cloud.
+type Action int
+
+const (
+	// ActionError indicates that there was an error with this entity.
+	ActionError Action = 1 << iota
+	// ActionSync will synchronoice values from a sensor or actuator.
+	ActionSync
+	// ActionModify modifiy changes names and metadata.
+	ActionModify
+	// ActionCreate creates (declares) the device/sensor/actuator at the cloud.
+	ActionCreate
+)
+
+// Status describes a single entity.
 type Status struct {
-	Code   int         `json:"code"`
-	Name   string      `json:"name"`
-	Detail interface{} `json:"detail"`
+	// Remote is the time the cloud is synced to.
+	Remote time.Time `json:"remote"`
+	// Action to perform.
+	Action Action `json:"action"`
+
+	// Wakeup Time
+	Wakeup time.Time `json:"wakeup"`
+	// Sleep durtion
+	Sleep time.Duration `json:"sleep"`
+
+	// Error, if any
+	Error error `json:"error,omitempty"`
+}
+
+// NewStatus creates a new Status object.
+func NewStatus(action Action, remote time.Time) *Status {
+	return &Status{
+		Remote: remote,
+		Action: action,
+		Wakeup: time.Now(),
+		Sleep:  0,
+	}
 }
 
 // Cloud represents a configuration to access a Waziup Cloud.
@@ -55,12 +95,11 @@ type Cloud struct {
 	StatusCode int    `json:"statusCode"`
 	StatusText string `json:"statusText"`
 
-	Status map[string]Status
+	Status      map[Entity]*Status `json:"-"`
+	statusMutex sync.Mutex
 
-	remote      map[entity]*remote
-	remoteMutex sync.Mutex
-	sigDirty    chan struct{}
-	auth        string
+	sigDirty chan Entity
+	auth     string
 }
 
 // Clouds lists all clouds that we synchronize.
@@ -104,7 +143,7 @@ func RemoveCloud(id string) bool {
 	cloudsMutex.Lock()
 	cloud := clouds[id]
 	if cloud != nil {
-		cloud.SetPaused(false)
+		cloud.SetPaused(true)
 	}
 	delete(clouds, id)
 	cloudsMutex.Unlock()
@@ -112,78 +151,109 @@ func RemoveCloud(id string) bool {
 }
 
 // FlagDevice marks the device as dirty so that it will be synced wih the clouds.
-func FlagDevice(deviceID string) {
+func FlagDevice(deviceID string, action Action) {
 	if len(clouds) == 0 {
 		return
 	}
 	cloudsMutex.RLock()
 	for _, cloud := range clouds {
-		cloud.FlagDevice(deviceID)
+		cloud.FlagDevice(deviceID, action)
 	}
 	cloudsMutex.RUnlock()
 }
 
 // FlagSensor marks the sensor as dirty so that it will be synced wih the clouds.
-func FlagSensor(deviceID string, sensorID string, time time.Time) {
+func FlagSensor(deviceID string, sensorID string, action Action, time time.Time) {
 	if len(clouds) == 0 {
 		return
 	}
 	cloudsMutex.RLock()
 	for _, cloud := range clouds {
-		cloud.FlagSensor(deviceID, sensorID, time)
+		cloud.FlagSensor(deviceID, sensorID, action, time)
 	}
 	cloudsMutex.RUnlock()
 }
 
 // FlagActuator marks the actuator as dirty so that it will be synced wih the clouds.
-func FlagActuator(deviceID string, actuatorID string, time time.Time) {
+func FlagActuator(deviceID string, actuatorID string, action Action, time time.Time) {
 	if len(clouds) == 0 {
 		return
 	}
 	cloudsMutex.RLock()
 	for _, cloud := range clouds {
-		cloud.FlagActuator(deviceID, actuatorID, time)
+		cloud.FlagActuator(deviceID, actuatorID, action, time)
 	}
 	cloudsMutex.RUnlock()
 }
 
 // FlagDevice marks the device as dirty.
-func (cloud *Cloud) FlagDevice(deviceID string) {
-	cloud.flag(entity{deviceID, "", ""}, noTime)
+func (cloud *Cloud) FlagDevice(deviceID string, action Action) {
+	cloud.flag(Entity{deviceID, "", ""}, action, noTime)
 }
 
 // FlagSensor marks the sensor as dirty.
-func (cloud *Cloud) FlagSensor(deviceID string, sensorID string, time time.Time) {
-	cloud.flag(entity{deviceID, sensorID, ""}, time)
+func (cloud *Cloud) FlagSensor(deviceID string, sensorID string, action Action, time time.Time) {
+	cloud.flag(Entity{deviceID, sensorID, ""}, action, time)
 }
 
 // FlagActuator marks the actuator as dirty.
-func (cloud *Cloud) FlagActuator(deviceID string, actuatorID string, time time.Time) {
-	cloud.flag(entity{deviceID, "", actuatorID}, time)
+func (cloud *Cloud) FlagActuator(deviceID string, actuatorID string, action Action, time time.Time) {
+	cloud.flag(Entity{deviceID, "", actuatorID}, action, time)
 }
 
-func (cloud *Cloud) flag(ent entity, time time.Time) {
+// ResetStatus clears the status field.
+func (cloud *Cloud) ResetStatus() {
+	cloud.statusMutex.Lock()
+	cloud.Status = make(map[Entity]*Status)
+	cloud.statusMutex.Unlock()
+}
 
+func (cloud *Cloud) Errorf(format string, code int, a ...interface{}) {
+	str := fmt.Sprintf(format, a...)
+	log.Printf("[UP   ] > [%3d] %s", code, str)
+}
+
+func (cloud *Cloud) Printf(format string, code int, a ...interface{}) {
+	str := fmt.Sprintf(format, a...)
+	log.Printf("[UP   ] > [%3d] %s", code, str)
+}
+
+func (cloud *Cloud) flag(ent Entity, action Action, remote time.Time) {
 	var needsSig bool
-	cloud.remoteMutex.Lock()
-	if cloud.remote == nil {
+	var status *Status
+	cloud.statusMutex.Lock()
+	if cloud.Status == nil {
 		needsSig = false
 	} else {
-		needsSig = len(cloud.remote) == 0
-		if ent.sensorID == "" && ent.actuatorID == "" {
-			cloud.remote[ent] = &remote{time, false}
-		} else {
-			deviceEnt := entity{ent.deviceID, "", ""}
-			if cloud.remote[deviceEnt] == nil {
-				cloud.remote[ent] = &remote{time, time != noTime}
+		needsSig = len(cloud.Status) == 0
+		if status = cloud.Status[ent]; status != nil {
+			if action == 0 {
+				status.Remote = remote
+				status.Wakeup = time.Now().Add(status.Sleep)
+			} else if action < 0 {
+				status.Action = status.Action ^ -action
+				if status.Action == 0 {
+					if status.Sleep == 0 {
+						delete(cloud.Status, ent)
+					} else {
+						status.Wakeup = time.Now().Add(status.Sleep)
+					}
+				}
+			} else {
+				status.Action = status.Action | action
 			}
+		} else {
+			status = NewStatus(action, remote)
+			cloud.Status[ent] = status
 		}
 	}
-	cloud.remoteMutex.Unlock()
+	cloud.statusMutex.Unlock()
+
+	log.Printf("[UP   ] Status %s: %s", ent, status.Action)
 
 	if needsSig {
 		select {
-		case cloud.sigDirty <- struct{}{}:
+		case cloud.sigDirty <- ent:
 		default: // channel full
 		}
 	}
@@ -224,6 +294,7 @@ func (cloud *Cloud) setStatus(code int, text string) {
 
 var errCloudNoPause = errors.New("cloud pausing or not paused")
 
+// SetCredentials changes the credentials.
 func (cloud *Cloud) SetCredentials(username string, token string) (int, error) {
 
 	if !cloud.Paused || cloud.Pausing {
@@ -281,4 +352,67 @@ func WriteCloudConfig(w io.Writer) error {
 	err := encoder.Encode(clouds)
 	cloudsMutex.RUnlock()
 	return err
+}
+
+// MarshalJSON implements json.Marshaler
+func (a Action) MarshalJSON() ([]byte, error) {
+	var astr [4]string
+	str := astr[:0]
+	if a&ActionCreate != 0 {
+		str = append(str, "create")
+	}
+	if a&ActionModify != 0 {
+		str = append(str, "modify")
+	}
+	if a&ActionSync != 0 {
+		str = append(str, "sync")
+	}
+	if a&ActionError != 0 {
+		str = append(str, "error")
+	}
+	return json.Marshal(str)
+}
+
+func (a Action) String() string {
+	var astr [4]string
+	str := astr[:0]
+	if a&ActionCreate != 0 {
+		str = append(str, "create")
+	}
+	if a&ActionModify != 0 {
+		str = append(str, "modify")
+	}
+	if a&ActionSync != 0 {
+		str = append(str, "sync")
+	}
+	if a&ActionError != 0 {
+		str = append(str, "error")
+	}
+	return strings.Join(str, ", ")
+}
+
+// UnmarshalJSON implements json.Unmarshaler
+func (a *Action) UnmarshalJSON(data []byte) error {
+	var astr [4]string
+	str := astr[:0]
+	err := json.Unmarshal(data, &str)
+	if err != nil {
+		return err
+	}
+	*a = 0
+	for _, s := range str {
+		switch s {
+		case "create":
+			*a |= ActionCreate
+		case "sync":
+			*a |= ActionSync
+		case "modify":
+			*a |= ActionModify
+		case "error":
+			*a |= ActionError
+		default:
+			return fmt.Errorf("unknown action: %.12q", data)
+		}
+	}
+	return nil
 }

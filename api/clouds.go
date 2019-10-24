@@ -204,7 +204,18 @@ func PostCloudPaused(resp http.ResponseWriter, req *http.Request, params routing
 		return
 	}
 
-	cloud.SetPaused(paused)
+	err = cloud.SetPaused(paused)
+	if err != nil {
+		http.Error(resp, "bad request: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if paused {
+		log.Printf("[CLOUD] Paused synchronization.")
+	} else {
+		log.Printf("[CLOUD] Resumed synchronization.")
+	}
+	writeCloudFile()
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -1,6 +1,7 @@
 package clouds
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -14,10 +15,16 @@ var retries = []time.Duration{
 	60 * time.Second,
 }
 
-func (cloud *Cloud) SetPaused(paused bool) {
+var errPausing = errors.New("cloud is pausing")
 
-	if cloud.Pausing || cloud.PausingMQTT || paused == cloud.Paused {
-		return
+func (cloud *Cloud) SetPaused(paused bool) error {
+
+	if cloud.Pausing || cloud.PausingMQTT {
+		return errPausing
+	}
+
+	if paused == cloud.Paused {
+		return nil
 	}
 
 	if paused {
@@ -32,13 +39,15 @@ func (cloud *Cloud) SetPaused(paused bool) {
 		cloud.mqttMutex.Unlock()
 
 		select {
-		case cloud.sigDirty <- struct{}{}:
+		case cloud.sigDirty <- Entity{}:
 		default: // channel full
 		}
 	} else {
 		cloud.Paused = false
 		go cloud.sync()
 	}
+
+	return nil
 }
 
 func (cloud *Cloud) sync() {
@@ -91,8 +100,8 @@ INITIAL_SYNC:
 
 		cloud.setStatus(0, "Beginning initial sync ...")
 
-		cloud.remote = make(map[entity]*remote)
-		cloud.sigDirty = make(chan struct{}, 1)
+		cloud.ResetStatus()
+		cloud.sigDirty = make(chan Entity, 1)
 
 		status := cloud.initialSync()
 		if status == http.StatusForbidden || status == http.StatusUnauthorized {
@@ -105,7 +114,7 @@ INITIAL_SYNC:
 			continue
 		}
 
-		log.Printf("[UP   ] Initial sync completed with %d dirty.", len(cloud.remote))
+		log.Printf("[UP   ] Initial sync completed with %d dirty.", len(cloud.Status))
 		nretry = 0
 		break
 	}
@@ -117,18 +126,18 @@ INITIAL_SYNC:
 
 	for !cloud.Pausing {
 
-		status := cloud.persistentSync()
-		if status == http.StatusForbidden || status == http.StatusUnauthorized {
+		code, _ := cloud.persistentSync()
+		if code == http.StatusForbidden || code == http.StatusUnauthorized {
 			auth()
 			continue
 		}
 
-		if status <= 0 { // Network Error
+		if code <= 0 { // Network Error
 			retry()
 			continue
 		}
 
-		if !isOk(status) {
+		if !isOk(code) {
 			retry()
 			goto INITIAL_SYNC
 		}

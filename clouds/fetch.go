@@ -36,6 +36,7 @@ func fetch(resource string, init fetchInit) fetchResponse {
 	if err != nil {
 		return fetchResponse{
 			ok:         false,
+			status:     0,
 			statusText: err.Error(),
 		}
 	}

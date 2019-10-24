@@ -10,12 +10,13 @@ import (
 
 // Actuator represents a Waziup actuator
 type Actuator struct {
-	ID       string      `json:"id" bson:"id"`
-	Name     string      `json:"name" bson:"name"`
-	Modified time.Time   `json:"modified" bson:"modified"`
-	Created  time.Time   `json:"created" bson:"created"`
-	Time     time.Time   `json:"time" bson:"time"`
-	Value    interface{} `json:"value" bson:"value"`
+	ID       string                 `json:"id" bson:"id"`
+	Name     string                 `json:"name" bson:"name"`
+	Modified time.Time              `json:"modified" bson:"modified"`
+	Created  time.Time              `json:"created" bson:"created"`
+	Time     time.Time              `json:"time" bson:"time"`
+	Value    interface{}            `json:"value" bson:"value"`
+	Meta     map[string]interface{} `json:"meta" bson:"meta"`
 }
 
 // GetActuator returns the Waziup actuator.
@@ -97,6 +98,29 @@ func SetActuatorName(deviceID string, actuatorID string, name string) error {
 		"$set": bson.M{
 			"actuators.$.modified": time.Now(),
 			"actuators.$.name":     name,
+		},
+	})
+
+	if err != nil {
+		if err == mgo.ErrNotFound {
+			return errNotFound
+		}
+		return CodeError{500, "database error: " + err.Error()}
+	}
+
+	return nil
+}
+
+// SetActuatorMeta changes this actuators metadata.
+func SetActuatorMeta(deviceID string, actuatorID string, meta map[string]interface{}) error {
+
+	err := dbDevices.Update(bson.M{
+		"_id":          deviceID,
+		"actuators.id": actuatorID,
+	}, bson.M{
+		"$set": bson.M{
+			"actuators.$.modified": time.Now(),
+			"actuators.$.meta":     meta,
 		},
 	})
 

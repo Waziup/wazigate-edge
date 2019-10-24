@@ -12,12 +12,13 @@ import (
 
 // Device represents a Waziup Device.
 type Device struct {
-	Name      string      `json:"name" bson:"name"`
-	ID        string      `json:"id" bson:"_id"`
-	Sensors   []*Sensor   `json:"sensors" bson:"sensors"`
-	Actuators []*Actuator `json:"actuators" bson:"actuators"`
-	Modified  time.Time   `json:"modified" bson:"modified"`
-	Created   time.Time   `json:"created" bson:"created"`
+	Name      string                 `json:"name" bson:"name"`
+	ID        string                 `json:"id" bson:"_id"`
+	Sensors   []*Sensor              `json:"sensors" bson:"sensors"`
+	Actuators []*Actuator            `json:"actuators" bson:"actuators"`
+	Modified  time.Time              `json:"modified" bson:"modified"`
+	Created   time.Time              `json:"created" bson:"created"`
+	Meta      map[string]interface{} `json:"meta" bson:"meta"`
 }
 
 var localID string
@@ -78,11 +79,39 @@ func GetDevice(deviceID string) (*Device, error) {
 	query := dbDevices.FindId(deviceID)
 	if err := query.One(&device); err != nil {
 		if err == mgo.ErrNotFound {
-			return nil, nil
+			return nil, errNotFound
 		}
 		return nil, CodeError{500, "database error: " + err.Error()}
 	}
 	return &device, nil
+}
+
+// GetDeviceName returns the name of that device.
+func GetDeviceName(deviceID string) (string, error) {
+	var device Device
+	query := dbDevices.FindId(deviceID)
+	query.Select("name")
+	if err := query.One(&device); err != nil {
+		if err == mgo.ErrNotFound {
+			return "", errNotFound
+		}
+		return "", CodeError{500, "database error: " + err.Error()}
+	}
+	return device.Name, nil
+}
+
+// GetDeviceMeta returns the metadata of that device.
+func GetDeviceMeta(deviceID string) (map[string]interface{}, error) {
+	var device Device
+	query := dbDevices.FindId(deviceID)
+	query.Select("meta")
+	if err := query.One(&device); err != nil {
+		if err == mgo.ErrNotFound {
+			return nil, nil
+		}
+		return nil, CodeError{500, "database error: " + err.Error()}
+	}
+	return device.Meta, nil
 }
 
 // PostDevice creates a new device a the database.

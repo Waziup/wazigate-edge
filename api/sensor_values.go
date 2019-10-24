@@ -126,7 +126,7 @@ func postSensorValue(resp http.ResponseWriter, req *http.Request, deviceID strin
 
 	log.Printf("[DB   ] 1 value for %s/%s.\n", deviceID, sensorID)
 
-	clouds.FlagSensor(deviceID, sensorID, val.Time)
+	clouds.FlagSensor(deviceID, sensorID, clouds.ActionSync, val.Time)
 }
 
 func postSensorValues(resp http.ResponseWriter, req *http.Request, deviceID string, sensorID string) {
@@ -144,7 +144,7 @@ func postSensorValues(resp http.ResponseWriter, req *http.Request, deviceID stri
 			return
 		}
 
-		clouds.FlagSensor(deviceID, sensorID, vals[0].Time)
+		clouds.FlagSensor(deviceID, sensorID, clouds.ActionSync, vals[0].Time)
 	}
 
 	log.Printf("[DB   ] %d values for %s/%s.\n", len(vals), deviceID, sensorID)

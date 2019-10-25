@@ -2110,6 +2110,105 @@
         }
       }
     },
+    "/clouds/{id}/status": {
+      "get": {
+        "tags": [
+          "Clouds"
+        ],
+        "summary": "Get Sync Status",
+        "description": "Get details about the synchronization status of all entities.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of the cloud",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Cloud synchronization status.",
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "entity": {
+                        "description": "Device, Sensor or Actuator",
+                        "type": "object",
+                        "properties": {
+                          "device": {
+                            "type": "string"
+                          },
+                          "sensor": {
+                            "type": "string"
+                          },
+                          "actuator": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "status": {
+                        "description": "Synchronization status",
+                        "type": "object",
+                        "properties": {
+                          "action": {
+                            "type": "array",
+                            "description": "Required actions: sync, create, modify",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "remote": {
+                            "type": "string",
+                            "description": "Cloud time of the last value",
+                            "format": "date-time"
+                          },
+                          "sleep": {
+                            "description": "Duration this entity accumulates",
+                            "type": "integer"
+                          },
+                          "wakeup": {
+                            "type": "string",
+                            "description": "Time this entity will sync again",
+                            "format": "date-time"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "example": [
+                    {
+                      "entity": {
+                        "device": "00155d00641b",
+                        "sensor": "5da45ed64b9f614d30e93ab3"
+                      },
+                      "status": {
+                        "action": [
+                          "sync"
+                        ],
+                        "remote": "2019-10-25T12:57:00",
+                        "sleep": 300000000000,
+                        "wakeup": "2019-10-25T13:00:00"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bad Request. There may be no cloud with that id."
+          }
+        }
+      }
+    },
     "/sys/uptime": {
       "get": {
         "tags": [

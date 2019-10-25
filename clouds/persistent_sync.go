@@ -48,7 +48,7 @@ func (cloud *Cloud) nextEntity() (Entity, *Status, time.Time) {
 	now := time.Now()
 	wakeup := now.Add(time.Hour)
 
-	cloud.statusMutex.Lock()
+	cloud.StatusMutex.Lock()
 
 	// loop all dirty sensors/devices to see which one to sync next
 	for e, s := range cloud.Status {
@@ -121,7 +121,7 @@ func (cloud *Cloud) nextEntity() (Entity, *Status, time.Time) {
 		status = s     // if we leave statusMutex now
 	}
 
-	cloud.statusMutex.Unlock()
+	cloud.StatusMutex.Unlock()
 
 	return entity, status, wakeup
 }
@@ -149,16 +149,17 @@ func (cloud *Cloud) persistentSync() (int, error) {
 			cloud.Errorf("Network Error\n%s", code, err.Error())
 		case code == -1:
 			cloud.Errorf("Internal Error\n%s", code, err.Error())
+			cloud.flag(ent, ActionError, noTime, nil)
 		case code >= 500 && code < 600:
 			cloud.Errorf("Server Error %d\n%s", code, code, err.Error())
-			cloud.flag(ent, ActionError, noTime)
+			cloud.flag(ent, ActionError, noTime, nil)
 
 			// cloud.statusMutex.Lock()
 			// delete(cloud.Status, ent)
 			// cloud.statusMutex.Unlock()
 		case code >= 400 && code < 500:
 			cloud.Errorf("Synchronization Error %d\n%s", code, code, err.Error())
-			cloud.flag(ent, ActionError, noTime)
+			cloud.flag(ent, ActionError, noTime, nil)
 
 			// cloud.statusMutex.Lock()
 			// delete(cloud.Status, ent)
@@ -172,6 +173,11 @@ func (cloud *Cloud) persistentSync() (int, error) {
 
 func (cloud *Cloud) processEntity(ent Entity, status *Status) (int, error) {
 
+	if status.Action&ActionDelete != 0 {
+		cloud.flag(ent, -ActionDelete, noTime, nil)
+		return 0, nil
+	}
+
 	if status.Action&ActionCreate != 0 {
 
 		if ent.Sensor == "" && ent.Actuator == "" {
@@ -183,18 +189,18 @@ func (cloud *Cloud) processEntity(ent Entity, status *Status) (int, error) {
 			}
 			code, err := cloud.postDevice(device)
 			if err == nil {
-				cloud.flag(Entity{device.ID, "", ""}, -ActionCreate, noTime)
+				cloud.flag(Entity{device.ID, "", ""}, -ActionCreate, noTime, nil)
 				// cloud.statusMutex.Lock()
 				// delete(cloud.Status, ent)
 				// log.Printf("[UP   ] Device pushed.")
 				for _, sensor := range device.Sensors {
 					if sensor.Value != nil {
-						cloud.flag(Entity{device.ID, sensor.ID, ""}, ActionSync, noTime)
+						cloud.flag(Entity{device.ID, sensor.ID, ""}, ActionSync, noTime, nil)
 					}
 				}
 				for _, actuator := range device.Actuators {
 					if actuator.Value != nil {
-						cloud.flag(Entity{device.ID, "", actuator.ID}, ActionSync, noTime)
+						cloud.flag(Entity{device.ID, "", actuator.ID}, ActionSync, noTime, nil)
 					}
 				}
 				// cloud.statusMutex.Unlock()
@@ -211,7 +217,7 @@ func (cloud *Cloud) processEntity(ent Entity, status *Status) (int, error) {
 			}
 			code, err := cloud.postSensor(ent.Device, sensor)
 			if err == nil {
-				cloud.flag(ent, -ActionCreate, noTime)
+				cloud.flag(ent, -ActionCreate, noTime, nil)
 				// log.Printf("[UP   ] Sensor pushed.")
 			}
 			return code, err
@@ -224,7 +230,7 @@ func (cloud *Cloud) processEntity(ent Entity, status *Status) (int, error) {
 			}
 			code, err := cloud.postActuator(ent.Device, actuator)
 			if err == nil {
-				cloud.flag(ent, -ActionCreate, noTime)
+				cloud.flag(ent, -ActionCreate, noTime, nil)
 				// log.Printf("[UP   ] Actuator pushed successfull.")
 			}
 			return code, err
@@ -234,82 +240,64 @@ func (cloud *Cloud) processEntity(ent Entity, status *Status) (int, error) {
 	if status.Action&ActionModify != 0 {
 
 		if ent.Sensor == "" && ent.Actuator == "" {
-			// sync an unexisting device
-			// log.Printf("[UP   ] Pushing device %s ...", ent.Device)
 			name, err := edge.GetDeviceName(ent.Device)
 			if err != nil {
 				return -1, fmt.Errorf("Internal Error\n%s", err.Error())
 			}
-			code, err := cloud.postDevice(device)
+			code, err := cloud.postDeviceName(ent.Device, name)
 			if err == nil {
-				cloud.flag(Entity{device.ID, "", ""}, -ActionCreate, noTime)
-				// cloud.statusMutex.Lock()
-				// delete(cloud.Status, ent)
-				// log.Printf("[UP   ] Device pushed.")
-				for _, sensor := range device.Sensors {
-					if sensor.Value != nil {
-						cloud.flag(Entity{device.ID, sensor.ID, ""}, ActionSync, noTime)
-					}
-				}
-				for _, actuator := range device.Actuators {
-					if actuator.Value != nil {
-						cloud.flag(Entity{device.ID, "", actuator.ID}, ActionSync, noTime)
-					}
-				}
-				// cloud.statusMutex.Unlock()
+				cloud.flag(ent, -ActionModify, noTime, nil)
 			}
 			return code, err
 		}
 
 		if ent.Sensor != "" {
-			// sync an unexisting sensor
-			// log.Printf("[UP   ] Pushing sensor %s/%s ...", ent.Device, ent.Sensor)
 			sensor, err := edge.GetSensor(ent.Device, ent.Sensor)
 			if err != nil {
 				return -1, fmt.Errorf("Internal Error\n%s", err.Error())
 			}
-			code, err := cloud.postSensor(ent.Device, sensor)
+			code, err := cloud.postSensorName(ent.Device, ent.Sensor, sensor.Name)
 			if err == nil {
-				cloud.flag(ent, -ActionCreate, noTime)
-				// log.Printf("[UP   ] Sensor pushed.")
+				cloud.flag(ent, -ActionModify, noTime, nil)
 			}
 			return code, err
 		} else {
-			// sync an unexisting actuator
-			log.Printf("[UP   ] Pushing actuator %s/%s ...", ent.Device, ent.Actuator)
 			actuator, err := edge.GetActuator(ent.Device, ent.Actuator)
 			if err != nil {
 				return -1, fmt.Errorf("Internal Error\n%s", err.Error())
 			}
-			code, err := cloud.postActuator(ent.Device, actuator)
+			code, err := cloud.postActuatorName(ent.Device, ent.Actuator, actuator.Name)
 			if err == nil {
-				cloud.flag(ent, -ActionCreate, noTime)
-				// log.Printf("[UP   ] Actuator pushed successfull.")
+				cloud.flag(ent, -ActionModify, noTime, nil)
 			}
 			return code, err
 		}
 	}
 
-	// log.Printf("[UP   ] Pushing values %s/%s ...", ent.Device, ent.Sensor)
+	if status.Action&ActionSync != 0 {
+		// log.Printf("[UP   ] Pushing values %s/%s ...", ent.Device, ent.Sensor)
 
-	query := &edge.Query{
-		From:  status.Remote,
-		Size:  1024 * 1024,
-		Limit: 30000,
-	}
-	values := edge.GetSensorValues(ent.Device, ent.Sensor, query)
-
-	remote, n, code, err := cloud.postValues(ent.Device, ent.Sensor, values)
-	if err == nil {
-		if n == 0 {
-			// log.Printf("[UP   ] Values are now up-to-date.")
-			cloud.flag(ent, -ActionSync, noTime)
-		} else {
-			// log.Printf("[UP   ] Pushed %d values successfull until %s.", n, remote.UTC())
-			cloud.flag(ent, 0, remote.Add(time.Second))
+		query := &edge.Query{
+			From:  status.Remote,
+			Size:  1024 * 1024,
+			Limit: 30000,
 		}
+		values := edge.GetSensorValues(ent.Device, ent.Sensor, query)
+
+		remote, n, code, err := cloud.postValues(ent.Device, ent.Sensor, values)
+		if err == nil {
+			if n == 0 {
+				// log.Printf("[UP   ] Values are now up-to-date.")
+				cloud.flag(ent, -ActionSync, noTime, nil)
+			} else {
+				// log.Printf("[UP   ] Pushed %d values successfull until %s.", n, remote.UTC())
+				cloud.flag(ent, 0, remote.Add(time.Second), nil)
+			}
+		}
+		return code, err
 	}
-	return code, err
+
+	return 0, nil
 }
 
 func (cloud *Cloud) postDevice(device *edge.Device) (int, error) {
@@ -347,6 +335,26 @@ func (cloud *Cloud) postDevice(device *edge.Device) (int, error) {
 	return resp.status, nil
 }
 
+func (cloud *Cloud) postDeviceName(deviceID string, name string) (int, error) {
+
+	addr := cloud.getRESTAddr()
+
+	resp := fetch(addr+"/devices/"+deviceID+"/name", fetchInit{
+		method: http.MethodPut,
+		headers: map[string]string{
+			"Content-Type":  "text/plain; charset=utf-8",
+			"Authorization": cloud.auth,
+		},
+		body: bytes.NewReader([]byte(name)),
+	})
+
+	if !resp.ok {
+		err := fmt.Errorf("Unable to change device name.\nStatus: %s\n%s", resp.statusText, strings.TrimSpace(resp.text()))
+		return resp.status, err
+	}
+	return resp.status, nil
+}
+
 func (cloud *Cloud) postSensor(deviceID string, sensor *edge.Sensor) (int, error) {
 	var syncSensor v2Sensor
 	syncSensor.ID = sensor.ID
@@ -370,6 +378,26 @@ func (cloud *Cloud) postSensor(deviceID string, sensor *edge.Sensor) (int, error
 	return resp.status, nil
 }
 
+func (cloud *Cloud) postSensorName(deviceID string, sensorID string, name string) (int, error) {
+
+	addr := cloud.getRESTAddr()
+
+	resp := fetch(addr+"/devices/"+deviceID+"/sensors/"+sensorID+"/name", fetchInit{
+		method: http.MethodPut,
+		headers: map[string]string{
+			"Content-Type":  "text/plain; charset=utf-8",
+			"Authorization": cloud.auth,
+		},
+		body: bytes.NewReader([]byte(name)),
+	})
+
+	if !resp.ok {
+		err := fmt.Errorf("Unable to change sensor name.\nStatus: %s\n%s", resp.statusText, strings.TrimSpace(resp.text()))
+		return resp.status, err
+	}
+	return resp.status, nil
+}
+
 func (cloud *Cloud) postActuator(deviceID string, actuator *edge.Actuator) (int, error) {
 	var syncActuator v2Actuator
 	syncActuator.ID = actuator.ID
@@ -388,6 +416,26 @@ func (cloud *Cloud) postActuator(deviceID string, actuator *edge.Actuator) (int,
 	})
 	if !resp.ok {
 		err := fmt.Errorf("Unable to push actuator.\nStatus: %s\n%s", resp.statusText, strings.TrimSpace(resp.text()))
+		return resp.status, err
+	}
+	return resp.status, nil
+}
+
+func (cloud *Cloud) postActuatorName(deviceID string, actuatorID string, name string) (int, error) {
+
+	addr := cloud.getRESTAddr()
+
+	resp := fetch(addr+"/devic/"+deviceID+"/actuators/"+actuatorID+"/name", fetchInit{
+		method: http.MethodPut,
+		headers: map[string]string{
+			"Content-Type":  "text/plain; charset=utf-8",
+			"Authorization": cloud.auth,
+		},
+		body: bytes.NewReader([]byte(name)),
+	})
+
+	if !resp.ok {
+		err := fmt.Errorf("Unable to change actuator name.\nStatus: %s\n%s", resp.statusText, strings.TrimSpace(resp.text()))
 		return resp.status, err
 	}
 	return resp.status, nil

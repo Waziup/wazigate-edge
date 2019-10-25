@@ -138,7 +138,7 @@ func postDeviceSensor(resp http.ResponseWriter, req *http.Request, deviceID stri
 	}
 
 	log.Printf("[DB   ] Sensor %s/%s created.\n", deviceID, sensor.ID)
-	clouds.FlagSensor(deviceID, sensor.ID, clouds.ActionCreate, noTime)
+	clouds.FlagSensor(deviceID, sensor.ID, clouds.ActionCreate, noTime, sensor.Meta)
 
 	resp.Write([]byte(sensor.ID))
 }
@@ -162,14 +162,14 @@ func postDeviceSensorName(resp http.ResponseWriter, req *http.Request, deviceID 
 		name = string(body)
 	}
 
-	err = edge.SetSensorName(deviceID, sensorID, name)
+	meta, err := edge.SetSensorName(deviceID, sensorID, name)
 	if err != nil {
 		serveError(resp, err)
 		return
 	}
 
 	log.Printf("[DB   ] Sensor %s/%s name changed: %q", deviceID, sensorID, name)
-	clouds.FlagSensor(deviceID, sensorID, clouds.ActionModify, noTime)
+	clouds.FlagSensor(deviceID, sensorID, clouds.ActionModify, noTime, meta)
 }
 
 func postDeviceSensorMeta(resp http.ResponseWriter, req *http.Request, deviceID string, sensorID string) {
@@ -179,7 +179,7 @@ func postDeviceSensorMeta(resp http.ResponseWriter, req *http.Request, deviceID 
 		http.Error(resp, "bad request: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-	var meta map[string]interface{}
+	var meta edge.Meta
 	err = json.Unmarshal(body, &meta)
 	if err != nil {
 		http.Error(resp, "bad request: "+err.Error(), http.StatusBadRequest)
@@ -193,7 +193,7 @@ func postDeviceSensorMeta(resp http.ResponseWriter, req *http.Request, deviceID 
 	}
 
 	log.Printf("[DB   ] Sensor %s/%s meta changed: %q", deviceID, sensorID, meta)
-	clouds.FlagSensor(deviceID, sensorID, clouds.ActionModify, noTime)
+	clouds.FlagSensor(deviceID, sensorID, clouds.ActionModify, noTime, meta)
 }
 
 func deleteDeviceSensor(resp http.ResponseWriter, deviceID string, sensorID string) {
@@ -205,6 +205,7 @@ func deleteDeviceSensor(resp http.ResponseWriter, deviceID string, sensorID stri
 	}
 
 	log.Printf("[DB   ] Sensor %s/%s removed. (%d values)\n", deviceID, sensorID, points)
+	clouds.FlagSensor(deviceID, sensorID, clouds.ActionDelete, noTime, nil)
 }
 
 ////////////////////

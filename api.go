@@ -23,6 +23,7 @@ func init() {
 	router.POST("/devices", api.PostDevice)
 	router.DELETE("/devices/:device_id", api.DeleteDevice)
 	router.POST("/devices/:device_id/name", api.PostDeviceName)
+	router.POST("/devices/:device_id/meta", api.PostDeviceMeta)
 
 	// Sensor Endpoints
 
@@ -61,6 +62,7 @@ func init() {
 	router.GET("/device", api.GetCurrentDevice)
 	router.GET("/device/id", api.GetCurrentDeviceID)
 	router.POST("/device/name", api.PostCurrentDeviceName)
+	router.POST("/device/meta", api.PostCurrentDeviceMeta)
 
 	router.GET("/sensors", api.GetSensors)
 	router.POST("/sensors", api.PostSensor)
@@ -96,6 +98,7 @@ func init() {
 	router.POST("/clouds/:cloud_id/credentials", api.PostCloudCredentials)
 	router.POST("/clouds/:cloud_id/rest", api.PostCloudRESTAddr)
 	router.POST("/clouds/:cloud_id/mqtt", api.PostCloudMQTTAddr)
+	router.GET("/clouds/:cloud_id/status", api.GetCloudStatus)
 
 	router.GET("/sys/uptime", api.SysGetUptime)
 	router.PUT("/sys/clear_all", api.SysClearAll)

@@ -118,7 +118,7 @@ func postActuatorValue(resp http.ResponseWriter, req *http.Request, deviceID str
 		return
 	}
 
-	err = edge.PostActuatorValue(deviceID, actuatorID, val)
+	meta, err := edge.PostActuatorValue(deviceID, actuatorID, val)
 	if err != nil {
 		serveError(resp, err)
 		return
@@ -126,7 +126,7 @@ func postActuatorValue(resp http.ResponseWriter, req *http.Request, deviceID str
 
 	log.Printf("[DB   ] 1 value for %s/%s.\n", deviceID, actuatorID)
 
-	clouds.FlagActuator(deviceID, actuatorID, clouds.ActionSync, val.Time)
+	clouds.FlagActuator(deviceID, actuatorID, clouds.ActionSync, val.Time, meta)
 }
 
 func postActuatorValues(resp http.ResponseWriter, req *http.Request, deviceID string, actuatorID string) {
@@ -138,13 +138,13 @@ func postActuatorValues(resp http.ResponseWriter, req *http.Request, deviceID st
 	}
 
 	if len(vals) != 0 {
-		err = edge.PostActuatorValues(deviceID, actuatorID, vals)
+		meta, err := edge.PostActuatorValues(deviceID, actuatorID, vals)
 		if err != nil {
 			serveError(resp, err)
 			return
 		}
 
-		clouds.FlagActuator(deviceID, actuatorID, clouds.ActionSync, vals[0].Time)
+		clouds.FlagActuator(deviceID, actuatorID, clouds.ActionSync, vals[0].Time, meta)
 	}
 
 	log.Printf("[DB   ] %d values for %s/%s.\n", len(vals), deviceID, actuatorID)

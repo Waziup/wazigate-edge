@@ -111,6 +111,18 @@ func PostCurrentDeviceName(resp http.ResponseWriter, req *http.Request, params r
 	postDeviceName(resp, req, edge.LocalID())
 }
 
+// PostDeviceName implements POST /devices/{deviceID}/meta
+func PostDeviceMeta(resp http.ResponseWriter, req *http.Request, params routing.Params) {
+
+	postDeviceMeta(resp, req, params.ByName("device_id"))
+}
+
+// PostCurrentDeviceMeta implements POST /device/meta
+func PostCurrentDeviceMeta(resp http.ResponseWriter, req *http.Request, params routing.Params) {
+
+	postDeviceMeta(resp, req, edge.LocalID())
+}
+
 ////////////////////
 
 func getDevice(resp http.ResponseWriter, deviceID string) {
@@ -147,7 +159,7 @@ func postDevice(resp http.ResponseWriter, req *http.Request) {
 
 	log.Printf("[DB   ] Created device %s.", device.ID)
 
-	clouds.FlagDevice(device.ID, clouds.ActionCreate)
+	clouds.FlagDevice(device.ID, clouds.ActionCreate, device.Meta)
 
 	resp.Write([]byte(device.ID))
 }
@@ -172,9 +184,35 @@ func postDeviceName(resp http.ResponseWriter, req *http.Request, deviceID string
 		name = string(body)
 	}
 
-	if err := edge.SetDeviceName(deviceID, name); err != nil {
+	meta, err := edge.SetDeviceName(deviceID, name)
+	if err != nil {
 		serveError(resp, err)
+		return
 	}
+
+	clouds.FlagDevice(deviceID, clouds.ActionModify, meta)
+}
+
+func postDeviceMeta(resp http.ResponseWriter, req *http.Request, deviceID string) {
+	body, err := tools.ReadAll(req.Body)
+	if err != nil {
+		http.Error(resp, "bad request: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	var meta edge.Meta
+	err = json.Unmarshal(body, &meta)
+	if err != nil {
+		http.Error(resp, "bad request: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	err = edge.SetDeviceMeta(deviceID, meta)
+	if err != nil {
+		serveError(resp, err)
+		return
+	}
+
+	clouds.FlagDevice(deviceID, clouds.ActionModify, meta)
 }
 
 ////////////////////
@@ -188,6 +226,7 @@ func deleteDevice(resp http.ResponseWriter, deviceID string) {
 	}
 
 	log.Printf("[DB   ] Removed device %s (%d sensor values, %d actuator values).\n", deviceID, numS, numA)
+	clouds.FlagDevice(deviceID, clouds.ActionDelete, nil)
 }
 
 ////////////////////

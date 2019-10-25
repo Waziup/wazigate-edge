@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -79,12 +80,13 @@ func (cloud *Cloud) initialSync() int {
 	resp := fetch(addr+"/gateways", fetchInit{
 		method: http.MethodPost,
 		headers: map[string]string{
-			"Content-Type":  "application/json",
+			"Content-Type":  "application/json; charset=utf-8",
 			"Authorization": cloud.auth,
 		},
 		body: bytes.NewReader(body),
 	})
 	if resp.status == http.StatusUnprocessableEntity {
+		log.Println(string(body))
 		cloud.Printf("Gateway already registered.", 200)
 	} else {
 		if !resp.ok {
@@ -104,6 +106,10 @@ func (cloud *Cloud) initialSync() int {
 		// log.Printf("[UP   ] Checking device %q ...", device.ID)
 
 		cloud.IncludeDevice(device.ID)
+		meta := device.Meta
+		if meta.DoNotSync() {
+			continue
+		}
 
 		resp = fetch(addr+"/devices/"+device.ID, fetchInit{
 			method: http.MethodGet,
@@ -114,7 +120,7 @@ func (cloud *Cloud) initialSync() int {
 		switch resp.status {
 		case http.StatusNotFound:
 			// log.Printf("[UP   ] Device %q not found.", device.ID)
-			cloud.flag(Entity{device.ID, "", ""}, ActionCreate, noTime)
+			cloud.flag(Entity{device.ID, "", ""}, ActionCreate, noTime, meta)
 
 		case http.StatusOK:
 			var device2 v2Device
@@ -125,6 +131,10 @@ func (cloud *Cloud) initialSync() int {
 
 		SENSORS:
 			for _, sensor := range device.Sensors {
+				meta := sensor.Meta
+				if meta.DoNotSync() {
+					continue
+				}
 				// if sensor.Value == nil {
 				// 	sensor.Time = noTime
 				// }
@@ -132,10 +142,10 @@ func (cloud *Cloud) initialSync() int {
 					if s.ID == sensor.ID {
 						if sensor.Time != noTime {
 							if s.Value == nil {
-								cloud.flag(Entity{device.ID, sensor.ID, ""}, ActionSync, noTime)
+								cloud.flag(Entity{device.ID, sensor.ID, ""}, ActionSync, noTime, meta)
 								// log.Printf("[UP   ] Sensor %q outdated! No time.", sensor.ID)
 							} else if s.Value.Time.Add(time.Second).Before(sensor.Time) {
-								cloud.flag(Entity{device.ID, sensor.ID, ""}, ActionSync, s.Value.Time)
+								cloud.flag(Entity{device.ID, sensor.ID, ""}, ActionSync, s.Value.Time, meta)
 								// log.Printf("[UP   ] Sensor %q outdated! Last value %v (latest: %v).", sensor.ID, s.Value.Time, sensor.Time)
 							} else {
 								// log.Printf("[UP   ] Sensor %q up do date.", sensor.ID)
@@ -145,15 +155,17 @@ func (cloud *Cloud) initialSync() int {
 					}
 				}
 				// log.Printf("[UP   ] Sensor %q does not exist.", sensor.ID)
-				cloud.flag(Entity{device.ID, sensor.ID, ""}, ActionCreate, noTime)
+				cloud.flag(Entity{device.ID, sensor.ID, ""}, ActionCreate, noTime, meta)
 				// cloud.Status[Entity{device.ID, sensor.ID, ""}] = NewStatus(ActionCreate, noTime)
 			}
 
 		ACTUATORS:
 			for _, acuator := range device.Actuators {
-				if acuator.Value == nil {
-					acuator.Time = noTime
+				meta := acuator.Meta
+				if meta.DoNotSync() {
+					continue
 				}
+
 				for _, s := range device2.Actuators {
 					if s.ID == acuator.ID {
 						if s.Value != nil {
@@ -174,7 +186,8 @@ func (cloud *Cloud) initialSync() int {
 					}
 				}
 				// log.Printf("[UP   ] Actuator %q does not exist.", acuator.ID)
-				cloud.flag(Entity{device.ID, "", acuator.ID}, ActionCreate, noTime)
+
+				cloud.flag(Entity{device.ID, "", acuator.ID}, ActionCreate, noTime, meta)
 
 				// cloud.Status[Entity{device.ID, "", acuator.ID}] = NewStatus(ActionCreate, noTime)
 			}

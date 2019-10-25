@@ -12,13 +12,13 @@ import (
 
 // Device represents a Waziup Device.
 type Device struct {
-	Name      string                 `json:"name" bson:"name"`
-	ID        string                 `json:"id" bson:"_id"`
-	Sensors   []*Sensor              `json:"sensors" bson:"sensors"`
-	Actuators []*Actuator            `json:"actuators" bson:"actuators"`
-	Modified  time.Time              `json:"modified" bson:"modified"`
-	Created   time.Time              `json:"created" bson:"created"`
-	Meta      map[string]interface{} `json:"meta" bson:"meta"`
+	Name      string      `json:"name" bson:"name"`
+	ID        string      `json:"id" bson:"_id"`
+	Sensors   []*Sensor   `json:"sensors" bson:"sensors"`
+	Actuators []*Actuator `json:"actuators" bson:"actuators"`
+	Modified  time.Time   `json:"modified" bson:"modified"`
+	Created   time.Time   `json:"created" bson:"created"`
+	Meta      Meta        `json:"meta" bson:"meta"`
 }
 
 var localID string
@@ -89,9 +89,15 @@ func GetDevice(deviceID string) (*Device, error) {
 // GetDeviceName returns the name of that device.
 func GetDeviceName(deviceID string) (string, error) {
 	var device Device
-	query := dbDevices.FindId(deviceID)
-	query.Select("name")
-	if err := query.One(&device); err != nil {
+	err := dbDevices.Find(bson.M{
+		"_id": deviceID,
+	}).Select(
+		bson.M{
+			"name": 1,
+		},
+	).One(&device)
+
+	if err != nil {
 		if err == mgo.ErrNotFound {
 			return "", errNotFound
 		}
@@ -103,11 +109,17 @@ func GetDeviceName(deviceID string) (string, error) {
 // GetDeviceMeta returns the metadata of that device.
 func GetDeviceMeta(deviceID string) (map[string]interface{}, error) {
 	var device Device
-	query := dbDevices.FindId(deviceID)
-	query.Select("meta")
-	if err := query.One(&device); err != nil {
+	err := dbDevices.Find(bson.M{
+		"_id": deviceID,
+	}).Select(
+		bson.M{
+			"meta": 1,
+		},
+	).One(&device)
+
+	if err != nil {
 		if err == mgo.ErrNotFound {
-			return nil, nil
+			return nil, errNotFound
 		}
 		return nil, CodeError{500, "database error: " + err.Error()}
 	}
@@ -157,12 +169,40 @@ func PostDevice(device *Device) error {
 }
 
 // SetDeviceName changes a device name.
-func SetDeviceName(deviceID string, name string) error {
+func SetDeviceName(deviceID string, name string) (Meta, error) {
+
+	var device Device
+	_, err := dbDevices.Find(bson.M{
+		"_id": deviceID,
+	}).Select(
+		bson.M{
+			"meta": 1,
+		},
+	).Apply(mgo.Change{
+		Update: bson.M{
+			"$set": bson.M{
+				"modified": time.Now(),
+				"name":     name,
+			},
+		},
+	}, &device)
+
+	if err != nil {
+		if err == mgo.ErrNotFound {
+			return nil, errNotFound
+		}
+		return nil, CodeError{500, "database error: " + err.Error()}
+	}
+	return device.Meta, nil
+}
+
+// SetDeviceMeta changes a device metadata.
+func SetDeviceMeta(deviceID string, meta Meta) error {
 
 	err := dbDevices.UpdateId(deviceID, bson.M{
 		"$set": bson.M{
 			"modified": time.Now(),
-			"name":     name,
+			"meta":     meta,
 		},
 	})
 

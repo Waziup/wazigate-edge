@@ -138,7 +138,7 @@ func postDeviceActuator(resp http.ResponseWriter, req *http.Request, deviceID st
 	}
 
 	log.Printf("[DB   ] Actuator %s/%s created.\n", deviceID, actuator.ID)
-	clouds.FlagActuator(deviceID, actuator.ID, clouds.ActionCreate, noTime)
+	clouds.FlagActuator(deviceID, actuator.ID, clouds.ActionCreate, noTime, actuator.Meta)
 
 	resp.Write([]byte(actuator.ID))
 }
@@ -162,13 +162,14 @@ func postDeviceActuatorName(resp http.ResponseWriter, req *http.Request, deviceI
 		name = string(body)
 	}
 
-	err = edge.SetActuatorName(deviceID, actuatorID, name)
+	meta, err := edge.SetActuatorName(deviceID, actuatorID, name)
 	if err != nil {
 		serveError(resp, err)
 		return
 	}
 
 	log.Printf("[DB   ] Actuator %s/%s name changed: %q", deviceID, actuatorID, name)
+	clouds.FlagActuator(deviceID, actuatorID, clouds.ActionModify, noTime, meta)
 }
 
 func postDeviceActuatorMeta(resp http.ResponseWriter, req *http.Request, deviceID string, actuatorID string) {
@@ -192,6 +193,7 @@ func postDeviceActuatorMeta(resp http.ResponseWriter, req *http.Request, deviceI
 	}
 
 	log.Printf("[DB   ] Actuator %s/%s meta changed: %q", deviceID, actuatorID, meta)
+	clouds.FlagActuator(deviceID, actuatorID, clouds.ActionModify, noTime, meta)
 }
 
 func deleteDeviceActuator(resp http.ResponseWriter, deviceID string, actuatorID string) {

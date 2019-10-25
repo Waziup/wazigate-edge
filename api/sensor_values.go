@@ -118,7 +118,7 @@ func postSensorValue(resp http.ResponseWriter, req *http.Request, deviceID strin
 		return
 	}
 
-	err = edge.PostSensorValue(deviceID, sensorID, val)
+	meta, err := edge.PostSensorValue(deviceID, sensorID, val)
 	if err != nil {
 		serveError(resp, err)
 		return
@@ -126,7 +126,7 @@ func postSensorValue(resp http.ResponseWriter, req *http.Request, deviceID strin
 
 	log.Printf("[DB   ] 1 value for %s/%s.\n", deviceID, sensorID)
 
-	clouds.FlagSensor(deviceID, sensorID, clouds.ActionSync, val.Time)
+	clouds.FlagSensor(deviceID, sensorID, clouds.ActionSync, val.Time, meta)
 }
 
 func postSensorValues(resp http.ResponseWriter, req *http.Request, deviceID string, sensorID string) {
@@ -138,13 +138,13 @@ func postSensorValues(resp http.ResponseWriter, req *http.Request, deviceID stri
 	}
 
 	if len(vals) != 0 {
-		err = edge.PostSensorValues(deviceID, sensorID, vals)
+		meta, err := edge.PostSensorValues(deviceID, sensorID, vals)
 		if err != nil {
 			serveError(resp, err)
 			return
 		}
 
-		clouds.FlagSensor(deviceID, sensorID, clouds.ActionSync, vals[0].Time)
+		clouds.FlagSensor(deviceID, sensorID, clouds.ActionSync, vals[0].Time, meta)
 	}
 
 	log.Printf("[DB   ] %d values for %s/%s.\n", len(vals), deviceID, sensorID)

@@ -82,7 +82,7 @@ func GetCloud(resp http.ResponseWriter, req *http.Request, params routing.Params
 	cloudID := params.ByName("cloud_id")
 	cloud := clouds.GetCloud(cloudID)
 	if cloud == nil {
-		http.Error(resp, "no found: no cloud with that id", http.StatusNotFound)
+		http.Error(resp, "not found: no cloud with that id", http.StatusNotFound)
 		return
 	}
 
@@ -97,7 +97,7 @@ func PostCloudRESTAddr(resp http.ResponseWriter, req *http.Request, params routi
 	cloudID := params.ByName("cloud_id")
 	cloud := clouds.GetCloud(cloudID)
 	if cloud == nil {
-		http.Error(resp, "no found: no cloud with that id", http.StatusNotFound)
+		http.Error(resp, "not found: no cloud with that id", http.StatusNotFound)
 		return
 	}
 
@@ -129,7 +129,7 @@ func PostCloudMQTTAddr(resp http.ResponseWriter, req *http.Request, params routi
 	cloudID := params.ByName("cloud_id")
 	cloud := clouds.GetCloud(cloudID)
 	if cloud == nil {
-		http.Error(resp, "no found: no cloud with that id", http.StatusNotFound)
+		http.Error(resp, "not found: no cloud with that id", http.StatusNotFound)
 		return
 	}
 
@@ -163,7 +163,7 @@ func PostCloudCredentials(resp http.ResponseWriter, req *http.Request, params ro
 	cloudID := params.ByName("cloud_id")
 	cloud := clouds.GetCloud(cloudID)
 	if cloud == nil {
-		http.Error(resp, "no found: no cloud with that id", http.StatusNotFound)
+		http.Error(resp, "not found: no cloud with that id", http.StatusNotFound)
 		return
 	}
 
@@ -192,7 +192,7 @@ func PostCloudPaused(resp http.ResponseWriter, req *http.Request, params routing
 	cloudID := params.ByName("cloud_id")
 	cloud := clouds.GetCloud(cloudID)
 	if cloud == nil {
-		http.Error(resp, "no found: no cloud with that id", http.StatusNotFound)
+		http.Error(resp, "not found: no cloud with that id", http.StatusNotFound)
 		return
 	}
 
@@ -216,6 +216,39 @@ func PostCloudPaused(resp http.ResponseWriter, req *http.Request, params routing
 		log.Printf("[CLOUD] Resumed synchronization.")
 	}
 	writeCloudFile()
+}
+
+// GetCloudStatus implements GET /clouds/{cloudID}/status
+func GetCloudStatus(resp http.ResponseWriter, req *http.Request, params routing.Params) {
+
+	cloudID := params.ByName("cloud_id")
+	cloud := clouds.GetCloud(cloudID)
+	if cloud == nil {
+		http.Error(resp, "not found: no cloud with that id", http.StatusNotFound)
+		return
+	}
+
+	type S struct {
+		Entity *clouds.Entity `json:"entity"`
+		Status *clouds.Status `json:"status"`
+	}
+
+	resp.Write([]byte{'['})
+
+	cloud.StatusMutex.Lock()
+	count := 0
+	for entity, status := range cloud.Status {
+		if count != 0 {
+			resp.Write([]byte{','})
+		}
+		data, _ := json.Marshal(S{&entity, status})
+		resp.Write(data)
+		count++
+	}
+
+	cloud.StatusMutex.Unlock()
+
+	resp.Write([]byte{']'})
 }
 
 ////////////////////////////////////////////////////////////////////////////////

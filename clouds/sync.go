@@ -3,7 +3,6 @@ package clouds
 import (
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 )
@@ -98,7 +97,7 @@ func (cloud *Cloud) sync() {
 INITIAL_SYNC:
 	for !cloud.Pausing {
 
-		cloud.setStatus(0, "Beginning initial sync ...")
+		// cloud.setStatus(0, "Beginning initial sync ...")
 
 		cloud.ResetStatus()
 		cloud.sigDirty = make(chan Entity, 1)
@@ -114,7 +113,7 @@ INITIAL_SYNC:
 			continue
 		}
 
-		log.Printf("[UP   ] Initial sync completed with %d dirty.", len(cloud.Status))
+		// log.Printf("[UP   ] Initial sync completed with %d dirty.", len(cloud.Status))
 		nretry = 0
 		break
 	}
@@ -146,9 +145,9 @@ INITIAL_SYNC:
 	}
 
 	cloud.Pausing = false
-	log.Println("[UP   ] REST sync is now paused.")
+	// log.Println("[UP   ] REST sync is now paused.")
 	if !activeMQTT {
 		cloud.PausingMQTT = false
-		log.Println("[UP   ] MQTT sync is now paused.")
+		// log.Println("[UP   ] MQTT sync is now paused.")
 	}
 }

@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Waziup/wazigate-edge/edge"
 	"github.com/Waziup/wazigate-edge/mqtt"
 )
 
@@ -40,12 +41,16 @@ type Action int
 const (
 	// ActionError indicates that there was an error with this entity.
 	ActionError Action = 1 << iota
+	// ActionNoSync indicates that this entity should not be synced.
+	ActionNoSync
 	// ActionSync will synchronoice values from a sensor or actuator.
 	ActionSync
 	// ActionModify modifiy changes names and metadata.
 	ActionModify
 	// ActionCreate creates (declares) the device/sensor/actuator at the cloud.
 	ActionCreate
+	// ActionDelete delete the device/sensor/actuator
+	ActionDelete
 )
 
 // Status describes a single entity.
@@ -62,16 +67,6 @@ type Status struct {
 
 	// Error, if any
 	Error error `json:"error,omitempty"`
-}
-
-// NewStatus creates a new Status object.
-func NewStatus(action Action, remote time.Time) *Status {
-	return &Status{
-		Remote: remote,
-		Action: action,
-		Wakeup: time.Now(),
-		Sleep:  0,
-	}
 }
 
 // Cloud represents a configuration to access a Waziup Cloud.
@@ -96,7 +91,7 @@ type Cloud struct {
 	StatusText string `json:"statusText"`
 
 	Status      map[Entity]*Status `json:"-"`
-	statusMutex sync.Mutex
+	StatusMutex sync.Mutex
 
 	sigDirty chan Entity
 	auth     string
@@ -151,61 +146,61 @@ func RemoveCloud(id string) bool {
 }
 
 // FlagDevice marks the device as dirty so that it will be synced wih the clouds.
-func FlagDevice(deviceID string, action Action) {
+func FlagDevice(deviceID string, action Action, meta edge.Meta) {
 	if len(clouds) == 0 {
 		return
 	}
 	cloudsMutex.RLock()
 	for _, cloud := range clouds {
-		cloud.FlagDevice(deviceID, action)
+		cloud.FlagDevice(deviceID, action, meta)
 	}
 	cloudsMutex.RUnlock()
 }
 
 // FlagSensor marks the sensor as dirty so that it will be synced wih the clouds.
-func FlagSensor(deviceID string, sensorID string, action Action, time time.Time) {
+func FlagSensor(deviceID string, sensorID string, action Action, time time.Time, meta edge.Meta) {
 	if len(clouds) == 0 {
 		return
 	}
 	cloudsMutex.RLock()
 	for _, cloud := range clouds {
-		cloud.FlagSensor(deviceID, sensorID, action, time)
+		cloud.FlagSensor(deviceID, sensorID, action, time, meta)
 	}
 	cloudsMutex.RUnlock()
 }
 
 // FlagActuator marks the actuator as dirty so that it will be synced wih the clouds.
-func FlagActuator(deviceID string, actuatorID string, action Action, time time.Time) {
+func FlagActuator(deviceID string, actuatorID string, action Action, time time.Time, meta edge.Meta) {
 	if len(clouds) == 0 {
 		return
 	}
 	cloudsMutex.RLock()
 	for _, cloud := range clouds {
-		cloud.FlagActuator(deviceID, actuatorID, action, time)
+		cloud.FlagActuator(deviceID, actuatorID, action, time, meta)
 	}
 	cloudsMutex.RUnlock()
 }
 
 // FlagDevice marks the device as dirty.
-func (cloud *Cloud) FlagDevice(deviceID string, action Action) {
-	cloud.flag(Entity{deviceID, "", ""}, action, noTime)
+func (cloud *Cloud) FlagDevice(deviceID string, action Action, meta edge.Meta) {
+	cloud.flag(Entity{deviceID, "", ""}, action, noTime, meta)
 }
 
 // FlagSensor marks the sensor as dirty.
-func (cloud *Cloud) FlagSensor(deviceID string, sensorID string, action Action, time time.Time) {
-	cloud.flag(Entity{deviceID, sensorID, ""}, action, time)
+func (cloud *Cloud) FlagSensor(deviceID string, sensorID string, action Action, time time.Time, meta edge.Meta) {
+	cloud.flag(Entity{deviceID, sensorID, ""}, action, time, meta)
 }
 
 // FlagActuator marks the actuator as dirty.
-func (cloud *Cloud) FlagActuator(deviceID string, actuatorID string, action Action, time time.Time) {
-	cloud.flag(Entity{deviceID, "", actuatorID}, action, time)
+func (cloud *Cloud) FlagActuator(deviceID string, actuatorID string, action Action, time time.Time, meta edge.Meta) {
+	cloud.flag(Entity{deviceID, "", actuatorID}, action, time, meta)
 }
 
 // ResetStatus clears the status field.
 func (cloud *Cloud) ResetStatus() {
-	cloud.statusMutex.Lock()
+	cloud.StatusMutex.Lock()
 	cloud.Status = make(map[Entity]*Status)
-	cloud.statusMutex.Unlock()
+	cloud.StatusMutex.Unlock()
 }
 
 func (cloud *Cloud) Errorf(format string, code int, a ...interface{}) {
@@ -218,36 +213,52 @@ func (cloud *Cloud) Printf(format string, code int, a ...interface{}) {
 	log.Printf("[UP   ] > [%3d] %s", code, str)
 }
 
-func (cloud *Cloud) flag(ent Entity, action Action, remote time.Time) {
+func (cloud *Cloud) flag(ent Entity, action Action, remote time.Time, meta edge.Meta) {
 	var needsSig bool
 	var status *Status
-	cloud.statusMutex.Lock()
+	now := time.Now()
+	cloud.StatusMutex.Lock()
 	if cloud.Status == nil {
 		needsSig = false
 	} else {
 		needsSig = len(cloud.Status) == 0
 		if status = cloud.Status[ent]; status != nil {
-			if action == 0 {
-				status.Remote = remote
-				status.Wakeup = time.Now().Add(status.Sleep)
-			} else if action < 0 {
-				status.Action = status.Action ^ -action
-				if status.Action == 0 {
-					if status.Sleep == 0 {
-						delete(cloud.Status, ent)
-					} else {
-						status.Wakeup = time.Now().Add(status.Sleep)
-					}
-				}
+			if action == -ActionDelete {
+				delete(cloud.Status, ent)
+			} else if action == 0 {
+				status.Wakeup = now.Add(status.Sleep)
 			} else {
-				status.Action = status.Action | action
+				if action < 0 {
+					status.Action = status.Action ^ -action
+					if action == -ActionSync {
+						status.Wakeup = now.Add(status.Sleep)
+					}
+					if status.Action == 0 {
+						if !now.Before(status.Wakeup) {
+							delete(cloud.Status, ent)
+						}
+					}
+				} else {
+					if action == ActionModify {
+						sleep := meta.SyncInterval()
+						status.Wakeup = status.Wakeup.Add(status.Sleep - sleep)
+						status.Sleep = sleep
+					}
+					status.Action = status.Action | action
+				}
 			}
 		} else {
-			status = NewStatus(action, remote)
+			sleep := meta.SyncInterval()
+			status = &Status{
+				Remote: remote,
+				Action: action,
+				Wakeup: time.Now(),
+				Sleep:  sleep,
+			}
 			cloud.Status[ent] = status
 		}
 	}
-	cloud.statusMutex.Unlock()
+	cloud.StatusMutex.Unlock()
 
 	log.Printf("[UP   ] Status %s: %s", ent, status.Action)
 
@@ -257,6 +268,33 @@ func (cloud *Cloud) flag(ent Entity, action Action, remote time.Time) {
 		default: // channel full
 		}
 	}
+}
+
+type Meta struct {
+	NoSync       bool
+	SyncInterval time.Duration
+}
+
+func NewMeta(json map[string]interface{}) (meta Meta) {
+	if json != nil {
+		if m := json["syncInterval"]; m != nil {
+			switch i := m.(type) {
+			case string:
+				if j, err := time.ParseDuration(i); err == nil {
+					meta.SyncInterval = j
+				}
+			}
+		}
+		if m := json["doNotSync"]; m != nil {
+			switch i := m.(type) {
+			case bool:
+				meta.NoSync = i
+			case int:
+				meta.NoSync = i != 0
+			}
+		}
+	}
+	return
 }
 
 func (cloud *Cloud) getRESTAddr() string {

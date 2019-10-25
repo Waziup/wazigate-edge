@@ -10,13 +10,13 @@ import (
 
 // Actuator represents a Waziup actuator
 type Actuator struct {
-	ID       string                 `json:"id" bson:"id"`
-	Name     string                 `json:"name" bson:"name"`
-	Modified time.Time              `json:"modified" bson:"modified"`
-	Created  time.Time              `json:"created" bson:"created"`
-	Time     time.Time              `json:"time" bson:"time"`
-	Value    interface{}            `json:"value" bson:"value"`
-	Meta     map[string]interface{} `json:"meta" bson:"meta"`
+	ID       string      `json:"id" bson:"id"`
+	Name     string      `json:"name" bson:"name"`
+	Modified time.Time   `json:"modified" bson:"modified"`
+	Created  time.Time   `json:"created" bson:"created"`
+	Time     time.Time   `json:"time" bson:"time"`
+	Value    interface{} `json:"value" bson:"value"`
+	Meta     Meta        `json:"meta" bson:"meta"`
 }
 
 // GetActuator returns the Waziup actuator.
@@ -89,26 +89,37 @@ func PostActuator(deviceID string, actuator *Actuator) error {
 }
 
 // SetActuatorName changes this actuators name.
-func SetActuatorName(deviceID string, actuatorID string, name string) error {
+func SetActuatorName(deviceID string, actuatorID string, name string) (Meta, error) {
 
-	err := dbDevices.Update(bson.M{
+	var device Device
+	_, err := dbDevices.Find(bson.M{
 		"_id":          deviceID,
 		"actuators.id": actuatorID,
-	}, bson.M{
-		"$set": bson.M{
-			"actuators.$.modified": time.Now(),
-			"actuators.$.name":     name,
+	}).Select(
+		bson.M{
+			"actuators.id": actuatorID,
 		},
-	})
+	).Apply(mgo.Change{
+		Update: bson.M{
+			"$set": bson.M{
+				"actuators.$.modified": time.Now(),
+				"actuators.$.name":     name,
+			},
+		},
+	}, &device)
 
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			return errNotFound
+			return nil, errNotFound
 		}
-		return CodeError{500, "database error: " + err.Error()}
+		return nil, CodeError{500, "database error: " + err.Error()}
 	}
 
-	return nil
+	if len(device.Actuators) == 0 {
+		return nil, mgo.ErrNotFound
+	}
+
+	return device.Actuators[0].Meta, nil
 }
 
 // SetActuatorMeta changes this actuators metadata.
@@ -225,7 +236,7 @@ type aValue struct {
 }
 
 // PostActuatorValue stores a new actuator value for this actuator.
-func PostActuatorValue(deviceID string, actuatorID string, val Value) error {
+func PostActuatorValue(deviceID string, actuatorID string, val Value) (Meta, error) {
 
 	value := aValue{
 		ID:         newID(val.Time),
@@ -233,35 +244,45 @@ func PostActuatorValue(deviceID string, actuatorID string, val Value) error {
 		DeviceID:   deviceID,
 		ActuatorID: actuatorID,
 	}
-
-	err := dbDevices.Update(bson.M{
+	var device Device
+	_, err := dbDevices.Find(bson.M{
 		"_id":          deviceID,
 		"actuators.id": actuatorID,
-	}, bson.M{
-		"$set": bson.M{
-			"actuators.$.value": val.Value,
-			"actuators.$.time":  val.Time,
+	}).Select(
+		bson.M{
+			"actuators.id": actuatorID,
 		},
-	})
+	).Apply(mgo.Change{
+		Update: bson.M{
+			"$set": bson.M{
+				"actuators.$.value": val.Value,
+				"actuators.$.time":  val.Time,
+			},
+		},
+	}, &device)
 
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			return errNotFound
+			return nil, errNotFound
 		}
-		return CodeError{500, "database error: " + err.Error()}
+		return nil, CodeError{500, "database error: " + err.Error()}
+	}
+
+	if len(device.Actuators) == 0 {
+		return nil, errNotFound
 	}
 
 	err = dbActuatorValues.Insert(&value)
 
 	if err != nil {
-		return CodeError{500, "database error: " + err.Error()}
+		return nil, CodeError{500, "database error: " + err.Error()}
 	}
 
-	return nil
+	return device.Actuators[0].Meta, nil
 }
 
 // PostActuatorValues can be used to post multiple data point for this actuator.
-func PostActuatorValues(deviceID string, actuatorID string, vals []Value) error {
+func PostActuatorValues(deviceID string, actuatorID string, vals []Value) (Meta, error) {
 
 	values := make([]aValue, len(vals))
 	interf := make([]interface{}, len(vals))
@@ -278,27 +299,38 @@ func PostActuatorValues(deviceID string, actuatorID string, vals []Value) error 
 
 	val := vals[len(vals)-1]
 
-	err := dbDevices.Update(bson.M{
+	var device Device
+	_, err := dbDevices.Find(bson.M{
 		"_id":          deviceID,
 		"actuators.id": actuatorID,
-	}, bson.M{
-		"$set": bson.M{
-			"actuators.$.value": val.Value,
-			"actuators.$.time":  val.Time,
+	}).Select(
+		bson.M{
+			"actuators.id": actuatorID,
 		},
-	})
+	).Apply(mgo.Change{
+		Update: bson.M{
+			"$set": bson.M{
+				"actuators.$.value": val.Value,
+				"actuators.$.time":  val.Time,
+			},
+		},
+	}, &device)
 
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			return errNotFound
+			return nil, errNotFound
 		}
-		return CodeError{500, "database error: " + err.Error()}
+		return nil, CodeError{500, "database error: " + err.Error()}
+	}
+
+	if len(device.Actuators) == 0 {
+		return nil, errNotFound
 	}
 
 	err = dbActuatorValues.Insert(interf...)
 	if err != nil {
-		return CodeError{500, "database error: " + err.Error()}
+		return nil, CodeError{500, "database error: " + err.Error()}
 	}
 
-	return nil
+	return device.Actuators[0].Meta, nil
 }

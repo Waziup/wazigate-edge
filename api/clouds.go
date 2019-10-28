@@ -74,6 +74,7 @@ func DeleteCloud(resp http.ResponseWriter, req *http.Request, params routing.Par
 	}
 
 	log.Printf("[CLOUD] Deleted.")
+	writeCloudFile()
 }
 
 // GetCloud implements GET /clouds/{cloudID}
@@ -205,6 +206,7 @@ func PostCloudPaused(resp http.ResponseWriter, req *http.Request, params routing
 	}
 
 	cloud.SetPaused(paused)
+	writeCloudFile()
 }
 
 ////////////////////////////////////////////////////////////////////////////////

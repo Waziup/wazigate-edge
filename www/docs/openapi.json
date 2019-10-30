@@ -1840,11 +1840,12 @@
                     "$ref": "#/components/schemas/Cloud"
                   },
                   "example": {
-                    "5cebcfa04b9f6119688b3cdc": {
-                      "id": "5cebcfa04b9f6119688b3cdc",
+                    "default": {
+                      "id": "default",
                       "paused": true,
                       "pausing": false,
                       "pausing_mqtt": false,
+                      "registered": true,
                       "rest": "//api.waziup.io/api/v2",
                       "mqtt": "",
                       "credentials": {
@@ -1878,7 +1879,7 @@
                   "id": {
                     "type": "string",
                     "description": "Cloud ID",
-                    "example": "5cebcfa04b9f6119688b3cdc"
+                    "example": "default"
                   },
                   "paused": {
                     "type": "boolean",
@@ -1961,7 +1962,7 @@
                     "$ref": "#/components/schemas/Cloud"
                   },
                   "example": {
-                    "id": "5cebcfa04b9f6119688b3cdc",
+                    "id": "default",
                     "paused": true,
                     "pausing": false,
                     "pausing_mqtt": false,

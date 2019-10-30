@@ -779,7 +779,7 @@
             type: "text"
           },
           props: {
-            value: cloud.credentials.username
+            value: cloud.username
           }
         })
       ]),
@@ -798,7 +798,7 @@
             type: "text"
           },
           props: {
-            value: cloud.credentials.token
+            value: cloud.token
           }
         })
       ]),
@@ -873,23 +873,29 @@
           className: "button",
           on: {
             click: async() => {
-              var creds,
-        resp,
+              var resp,
         text;
-              creds = {
-                username: inputUsername.value,
-                token: inputToken.value
-              };
-              resp = (await fetch(`/clouds/${cloud.id}/credentials`,
+              resp = (await fetch(`/clouds/${cloud.id}/username`,
         {
                 method: "POST",
-                body: JSON.stringify(creds)
+                body: JSON.stringify(inputUsername.value)
+              }));
+              if (!resp.ok) {
+                text = (await resp.text());
+                alert("Can not save username:\n" + text);
+                return;
+              }
+              resp = (await fetch(`/clouds/${cloud.id}/token`,
+        {
+                method: "POST",
+                body: JSON.stringify(inputToken.value)
               }));
               if (resp.ok) {
                 alert("OK");
               } else {
                 text = (await resp.text());
-                alert("Can not save:\n" + text);
+                alert("Can not save token:\n" + text);
+                return;
               }
             }
           }

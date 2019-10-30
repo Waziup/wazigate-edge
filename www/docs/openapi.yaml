@@ -1359,15 +1359,19 @@ paths:
                 summary: start synchonization
       responses:
         '200':
-          description: Successful Operation
+          description: Successful Operation. Username and password are valid.
+        '202':
+          description: Successful Operation. The Gateway has not internet connection and could not verify username and password.
         '404':
           description: Bad Request. There may be no cloud with that id.
+        '401':
+          description: Bad Request. The server rejected the credentials.
           
-  '/clouds/{id}/credentials':
+  '/clouds/{id}/username':
     post:
       tags:
         - Clouds
-      summary: Change Credentials
+      summary: Change Username
       description: Change your credentials that are used for the synchronization.
       parameters:
         - name: id
@@ -1377,21 +1381,41 @@ paths:
           schema:
             type: string
       requestBody:
-        description: "Your credentials: Username and password."
+        description: "Your username."
         required: true
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                username:
-                  type: string
-                  description: Username
-                  example: my username
-                token:
-                  type: string
-                  description: Password
-                  example: my password
+              type: string
+              description: Username
+              example: my username
+      responses:
+        '200':
+          description: Successful Operation
+        '404':
+          description: Bad Request. There may be no cloud with that id.
+  '/clouds/{id}/token':
+    post:
+      tags:
+        - Clouds
+      summary: Change Password
+      description: Change your credentials that are used for the synchronization.
+      parameters:
+        - name: id
+          in: path
+          description: ID of the cloud
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: "Your password."
+        required: true
+        content:
+          application/json:
+            schema:
+              type: string
+              description: Password
+              example: my password
       responses:
         '200':
           description: Successful Operation

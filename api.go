@@ -87,7 +87,8 @@ func init() {
 	router.GET("/clouds/:cloud_id", api.GetCloud)
 	router.DELETE("/clouds/:cloud_id", api.DeleteCloud)
 	router.POST("/clouds/:cloud_id/paused", api.PostCloudPaused)
-	router.POST("/clouds/:cloud_id/credentials", api.PostCloudCredentials)
+	router.POST("/clouds/:cloud_id/username", api.PostCloudUsername)
+	router.POST("/clouds/:cloud_id/token", api.PostCloudToken)
 	router.POST("/clouds/:cloud_id/rest", api.PostCloudRESTAddr)
 	router.POST("/clouds/:cloud_id/mqtt", api.PostCloudMQTTAddr)
 

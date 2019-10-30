@@ -43,10 +43,10 @@ type Cloud struct {
 	REST        string `json:"rest"`
 	MQTT        string `json:"mqtt"`
 
-	Credentials struct {
-		Username string `json:"username"`
-		Token    string `json:"token"`
-	} `json:"credentials"`
+	Registered bool `json:"registered"`
+
+	Username string `json:"username"`
+	Token    string `json:"token"`
 
 	client    *mqtt.Client
 	mqttMutex sync.Mutex
@@ -54,8 +54,6 @@ type Cloud struct {
 
 	StatusCode int    `json:"statusCode"`
 	StatusText string `json:"statusText"`
-
-	Status map[string]Status
 
 	remote      map[entity]*remote
 	remoteMutex sync.Mutex
@@ -223,6 +221,22 @@ func (cloud *Cloud) setStatus(code int, text string) {
 }
 
 var errCloudNoPause = errors.New("cloud pausing or not paused")
+
+func (cloud *Cloud) SetUsername(username string) (int, error) {
+	if !cloud.Paused || cloud.Pausing {
+		return http.StatusLocked, errCloudNoPause
+	}
+	cloud.Username = username
+	return 200, nil
+}
+
+func (cloud *Cloud) SetToken(token string) (int, error) {
+	if !cloud.Paused || cloud.Pausing {
+		return http.StatusLocked, errCloudNoPause
+	}
+	cloud.Token = token
+	return 200, nil
+}
 
 func (cloud *Cloud) SetCredentials(username string, token string) (int, error) {
 

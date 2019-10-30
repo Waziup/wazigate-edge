@@ -19,12 +19,12 @@ func (cloud *Cloud) authenticate() int {
 		Username string `json:"username"`
 		Password string `json:"password"`
 	}{
-		cloud.Credentials.Username,
-		cloud.Credentials.Token,
+		cloud.Username,
+		cloud.Token,
 	}
 
 	addr := cloud.getRESTAddr()
-	log.Printf("[UP   ] Authentication as %q ...", cloud.Credentials.Username)
+	log.Printf("[UP   ] Authentication as %q ...", cloud.Username)
 
 	body, _ := json.Marshal(credentials)
 	resp := fetch(addr+"/auth/token", fetchInit{
@@ -89,6 +89,8 @@ func (cloud *Cloud) initialSync() int {
 	default:
 		return resp.status
 	}
+
+	cloud.Registered = true
 
 	cloud.mqttMutex.Lock()
 	cloud.devices = make(map[string]struct{})

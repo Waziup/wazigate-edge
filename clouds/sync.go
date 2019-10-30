@@ -1,6 +1,7 @@
 package clouds
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -14,10 +15,19 @@ var retries = []time.Duration{
 	60 * time.Second,
 }
 
-func (cloud *Cloud) SetPaused(paused bool) {
+var errLoginFailed = errors.New("login failed")
 
-	if cloud.Pausing || cloud.PausingMQTT || paused == cloud.Paused {
-		return
+func (cloud *Cloud) SetPaused(paused bool) (int, error) {
+
+	if cloud.Pausing || cloud.PausingMQTT {
+		return http.StatusLocked, errCloudNoPause
+	}
+
+	cloud.remoteMutex.Lock()
+	defer cloud.remoteMutex.Unlock()
+
+	if cloud.Paused == paused {
+		return 200, nil
 	}
 
 	if paused {
@@ -35,10 +45,21 @@ func (cloud *Cloud) SetPaused(paused bool) {
 		case cloud.sigDirty <- struct{}{}:
 		default: // channel full
 		}
-	} else {
-		cloud.Paused = false
-		go cloud.sync()
+		return 200, nil
 	}
+
+	status := cloud.authenticate()
+	if status == 0 {
+		status = http.StatusAccepted
+	}
+
+	if !isOk(status) {
+		return status, errLoginFailed
+	}
+
+	cloud.Paused = false
+	go cloud.sync()
+	return status, nil
 }
 
 func (cloud *Cloud) sync() {

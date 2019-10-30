@@ -64,10 +64,10 @@ func (cloud *Cloud) mqttPersistentSync() {
 	for !cloud.PausingMQTT {
 
 		for !cloud.PausingMQTT {
-			log.Printf("[UP   ] Connecting to MQTT as %q ...", cloud.Credentials.Username)
+			log.Printf("[UP   ] Connecting to MQTT as %q ...", cloud.Username)
 			client, err := mqtt.Dial(cloud.getMQTTAddr(), edge.LocalID(), true, &mqtt.ConnectAuth{
-				Username: cloud.Credentials.Username,
-				Password: cloud.Credentials.Token,
+				Username: cloud.Username,
+				Password: cloud.Token,
 			}, nil)
 			if err != nil {
 				cloud.setStatus(0, "Err MQTT "+err.Error())

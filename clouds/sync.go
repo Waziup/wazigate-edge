@@ -2,7 +2,7 @@ package clouds
 
 import (
 	"errors"
-	"fmt"
+	"log"
 	"net/http"
 	"time"
 )
@@ -16,14 +16,19 @@ var retries = []time.Duration{
 
 var errPausing = errors.New("cloud is pausing")
 
-func (cloud *Cloud) SetPaused(paused bool) error {
+var errLoginFailed = errors.New("login failed")
+
+func (cloud *Cloud) SetPaused(paused bool) (int, error) {
 
 	if cloud.Pausing || cloud.PausingMQTT {
-		return errPausing
+		return http.StatusLocked, errCloudNoPause
 	}
 
-	if paused == cloud.Paused {
-		return nil
+	cloud.StatusMutex.Lock()
+	defer cloud.StatusMutex.Unlock()
+
+	if cloud.Paused == paused {
+		return 200, nil
 	}
 
 	if paused {
@@ -41,12 +46,21 @@ func (cloud *Cloud) SetPaused(paused bool) error {
 		case cloud.sigDirty <- Entity{}:
 		default: // channel full
 		}
-	} else {
-		cloud.Paused = false
-		go cloud.sync()
+		return 200, nil
 	}
 
-	return nil
+	status := cloud.authenticate()
+	if status == 0 {
+		status = http.StatusAccepted
+	}
+
+	if !isOk(status) {
+		return status, errLoginFailed
+	}
+
+	cloud.Paused = false
+	go cloud.sync()
+	return status, nil
 }
 
 func (cloud *Cloud) sync() {
@@ -60,7 +74,7 @@ func (cloud *Cloud) sync() {
 		}
 
 		duration := retries[nretry]
-		cloud.setStatus(cloud.StatusCode, fmt.Sprintf("Waiting %ds before retry after error.\n%s", duration/time.Second, cloud.StatusText))
+		log.Printf("[UP   ] Waiting %ds with REST before retry after error.", duration/time.Second)
 		time.Sleep(duration)
 
 		nretry++

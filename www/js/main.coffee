@@ -603,7 +603,7 @@ inflateCloud = (cloud) ->
             , [$.text "Username:"]
             inputUsername = $.create "input",
                 attr: type: "text"
-                props: value: cloud.credentials.username
+                props: value: cloud.username
         ]
         $.box 
             className: "attr"
@@ -613,7 +613,7 @@ inflateCloud = (cloud) ->
             , [$.text "Password:"]
             inputToken = $.create "input",
                 attr: type: "text"
-                props: value: cloud.credentials.token
+                props: value: cloud.token
         ]
         $.box 
             className: "attr"
@@ -655,12 +655,16 @@ inflateCloud = (cloud) ->
             $.create "button", 
                 className: "button"
                 on: click: () =>
-                    creds = 
-                        username: inputUsername.value
-                        token: inputToken.value
-                    resp = await fetch "/clouds/#{cloud.id}/credentials",
+                    resp = await fetch "/clouds/#{cloud.id}/username",
                         method: "POST"
-                        body: JSON.stringify creds
+                        body: JSON.stringify inputUsername.value
+                    if !resp.ok
+                        text = await resp.text()
+                        alert "Can not save:\n"+text
+                        return
+                    resp = await fetch "/clouds/#{cloud.id}/token",
+                        method: "POST"
+                        body: JSON.stringify inputToken.value
                     if resp.ok
                         alert "OK"
                     else

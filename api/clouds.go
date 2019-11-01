@@ -157,8 +157,8 @@ func PostCloudMQTTAddr(resp http.ResponseWriter, req *http.Request, params routi
 	writeCloudFile()
 }
 
-// PostCloudCredentials implements POST /clouds/{cloudID}/credentials
-func PostCloudCredentials(resp http.ResponseWriter, req *http.Request, params routing.Params) {
+// PostCloudUsername implements POST /clouds/{cloudID}/username
+func PostCloudUsername(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
 	cloudID := params.ByName("cloud_id")
 	cloud := clouds.GetCloud(cloudID)
@@ -168,16 +168,39 @@ func PostCloudCredentials(resp http.ResponseWriter, req *http.Request, params ro
 	}
 
 	decoder := json.NewDecoder(req.Body)
-	creds := struct {
-		Username string `json:"username"`
-		Token    string `json:"token"`
-	}{}
-	err := decoder.Decode(&creds)
+	var username string
+	err := decoder.Decode(&username)
 	if err != nil {
 		http.Error(resp, "bad request: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-	status, err := cloud.SetCredentials(creds.Username, creds.Token)
+	status, err := cloud.SetUsername(username)
+	if err != nil {
+		http.Error(resp, err.Error(), status)
+		return
+	}
+	resp.WriteHeader(status)
+	writeCloudFile()
+}
+
+// PostCloudToken implements POST /clouds/{cloudID}/token
+func PostCloudToken(resp http.ResponseWriter, req *http.Request, params routing.Params) {
+
+	cloudID := params.ByName("cloud_id")
+	cloud := clouds.GetCloud(cloudID)
+	if cloud == nil {
+		http.Error(resp, "not found: no cloud with that id", http.StatusNotFound)
+		return
+	}
+
+	decoder := json.NewDecoder(req.Body)
+	var token string
+	err := decoder.Decode(&token)
+	if err != nil {
+		http.Error(resp, "bad request: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	status, err := cloud.SetToken(token)
 	if err != nil {
 		http.Error(resp, err.Error(), status)
 		return
@@ -204,17 +227,18 @@ func PostCloudPaused(resp http.ResponseWriter, req *http.Request, params routing
 		return
 	}
 
-	err = cloud.SetPaused(paused)
+	status, err := cloud.SetPaused(paused)
+	resp.WriteHeader(status)
 	if err != nil {
-		http.Error(resp, "bad request: "+err.Error(), http.StatusBadRequest)
-		return
+		resp.Write([]byte(err.Error()))
+	} else {
+		if paused {
+			log.Printf("[CLOUD] Paused synchronization.")
+		} else {
+			log.Printf("[CLOUD] Resumed synchronization.")
+		}
 	}
 
-	if paused {
-		log.Printf("[CLOUD] Paused synchronization.")
-	} else {
-		log.Printf("[CLOUD] Resumed synchronization.")
-	}
 	writeCloudFile()
 }
 

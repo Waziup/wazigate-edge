@@ -146,19 +146,19 @@ func (cloud *Cloud) persistentSync() (int, error) {
 	if err != nil {
 		switch {
 		case code == 0:
-			cloud.Errorf("Network Error\n%s", code, err.Error())
+			cloud.Printf("Network Error\n%s", code, err.Error())
 		case code == -1:
-			cloud.Errorf("Internal Error\n%s", code, err.Error())
+			cloud.Printf("Internal Error\n%s", code, err.Error())
 			cloud.flag(ent, ActionError, noTime, nil)
 		case code >= 500 && code < 600:
-			cloud.Errorf("Server Error %d\n%s", code, code, err.Error())
+			cloud.Printf("Server Error %d\n%s", code, code, err.Error())
 			cloud.flag(ent, ActionError, noTime, nil)
 
 			// cloud.statusMutex.Lock()
 			// delete(cloud.Status, ent)
 			// cloud.statusMutex.Unlock()
 		case code >= 400 && code < 500:
-			cloud.Errorf("Synchronization Error %d\n%s", code, code, err.Error())
+			cloud.Printf("Synchronization Error %d\n%s", code, code, err.Error())
 			cloud.flag(ent, ActionError, noTime, nil)
 
 			// cloud.statusMutex.Lock()

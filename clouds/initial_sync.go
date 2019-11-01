@@ -3,8 +3,6 @@ package clouds
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
-	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -20,12 +18,12 @@ func (cloud *Cloud) authenticate() int {
 		Username string `json:"username"`
 		Password string `json:"password"`
 	}{
-		cloud.Credentials.Username,
-		cloud.Credentials.Token,
+		cloud.Username,
+		cloud.Token,
 	}
 
 	addr := cloud.getRESTAddr()
-	// log.Printf("[UP   ] Authentication as %q ...", cloud.Credentials.Username)
+	// log.Printf("[UP   ] Authentication as %q ...", cloud.Username)
 
 	body, _ := json.Marshal(credentials)
 	resp := fetch(addr+"/auth/token", fetchInit{
@@ -62,7 +60,7 @@ func (cloud *Cloud) initialSync() int {
 
 	localDevice, err := edge.GetDevice(edge.LocalID())
 	if err != nil {
-		cloud.Errorf("Internal Error\nCan not get local device.\n%s", -1, err.Error())
+		cloud.Printf("Internal Error\nCan not get local device.\n%s", -1, err.Error())
 		// cloud.setStatus(0, "Internal Error.\nCan not get local device.")
 		// log.Printf("[Err  ] %s", err.Error())
 		return -1
@@ -86,7 +84,6 @@ func (cloud *Cloud) initialSync() int {
 		body: bytes.NewReader(body),
 	})
 	if resp.status == http.StatusUnprocessableEntity {
-		log.Println(string(body))
 		cloud.Printf("Gateway already registered.", 200)
 	} else {
 		if !resp.ok {
@@ -95,6 +92,8 @@ func (cloud *Cloud) initialSync() int {
 		}
 		cloud.Printf("Gateway successfully registered.", resp.status)
 	}
+
+	cloud.Registered = true
 
 	cloud.mqttMutex.Lock()
 	cloud.devices = make(map[string]struct{})
@@ -125,7 +124,7 @@ func (cloud *Cloud) initialSync() int {
 		case http.StatusOK:
 			var device2 v2Device
 			if err := resp.json(&device2); err != nil {
-				cloud.setStatus(0, fmt.Sprintf("Communication Error.\nCan not unmarshal response: %s", err.Error()))
+				cloud.Printf("Communication Error.\nCan not unmarshal response: %s", 500, err.Error())
 				return 500
 			}
 
@@ -193,7 +192,7 @@ func (cloud *Cloud) initialSync() int {
 			}
 
 		default:
-			cloud.setStatus(resp.status, fmt.Sprintf("Err [%d] %s: %s", resp.status, resp.statusText, resp.text()))
+			cloud.Printf("Communication Error\nUnexpected response: %s:\n%s", 500, resp.statusText, resp.text())
 			return resp.status
 		}
 	}

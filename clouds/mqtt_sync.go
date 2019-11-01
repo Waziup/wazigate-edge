@@ -3,7 +3,6 @@ package clouds
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -14,16 +13,6 @@ import (
 	"github.com/Waziup/wazigate-edge/edge"
 	"github.com/Waziup/wazigate-edge/mqtt"
 )
-
-type Downstream interface {
-	Publish(msg *mqtt.Message) int
-}
-
-var downstream Downstream = nil
-
-func SetDownstream(ds Downstream) {
-	downstream = ds
-}
 
 func (cloud *Cloud) IncludeDevice(deviceID string) {
 	cloud.mqttMutex.Lock()
@@ -52,7 +41,8 @@ func (cloud *Cloud) mqttPersistentSync() {
 		}
 
 		duration := retries[nretry]
-		cloud.setStatus(cloud.StatusCode, fmt.Sprintf("Waiting %ds before retry after error.\n%s", duration/time.Second, cloud.StatusText))
+		log.Printf("[UP   ] Waiting %ds with MQTT before retry after error.", duration/time.Second)
+		// cloud.setStatus(cloud.StatusCode, fmt.Sprintf("Waiting %ds before retry after error.\n%s", duration/time.Second, cloud.StatusText))
 		time.Sleep(duration)
 
 		nretry++
@@ -64,13 +54,13 @@ func (cloud *Cloud) mqttPersistentSync() {
 	for !cloud.PausingMQTT {
 
 		for !cloud.PausingMQTT {
-			log.Printf("[UP   ] Connecting to MQTT as %q ...", cloud.Credentials.Username)
+			log.Printf("[UP   ] Connecting to MQTT as %q ...", cloud.Username)
 			client, err := mqtt.Dial(cloud.getMQTTAddr(), edge.LocalID(), true, &mqtt.ConnectAuth{
-				Username: cloud.Credentials.Username,
-				Password: cloud.Credentials.Token,
+				Username: cloud.Username,
+				Password: cloud.Token,
 			}, nil)
 			if err != nil {
-				cloud.setStatus(0, "Err MQTT "+err.Error())
+				cloud.Printf("Communication Error\nMQTT communication error:\n%s", 500, err.Error())
 				retry()
 				continue
 			}
@@ -80,7 +70,7 @@ func (cloud *Cloud) mqttPersistentSync() {
 			break
 		}
 
-		cloud.setStatus(200, "MQTT Successfully connected.")
+		cloud.Printf("MQTT sucessfully connected.", 200)
 
 		tunnelDownTopic := "devices/" + edge.LocalID() + "/tunnel-down/"
 		tunnelUpTopic := "devices/" + edge.LocalID() + "/tunnel-up/"

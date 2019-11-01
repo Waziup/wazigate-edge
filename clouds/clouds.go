@@ -1,7 +1,6 @@
 package clouds
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -78,20 +77,17 @@ type Cloud struct {
 	REST        string `json:"rest"`
 	MQTT        string `json:"mqtt"`
 
-	Credentials struct {
-		Username string `json:"username"`
-		Token    string `json:"token"`
-	} `json:"credentials"`
+	Registered bool `json:"registered"`
+
+	Username string `json:"username"`
+	Token    string `json:"token"`
 
 	client    *mqtt.Client
 	mqttMutex sync.Mutex
 	devices   map[string]struct{}
 
-	StatusCode int    `json:"statusCode"`
-	StatusText string `json:"statusText"`
-
 	Status      map[Entity]*Status `json:"-"`
-	StatusMutex sync.Mutex
+	StatusMutex sync.Mutex         `json:"-"`
 
 	sigDirty chan Entity
 	auth     string
@@ -203,11 +199,7 @@ func (cloud *Cloud) ResetStatus() {
 	cloud.StatusMutex.Unlock()
 }
 
-func (cloud *Cloud) Errorf(format string, code int, a ...interface{}) {
-	str := fmt.Sprintf(format, a...)
-	log.Printf("[UP   ] > [%3d] %s", code, str)
-}
-
+// Printf logs some events for this cloud.
 func (cloud *Cloud) Printf(format string, code int, a ...interface{}) {
 	str := fmt.Sprintf(format, a...)
 	log.Printf("[UP   ] > [%3d] %s", code, str)
@@ -261,6 +253,9 @@ func (cloud *Cloud) flag(ent Entity, action Action, remote time.Time, meta edge.
 	cloud.StatusMutex.Unlock()
 
 	log.Printf("[UP   ] Status %s: %s", ent, status.Action)
+	if statusCallback != nil {
+		statusCallback(cloud, ent, status)
+	}
 
 	if needsSig {
 		select {
@@ -323,43 +318,55 @@ func (cloud *Cloud) getMQTTAddr() string {
 	return u.Host
 }
 
-func (cloud *Cloud) setStatus(code int, text string) {
-	text = strings.TrimSpace(text)
-	log.Printf("[UP   ] [%d] %s", code, strings.ReplaceAll(text, "\n", " - "))
-	cloud.StatusCode = code
-	cloud.StatusText = text
-}
-
 var errCloudNoPause = errors.New("cloud pausing or not paused")
 
-// SetCredentials changes the credentials.
-func (cloud *Cloud) SetCredentials(username string, token string) (int, error) {
-
+// SetUsername changes the uswername that is used for authentication with the waziup cloud.
+func (cloud *Cloud) SetUsername(username string) (int, error) {
 	if !cloud.Paused || cloud.Pausing {
 		return http.StatusLocked, errCloudNoPause
 	}
-	addr := cloud.getRESTAddr()
-	credentials := struct {
-		Username string `json:"username"`
-		Password string `json:"password"`
-	}{username, token}
-	body, _ := json.Marshal(credentials)
-	resp := fetch(addr+"/auth/token", fetchInit{
-		method: http.MethodPost,
-		headers: map[string]string{
-			"Content-Type": "application/json",
-		},
-		body: bytes.NewBuffer(body),
-	})
-	if resp.status == 0 {
-		return http.StatusAccepted, nil
-	}
-	if !resp.ok {
-		return resp.status, fmt.Errorf("can not login: server says: %v", resp.status)
-	}
-
-	return resp.status, nil
+	cloud.Username = username
+	return 200, nil
 }
+
+// SetToken changes the token (password) that is used for authentication with the waziup cloud.
+func (cloud *Cloud) SetToken(token string) (int, error) {
+	if !cloud.Paused || cloud.Pausing {
+		return http.StatusLocked, errCloudNoPause
+	}
+	cloud.Token = token
+	return 200, nil
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+type StatusCallback func(cloud *Cloud, ent Entity, status *Status)
+
+var statusCallback StatusCallback
+
+func OnStatus(cb StatusCallback) {
+	statusCallback = cb
+}
+
+type EventCallback func(cloud *Cloud, code int, event string)
+
+var eventCallback EventCallback
+
+func OnEvent(cb EventCallback) {
+	eventCallback = cb
+}
+
+type Downstream interface {
+	Publish(msg *mqtt.Message) int
+}
+
+var downstream Downstream = nil
+
+func SetDownstream(ds Downstream) {
+	downstream = ds
+}
+
+////////////////////////////////////////////////////////////////////////////////
 
 // ReadCloudConfig reads clouds.json into the current configuration.
 func ReadCloudConfig(r io.Reader) error {
@@ -391,6 +398,8 @@ func WriteCloudConfig(w io.Writer) error {
 	cloudsMutex.RUnlock()
 	return err
 }
+
+////////////////////////////////////////////////////////////////////////////////
 
 // MarshalJSON implements json.Marshaler
 func (a Action) MarshalJSON() ([]byte, error) {

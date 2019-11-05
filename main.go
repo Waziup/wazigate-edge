@@ -279,9 +279,6 @@ func (w *mqttPrefixWriter) Write(data []byte) (n int, err error) {
 
 func initDevice() {
 	local, err := edge.GetDevice(edge.LocalID())
-	if err != nil {
-		log.Fatalf("[DB   ] Err %v", err)
-	}
 	if local == nil {
 		err = edge.PostDevice(&edge.Device{
 			ID:   edge.LocalID(),

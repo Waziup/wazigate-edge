@@ -28,7 +28,7 @@
 
   content1.append virgin
   */
-  var MQTT, breadcrumbs, conncetMQTT, content1, content2, formatTime, heading, inflateActuator, inflateCloud, inflateDevice, inflateLog, inflateSensor, log, logOpener, navigate, refreshUptime, setStatus, showActuator, showBreadcrumbs, showClouds, showDevice, showDevices, showSensor, status, statusbar, subheading1, subheading2, tagRegexp, timeSuffixes, uptimeText, uptimeTicker;
+  var MQTT, breadcrumbs, conncetMQTT, content1, content2, events, formatTime, heading, inflateActuator, inflateCloud, inflateDevice, inflateEvent, inflateLog, inflateSensor, inflateStatus, log, logOpener, navigate, refreshUptime, setStatus, showActuator, showBreadcrumbs, showClouds, showDevice, showDevices, showSensor, status, statusbar, subheading1, subheading2, tagRegexp, timeSuffixes, uptimeText, uptimeTicker;
 
   switch ($.platform()) {
     case "windows":
@@ -858,9 +858,7 @@
                 method: "POST",
                 body: JSON.stringify(paused)
               }));
-              if (resp.ok) {
-                alert("OK");
-              } else {
+              if (!resp.ok) {
                 text = (await resp.text());
                 alert("Can not save:\n" + text);
               }
@@ -1001,6 +999,74 @@
   navigate(location.hash.slice(1));
 
   //###############################################################################
+  events = $("#events");
+
+  inflateEvent = function(cloudID, event) {
+    var box, hideBox, i, ref, resumeTimer, stopTimer, text, timer, title;
+    i = event.msg.indexOf("\n");
+    if (i === -1) {
+      title = event.msg;
+      text = "";
+    } else {
+      title = event.msg.slice(0, i);
+      text = event.msg.slice(i + 1);
+    }
+    hideBox = () => {
+      var height;
+      height = box.offsetHeight;
+      box.style.marginTop = `-${height + 10}px`;
+      box.style.opacity = "0";
+      box.style.transform = "translateY(20px)";
+      events.off("mouseover", stopTimer);
+      events.off("mouseout", resumeTimer);
+      setTimeout(() => {
+        return box.remove();
+      }, 500);
+    };
+    timer = setTimeout(hideBox, 6000);
+    stopTimer = () => {
+      clearInterval(timer);
+    };
+    resumeTimer = () => {
+      timer = setTimeout(hideBox, 6000);
+    };
+    events.on("mouseover", stopTimer);
+    events.on("mouseout", resumeTimer);
+    box = $.box({
+      className: "event",
+      style: {
+        opacity: 0
+      }
+    }, [
+      $.create("h2",
+      {},
+      [$.text(title)]),
+      $.create("div",
+      {
+        className: "floating",
+        on: {
+          click: hideBox
+        }
+      },
+      [$.text("✕")]),
+      $.create("p",
+      {},
+      [$.text(text)])
+    ]);
+    if ((400 <= (ref = event.code) && ref < 600)) {
+      box.classList.add("error");
+    }
+    setTimeout(() => {
+      return box.style.opacity = "";
+    });
+    events.prepend(box);
+  };
+
+  inflateStatus = function(cloudID, status) {
+    console.log("status", cloudID, status);
+  };
+
+  //###############################################################################
   log = $("#logtext");
 
   tagRegexp = /^\[(\w+)\s*\]/;
@@ -1044,17 +1110,30 @@
       setTimeout(conncetMQTT, 2000);
     };
     client.onMessageArrived = function(msg) {
+      var match;
       if (msg.destinationName === "sys/log") {
         inflateLog(msg.payloadString);
-      } else {
-        console.log("onMessageArrived:", msg);
+        return;
       }
+      match = msg.destinationName.match(/^clouds\/(\w+)\/events$/);
+      if (match) {
+        inflateEvent(match[1], JSON.parse(msg.payloadString));
+        return;
+      }
+      match = msg.destinationName.match(/^clouds\/(\w+)\/status$/);
+      if (match) {
+        inflateStatus(match[1], JSON.parse(msg.payloadString));
+        return;
+      }
+      console.log("onMessageArrived:", msg);
     };
     // client.disconnect(); 
     client.connect({
       onSuccess: function() {
         setStatus(true, "Connected to Gateway.");
         client.subscribe("sys/log");
+        client.subscribe("clouds/+/events");
+        client.subscribe("clouds/+/status");
         refreshUptime();
       },
       // message = new MQTT.Message "Hello"

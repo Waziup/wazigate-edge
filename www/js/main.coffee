@@ -645,9 +645,7 @@ inflateCloud = (cloud) ->
                     resp = await fetch "/clouds/#{cloud.id}/paused",
                         method: "POST"
                         body: JSON.stringify paused
-                    if resp.ok
-                        alert "OK"
-                    else
+                    if !resp.ok
                         text = await resp.text()
                         alert "Can not save:\n"+text
                     return
@@ -747,6 +745,65 @@ navigate location.hash[1...]
 
 ################################################################################
 
+events = $ "#events"
+
+inflateEvent = (cloudID, event) ->
+    i = event.msg.indexOf "\n"
+    if i == -1
+        title = event.msg
+        text = ""
+    else
+        title = event.msg[...i]
+        text = event.msg[i+1...]
+
+    hideBox = () =>
+        height = box.offsetHeight
+        box.style.marginTop = "-#{height+10}px"
+        box.style.opacity = "0"
+        box.style.transform = "translateY(20px)"
+        events.off "mouseover", stopTimer
+        events.off "mouseout", resumeTimer
+        setTimeout () =>
+            box.remove()
+        , 500
+        return
+
+    timer = setTimeout hideBox, 6000
+
+    stopTimer = () =>
+        clearInterval timer
+        return
+    
+    resumeTimer = () =>
+        timer = setTimeout hideBox, 6000
+        return
+
+    events.on "mouseover", stopTimer
+    events.on "mouseout", resumeTimer
+
+    box = $.box
+        className: "event"
+        style: opacity: 0
+    , [
+        $.create "h2", {}, [$.text title]
+        $.create "div", 
+            className: "floating"
+            on: click: hideBox
+        , [$.text "✕"]
+        $.create "p", {}, [$.text text]
+    ]
+    if 400 <= event.code < 600
+        box.classList.add "error"
+    setTimeout () => box.style.opacity = ""
+    events.prepend box
+    return
+
+inflateStatus = (cloudID, status) ->
+    console.log "status", cloudID, status
+    return
+
+################################################################################
+
 log = $ "#logtext"
 tagRegexp = /^\[(\w+)\s*\]/
 
@@ -793,8 +850,16 @@ conncetMQTT = () ->
     client.onMessageArrived = (msg) ->
         if msg.destinationName == "sys/log"
             inflateLog msg.payloadString
-        else
-            console.log "onMessageArrived:", msg
+            return
+        match = msg.destinationName.match /^clouds\/(\w+)\/events$/
+        if match
+            inflateEvent match[1], JSON.parse msg.payloadString
+            return
+        match = msg.destinationName.match /^clouds\/(\w+)\/status$/
+        if match
+            inflateStatus match[1], JSON.parse msg.payloadString
+            return
+        console.log "onMessageArrived:", msg
         return
         # client.disconnect(); 
 
@@ -802,6 +867,8 @@ conncetMQTT = () ->
         onSuccess: () ->
             setStatus true, "Connected to Gateway."
             client.subscribe "sys/log"
+            client.subscribe "clouds/+/events"
+            client.subscribe "clouds/+/status"
             refreshUptime()
 
             # message = new MQTT.Message "Hello"

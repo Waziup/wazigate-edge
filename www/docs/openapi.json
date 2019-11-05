@@ -82,6 +82,39 @@
         }
       }
     },
+    "/device/name": {
+      "post": {
+        "tags": [
+          "Your Gateway"
+        ],
+        "summary": "Change Name",
+        "description": "Change the name of your gateway.",
+        "requestBody": {
+          "description": "New Name",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "string",
+                "example": "My New Gateay Name"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Device"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/sensors": {
       "get": {
         "tags": [
@@ -517,6 +550,77 @@
         "responses": {
           "200": {
             "description": "Sensor values created."
+          },
+          "400": {
+            "description": "Bad Request. There may be no sensor with that id."
+          }
+        }
+      }
+    },
+    "/sensors/{id}/meta": {
+      "post": {
+        "tags": [
+          "Your Gateway"
+        ],
+        "summary": "Sensor Metadata",
+        "description": "Change this sensors metadata. Metadata can be any object.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of the sensor",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "New metadata. Metadata can be any object, so feel free to add new fields to the metadata object.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true,
+                "properties": {
+                  "syncInterval": {
+                    "type": "string",
+                    "example": "5m30s"
+                  },
+                  "doNotSync": {
+                    "type": "boolean",
+                    "example": false
+                  }
+                }
+              },
+              "examples": {
+                "default": {
+                  "value": {
+                    "syncInterval": "5m",
+                    "doNotSync": false
+                  },
+                  "summary": "Default (5 min sync)"
+                },
+                "oneday": {
+                  "value": {
+                    "syncInterval": "24h"
+                  },
+                  "summary": "Sync once a day"
+                },
+                "donotsync": {
+                  "value": {
+                    "doNotSync": true
+                  },
+                  "summary": "Do not sync"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Metadata updated."
           },
           "400": {
             "description": "Bad Request. There may be no sensor with that id."
@@ -973,13 +1077,15 @@
             "description": "No device with that ID found."
           }
         }
-      },
-      "delete": {
+      }
+    },
+    "/devices/{id}/meta": {
+      "post": {
         "tags": [
           "Devices"
         ],
-        "summary": "Delete a Device",
-        "description": "This deletes the device, its sensors and actuators. This also removes all stored values of the sensors and actuators.",
+        "summary": "Change Device Metadata",
+        "description": "Change this devices metadata. Metadata can be any object.",
         "parameters": [
           {
             "name": "id",
@@ -991,12 +1097,55 @@
             }
           }
         ],
+        "requestBody": {
+          "description": "New metadata. Metadata can be any object, so feel free to add new fields to the metadata object.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true,
+                "properties": {
+                  "syncInterval": {
+                    "type": "string",
+                    "example": "5m30s"
+                  },
+                  "doNotSync": {
+                    "type": "boolean",
+                    "example": false
+                  }
+                }
+              },
+              "examples": {
+                "default": {
+                  "value": {
+                    "syncInterval": "5m",
+                    "doNotSync": false
+                  },
+                  "summary": "Default (5 min sync)"
+                },
+                "oneday": {
+                  "value": {
+                    "syncInterval": "24h"
+                  },
+                  "summary": "Sync once a day"
+                },
+                "donotsync": {
+                  "value": {
+                    "doNotSync": true
+                  },
+                  "summary": "Do not sync"
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
-            "description": "Successful Operation"
+            "description": "Metadata updated."
           },
-          "404": {
-            "description": "No device with that ID found."
+          "400": {
+            "description": "Bad Request. There may be no sensor with that id."
           }
         }
       }
@@ -1512,6 +1661,86 @@
         "responses": {
           "200": {
             "description": "Sensor values created."
+          },
+          "400": {
+            "description": "Bad Request. There may be no sensor with that id."
+          }
+        }
+      }
+    },
+    "/devices/{deviceID}/sensors/{sensorID}/meta": {
+      "post": {
+        "tags": [
+          "Sensors"
+        ],
+        "summary": "Sensor Metadata",
+        "description": "Change this sensors metadata. Metadata can be any object.",
+        "parameters": [
+          {
+            "name": "deviceID",
+            "in": "path",
+            "description": "ID of the device",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sensorID",
+            "in": "path",
+            "description": "ID of the sensor",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "New metadata. Metadata can be any object, so feel free to add new fields to the metadata object.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true,
+                "properties": {
+                  "syncInterval": {
+                    "type": "string",
+                    "example": "5m30s"
+                  },
+                  "doNotSync": {
+                    "type": "boolean",
+                    "example": false
+                  }
+                }
+              },
+              "examples": {
+                "default": {
+                  "value": {
+                    "syncInterval": "5m",
+                    "doNotSync": false
+                  },
+                  "summary": "Default (5 min sync)"
+                },
+                "oneday": {
+                  "value": {
+                    "syncInterval": "24h"
+                  },
+                  "summary": "Sync once a day"
+                },
+                "donotsync": {
+                  "value": {
+                    "doNotSync": true
+                  },
+                  "summary": "Do not sync"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Metadata updated."
           },
           "400": {
             "description": "Bad Request. There may be no sensor with that id."
@@ -2116,7 +2345,7 @@
           "Clouds"
         ],
         "summary": "Get Sync Status",
-        "description": "Get details about the synchronization status of all entities.",
+        "description": "Get details about the synchronization status of all entities.\n\nYou can subscribe to this topic to recieve new statuses in realtime!",
         "parameters": [
           {
             "name": "id",
@@ -2197,6 +2426,77 @@
                         "sleep": 300000000000,
                         "wakeup": "2019-10-25T13:00:00"
                       }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bad Request. There may be no cloud with that id."
+          }
+        }
+      }
+    },
+    "/clouds/{id}/events": {
+      "get": {
+        "tags": [
+          "Clouds"
+        ],
+        "summary": "Events",
+        "description": "The events lists holds Events that happend during the synchronization like errors or successes, communication errors, pause & resume details and more.\n\nYou can subscribe to this topic to recieve new events in realtime!",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of the cloud",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Operation. Codes are taken from HTTP status codes, which means 2XX indicates success, 4XX indicates client (Gateway) errors and 5XX means remote (Cloud) errors. Additional, 0XX indicates network errors. The message text is always a heading and some description text.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Cloud synchronization status.",
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "code": {
+                        "description": "Event code",
+                        "type": "integer"
+                      },
+                      "msg": {
+                        "description": "Event message or text",
+                        "type": "string"
+                      },
+                      "time": {
+                        "description": "Event time",
+                        "type": "string",
+                        "format": "date-time"
+                      }
+                    }
+                  },
+                  "example": [
+                    {
+                      "code": 200,
+                      "msg": "Authentication successfull.",
+                      "time": "2019-11-04T08:47:16.9884308+01:00"
+                    },
+                    {
+                      "code": 401,
+                      "msg": "Authentication failed.\n401 \"Unauthorized\"",
+                      "time": "2019-11-04T09:05:55.9064228+01:00"
+                    },
+                    {
+                      "code": 205,
+                      "msg": "Gateway already registered.",
+                      "time": "2019-11-04T09:05:55.9602334+01:00"
                     }
                   ]
                 }

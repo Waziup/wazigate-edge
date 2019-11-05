@@ -125,7 +125,7 @@ a {
         width: 60px;
         height: 60px;
         display: inline-block;
-        vertical-align: top;
+        vertical-align: middle;
     }
 
     h2 {
@@ -135,7 +135,7 @@ a {
         font-size: 1.4em;
         padding: 0;
         width: 238px;
-        vertical-align: top;
+        vertical-align: middle;
         text-overflow: ellipsis;
         overflow: hidden;
     }
@@ -385,8 +385,59 @@ body.log-open #log {
         .inset > span {
             border-color: #ff8367;
         }
+    }    
+}
+
+#events {
+    position: fixed;
+    bottom: 25px;
+    right: 0px;
+
+    .event {
+        position: relative;
+        width: 340px;
+        border: 1px solid #cccccc;
+        background: white;
+        margin: 10px;
+        box-shadow: 2px 2px 4px rgba(26, 26, 26, 0.384);
+        transition: .2s;
     }
-       
+
+    h2 {
+        margin: 0;
+        padding: .4em 1em 0;
+        font-weight: normal;
+        font-size: 18px;
+    }
+    p {
+        margin: 0;
+        padding: 0 1.25em .5em;
+        font-size: 14px;
+    }
+
+    .success {
+        background: #ccffbb;
+        color: #308637;
+        border-color: #67ff67;
+    }
+
+    .error {
+        background: #ffcebb;
+        color: #863030;
+        border-color: #ff8367;
+    }
+
+    .floating {
+        position: absolute;
+        color: inherit;
+        top: 0;
+        right: 4px;
+        cursor: pointer;
+
+        &:hover {
+            color: black;
+        }
+    }
 }
 
 @media (max-width: 741px) {

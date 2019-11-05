@@ -18,6 +18,7 @@ var errPausing = errors.New("cloud is pausing")
 
 var errLoginFailed = errors.New("login failed")
 
+// SetPaused stops or resumes the sync manager.
 func (cloud *Cloud) SetPaused(paused bool) (int, error) {
 
 	if cloud.Pausing || cloud.PausingMQTT {
@@ -35,6 +36,7 @@ func (cloud *Cloud) SetPaused(paused bool) (int, error) {
 		cloud.Paused = true
 		cloud.Pausing = true
 		cloud.PausingMQTT = true
+		cloud.auth = ""
 
 		cloud.mqttMutex.Lock()
 		if cloud.client != nil {
@@ -100,7 +102,9 @@ func (cloud *Cloud) sync() {
 		}
 	}
 
-	auth()
+	if cloud.auth == "" {
+		auth()
+	}
 
 	////
 
@@ -159,6 +163,8 @@ INITIAL_SYNC:
 	}
 
 	cloud.Pausing = false
+	cloud.Printf("Synchronization paused.", 200)
+
 	// log.Println("[UP   ] REST sync is now paused.")
 	if !activeMQTT {
 		cloud.PausingMQTT = false

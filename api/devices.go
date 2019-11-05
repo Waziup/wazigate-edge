@@ -111,7 +111,7 @@ func PostCurrentDeviceName(resp http.ResponseWriter, req *http.Request, params r
 	postDeviceName(resp, req, edge.LocalID())
 }
 
-// PostDeviceName implements POST /devices/{deviceID}/meta
+// PostDeviceMeta implements POST /devices/{deviceID}/meta
 func PostDeviceMeta(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
 	postDeviceMeta(resp, req, params.ByName("device_id"))

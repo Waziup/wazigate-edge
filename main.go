@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"crypto/tls"
+	"encoding/json"
 	"flag"
 	"io"
 	"io/ioutil"
@@ -113,10 +114,10 @@ func main() {
 
 	initDevice()
 
-	initSync()
-
 	mqttLogger := log.New(&mqttPrefixWriter{}, "[MQTT ] ", 0)
 	mqttServer = &MQTTServer{mqtt.NewServer(mqttAuth, mqttLogger, mqtt.LogLevel(LogLevel))}
+
+	initSync()
 
 	////////////////////
 
@@ -321,4 +322,30 @@ func initSync() {
 	}
 	numClouds := len(clouds.GetClouds())
 	log.Printf("[Up   ] Read %d from %q: %s", numClouds, cloudsFile, strings.Join(ids, ", "))
+
+	////////////
+
+	clouds.SetDownstream(mqttServer)
+
+	clouds.OnStatus(statusCallback)
+	clouds.OnEvent(eventCallback)
+}
+
+func statusCallback(cloud *clouds.Cloud, ent clouds.Entity, status *clouds.Status) {
+	data, _ := json.Marshal(struct {
+		Entity clouds.Entity  `json:"entity"`
+		Status *clouds.Status `json:"status"`
+	}{ent, status})
+	mqttServer.Publish(nil, &mqtt.Message{
+		Topic: "clouds/" + cloud.ID + "/status",
+		Data:  data,
+	})
+}
+
+func eventCallback(cloud *clouds.Cloud, event clouds.Event) {
+	data, _ := json.Marshal(event)
+	mqttServer.Publish(nil, &mqtt.Message{
+		Topic: "clouds/" + cloud.ID + "/events",
+		Data:  data,
+	})
 }

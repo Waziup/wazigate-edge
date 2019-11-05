@@ -15,6 +15,11 @@ type Value struct {
 	Time  time.Time   `json:"time" bson:"time"`
 }
 
+// NewValue creates a new data-point.
+func NewValue(v interface{}, time time.Time) Value {
+	return Value{v, time}
+}
+
 // Query is used to range or limit query results
 type Query struct {
 	Limit int64
@@ -43,6 +48,7 @@ func newID(t time.Time) bson.ObjectId {
 var sizeRegex = regexp.MustCompile(`^\d+[kKmMgG]?[bB]?`)
 var sizeUnitRegex = regexp.MustCompile(`[kKmMgG]?[bB]?$`)
 
+// Parse parses the HTTP Request into the Query parameters.
 func (query *Query) Parse(req *http.Request) string {
 
 	var param string

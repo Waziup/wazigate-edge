@@ -14,6 +14,8 @@ import (
 	"github.com/Waziup/wazigate-edge/mqtt"
 )
 
+// IncludeDevice tells the cloud to sync with that device,
+// especially to monitor that device at the remote cloud for actuation data.
 func (cloud *Cloud) IncludeDevice(deviceID string) {
 	cloud.mqttMutex.Lock()
 	cloud.devices[deviceID] = struct{}{}
@@ -70,7 +72,7 @@ func (cloud *Cloud) mqttPersistentSync() {
 			break
 		}
 
-		cloud.Printf("MQTT sucessfully connected.", 200)
+		// cloud.Printf("MQTT sucessfully connected.", 200)
 
 		tunnelDownTopic := "devices/" + edge.LocalID() + "/tunnel-down/"
 		tunnelUpTopic := "devices/" + edge.LocalID() + "/tunnel-up/"
@@ -96,12 +98,12 @@ func (cloud *Cloud) mqttPersistentSync() {
 
 			msg, err := cloud.client.Message()
 			if err != nil {
-				log.Printf("[UP   ] MQTT Err %v", err)
+				cloud.Printf("MQTT Error\n%s", 400, err.Error())
 				retry()
 				break
 			}
 			if msg == nil {
-				log.Printf("[UP   ] MQTT Err Unexpected disconnect.")
+				cloud.Printf("MQTT Error\nUnexpected disconnect.", 400)
 				retry()
 				break
 			}
@@ -119,7 +121,7 @@ func (cloud *Cloud) mqttPersistentSync() {
 			}
 
 			if downstream != nil {
-				downstream.Publish(msg)
+				downstream.Publish(nil, msg)
 			}
 		}
 

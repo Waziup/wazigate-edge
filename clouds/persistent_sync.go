@@ -175,7 +175,7 @@ func (cloud *Cloud) processEntity(ent Entity, status *Status) (int, error) {
 
 	if status.Action&ActionDelete != 0 {
 		cloud.flag(ent, -ActionDelete, noTime, nil)
-		return 0, nil
+		return 204, nil
 	}
 
 	if status.Action&ActionCreate != 0 {
@@ -221,20 +221,20 @@ func (cloud *Cloud) processEntity(ent Entity, status *Status) (int, error) {
 				// log.Printf("[UP   ] Sensor pushed.")
 			}
 			return code, err
-		} else {
-			// sync an unexisting actuator
-			log.Printf("[UP   ] Pushing actuator %s/%s ...", ent.Device, ent.Actuator)
-			actuator, err := edge.GetActuator(ent.Device, ent.Actuator)
-			if err != nil {
-				return -1, fmt.Errorf("Internal Error\n%s", err.Error())
-			}
-			code, err := cloud.postActuator(ent.Device, actuator)
-			if err == nil {
-				cloud.flag(ent, -ActionCreate, noTime, nil)
-				// log.Printf("[UP   ] Actuator pushed successfull.")
-			}
-			return code, err
 		}
+
+		// sync an unexisting actuator
+		log.Printf("[UP   ] Pushing actuator %s/%s ...", ent.Device, ent.Actuator)
+		actuator, err := edge.GetActuator(ent.Device, ent.Actuator)
+		if err != nil {
+			return -1, fmt.Errorf("Internal Error\n%s", err.Error())
+		}
+		code, err := cloud.postActuator(ent.Device, actuator)
+		if err == nil {
+			cloud.flag(ent, -ActionCreate, noTime, nil)
+			// log.Printf("[UP   ] Actuator pushed successfull.")
+		}
+		return code, err
 	}
 
 	if status.Action&ActionModify != 0 {
@@ -261,17 +261,17 @@ func (cloud *Cloud) processEntity(ent Entity, status *Status) (int, error) {
 				cloud.flag(ent, -ActionModify, noTime, nil)
 			}
 			return code, err
-		} else {
-			actuator, err := edge.GetActuator(ent.Device, ent.Actuator)
-			if err != nil {
-				return -1, fmt.Errorf("Internal Error\n%s", err.Error())
-			}
-			code, err := cloud.postActuatorName(ent.Device, ent.Actuator, actuator.Name)
-			if err == nil {
-				cloud.flag(ent, -ActionModify, noTime, nil)
-			}
-			return code, err
 		}
+
+		actuator, err := edge.GetActuator(ent.Device, ent.Actuator)
+		if err != nil {
+			return -1, fmt.Errorf("Internal Error\n%s", err.Error())
+		}
+		code, err := cloud.postActuatorName(ent.Device, ent.Actuator, actuator.Name)
+		if err == nil {
+			cloud.flag(ent, -ActionModify, noTime, nil)
+		}
+		return code, err
 	}
 
 	if status.Action&ActionSync != 0 {

@@ -15,6 +15,7 @@ import (
 
 var noTime = time.Time{}
 
+// TimeFormat (RFC3339)
 const TimeFormat = time.RFC3339 // "2006-01-02T15:04:05-0700"
 
 // Value is one datapoint
@@ -198,7 +199,7 @@ func (v *SensorValue) MarshalJSON() ([]byte, error) {
 	})
 }
 
-// ActuatorValue, see SensorValue
+// MarshalJSON implements json.Marshaler for ActuatorValue
 func (v *ActuatorValue) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&struct {
 		Value interface{} `json:"value"`

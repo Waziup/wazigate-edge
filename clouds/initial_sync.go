@@ -84,7 +84,7 @@ func (cloud *Cloud) initialSync() int {
 		body: bytes.NewReader(body),
 	})
 	if resp.status == http.StatusUnprocessableEntity {
-		cloud.Printf("Gateway already registered.", 200)
+		// cloud.Printf("Gateway already registered.", 200)
 	} else {
 		if !resp.ok {
 			cloud.Printf("Can not register gateway.\nStatus: %s\n%s", resp.status, resp.statusText, strings.TrimSpace(resp.text()))
@@ -177,7 +177,7 @@ func (cloud *Cloud) initialSync() int {
 								} else {
 									// log.Printf("[UP   ] Actuator %q outdated! No values.", acuator.ID)
 								}
-								edge.PostActuatorValue(device.ID, acuator.ID, edge.Value{s.Value.Value, s.Value.Time})
+								edge.PostActuatorValue(device.ID, acuator.ID, edge.NewValue(s.Value.Value, s.Value.Time))
 							}
 
 						}

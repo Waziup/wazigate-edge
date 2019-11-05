@@ -17,6 +17,9 @@ import (
 	"github.com/Waziup/wazigate-edge/mqtt"
 )
 
+// MaxCloudEvents is the number of cloud events to keep in memory.
+var MaxCloudEvents = 10
+
 // A Entity is either a Device, Sensor or Actuator.
 type Entity struct {
 	Device   string `json:"device,omitempty"`
@@ -68,6 +71,13 @@ type Status struct {
 	Error error `json:"error,omitempty"`
 }
 
+// Event repesents cloud events.
+type Event struct {
+	Code    int       `json:"code"`
+	Message string    `json:"msg"`
+	Time    time.Time `json:"time"`
+}
+
 // Cloud represents a configuration to access a Waziup Cloud.
 type Cloud struct {
 	ID          string `json:"id"`
@@ -78,6 +88,8 @@ type Cloud struct {
 	MQTT        string `json:"mqtt"`
 
 	Registered bool `json:"registered"`
+
+	Events []Event `json:"events"`
 
 	Username string `json:"username"`
 	Token    string `json:"token"`
@@ -201,8 +213,23 @@ func (cloud *Cloud) ResetStatus() {
 
 // Printf logs some events for this cloud.
 func (cloud *Cloud) Printf(format string, code int, a ...interface{}) {
-	str := fmt.Sprintf(format, a...)
-	log.Printf("[UP   ] > [%3d] %s", code, str)
+	event := Event{
+		Code:    code,
+		Message: fmt.Sprintf(format, a...),
+		Time:    time.Now(),
+	}
+	log.Printf("[UP   ] (%3d) %s", code, event.Message)
+
+	if len(cloud.Events) == MaxCloudEvents {
+		cloud.Events = append(cloud.Events[:0], cloud.Events[1:]...)
+		cloud.Events = append(cloud.Events, event)
+	} else {
+		cloud.Events = append(cloud.Events, event)
+	}
+
+	if eventCallback != nil {
+		eventCallback(cloud, event)
+	}
 }
 
 func (cloud *Cloud) flag(ent Entity, action Action, remote time.Time, meta edge.Meta) {
@@ -265,11 +292,13 @@ func (cloud *Cloud) flag(ent Entity, action Action, remote time.Time, meta edge.
 	}
 }
 
+// Meta repesents synchronization instructions based on entity metadata (`.meta` fields).
 type Meta struct {
 	NoSync       bool
 	SyncInterval time.Duration
 }
 
+// NewMeta reads the json object and exracts a Meta object.
 func NewMeta(json map[string]interface{}) (meta Meta) {
 	if json != nil {
 		if m := json["syncInterval"]; m != nil {
@@ -340,28 +369,34 @@ func (cloud *Cloud) SetToken(token string) (int, error) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+// StatusCallback is called when a cloud updates its status.
 type StatusCallback func(cloud *Cloud, ent Entity, status *Status)
 
 var statusCallback StatusCallback
 
+// OnStatus sets the global StatusCallback handler.
 func OnStatus(cb StatusCallback) {
 	statusCallback = cb
 }
 
-type EventCallback func(cloud *Cloud, code int, event string)
+// EventCallback is called when a cloud changes its state.
+type EventCallback func(cloud *Cloud, event Event)
 
 var eventCallback EventCallback
 
+// OnEvent sets the global EventCallback handler.
 func OnEvent(cb EventCallback) {
 	eventCallback = cb
 }
 
+// Downstream handles incomming MQTT packets.
 type Downstream interface {
-	Publish(msg *mqtt.Message) int
+	Publish(sender mqtt.Sender, msg *mqtt.Message) int
 }
 
 var downstream Downstream = nil
 
+// SetDownstream changes the global Downstream handler.
 func SetDownstream(ds Downstream) {
 	downstream = ds
 }

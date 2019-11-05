@@ -100,6 +100,7 @@ func init() {
 	router.POST("/clouds/:cloud_id/rest", api.PostCloudRESTAddr)
 	router.POST("/clouds/:cloud_id/mqtt", api.PostCloudMQTTAddr)
 	router.GET("/clouds/:cloud_id/status", api.GetCloudStatus)
+	router.GET("/clouds/:cloud_id/events", api.GetCloudEvents)
 
 	router.GET("/sys/uptime", api.SysGetUptime)
 	router.PUT("/sys/clear_all", api.SysClearAll)

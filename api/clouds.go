@@ -257,6 +257,8 @@ func GetCloudStatus(resp http.ResponseWriter, req *http.Request, params routing.
 		Status *clouds.Status `json:"status"`
 	}
 
+	resp.Header().Set("Content-Type", "application/json; charset=utf-8")
+
 	resp.Write([]byte{'['})
 
 	cloud.StatusMutex.Lock()
@@ -273,6 +275,24 @@ func GetCloudStatus(resp http.ResponseWriter, req *http.Request, params routing.
 	cloud.StatusMutex.Unlock()
 
 	resp.Write([]byte{']'})
+}
+
+// GetCloudEvents implements GET /clouds/{cloudID}/events
+func GetCloudEvents(resp http.ResponseWriter, req *http.Request, params routing.Params) {
+
+	cloudID := params.ByName("cloud_id")
+	cloud := clouds.GetCloud(cloudID)
+	if cloud == nil {
+		http.Error(resp, "not found: no cloud with that id", http.StatusNotFound)
+		return
+	}
+
+	resp.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+	cloud.StatusMutex.Lock()
+	data, _ := json.Marshal(cloud.Events)
+	resp.Write(data)
+	cloud.StatusMutex.Unlock()
 }
 
 ////////////////////////////////////////////////////////////////////////////////

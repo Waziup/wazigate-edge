@@ -35,13 +35,13 @@ func GetSensor(deviceID string, sensorID string) (*Sensor, error) {
 
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			return nil, errNotFound
+			return nil, ErrNotFound
 		}
 		return nil, CodeError{500, "database error: " + err.Error()}
 	}
 
 	if len(device.Sensors) == 0 {
-		return nil, errNotFound
+		return nil, ErrNotFound
 	}
 
 	return device.Sensors[0], nil
@@ -63,7 +63,7 @@ func PostSensor(deviceID string, sensor *Sensor) error {
 
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			return errNotFound
+			return ErrNotFound
 		}
 		return CodeError{500, "database error: " + err.Error()}
 	}
@@ -81,7 +81,7 @@ func PostSensor(deviceID string, sensor *Sensor) error {
 	})
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			return errNotFound
+			return ErrNotFound
 		}
 		return CodeError{500, "database error: " + err.Error()}
 	}
@@ -110,7 +110,7 @@ func SetSensorName(deviceID string, sensorID string, name string) (Meta, error) 
 
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			return nil, errNotFound
+			return nil, ErrNotFound
 		}
 		return nil, CodeError{500, "database error: " + err.Error()}
 	}
@@ -137,7 +137,7 @@ func SetSensorMeta(deviceID string, sensorID string, meta Meta) error {
 
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			return errNotFound
+			return ErrNotFound
 		}
 		return CodeError{500, "database error: " + err.Error()}
 	}
@@ -169,7 +169,7 @@ func DeleteSensor(deviceID string, sensorID string) (int, error) {
 			err = err2
 		}
 		if err == mgo.ErrNotFound {
-			return 0, errNotFound
+			return 0, ErrNotFound
 		}
 		return 0, CodeError{500, "database error: " + err.Error()}
 	}
@@ -264,13 +264,13 @@ func PostSensorValue(deviceID string, sensorID string, val Value) (Meta, error) 
 
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			return nil, errNotFound
+			return nil, ErrNotFound
 		}
 		return nil, CodeError{500, "database error: " + err.Error()}
 	}
 
 	if len(device.Sensors) == 0 {
-		return nil, errNotFound
+		return nil, ErrNotFound
 	}
 
 	err = dbSensorValues.Insert(&value)
@@ -319,13 +319,13 @@ func PostSensorValues(deviceID string, sensorID string, vals []Value) (Meta, err
 
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			return nil, errNotFound
+			return nil, ErrNotFound
 		}
 		return nil, CodeError{500, "database error: " + err.Error()}
 	}
 
 	if len(device.Sensors) == 0 {
-		return nil, errNotFound
+		return nil, ErrNotFound
 	}
 
 	err = dbSensorValues.Insert(interf...)

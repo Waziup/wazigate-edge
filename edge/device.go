@@ -79,9 +79,9 @@ func GetDevice(deviceID string) (*Device, error) {
 	query := dbDevices.FindId(deviceID)
 	if err := query.One(&device); err != nil {
 		if err == mgo.ErrNotFound {
-			return nil, errNotFound
+			return nil, ErrNotFound
 		}
-		return nil, CodeError{500, "database error: " + err.Error()}
+		return nil, CodeError{500, "Database Error: " + err.Error()}
 	}
 	return &device, nil
 }
@@ -99,7 +99,7 @@ func GetDeviceName(deviceID string) (string, error) {
 
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			return "", errNotFound
+			return "", ErrNotFound
 		}
 		return "", CodeError{500, "database error: " + err.Error()}
 	}
@@ -119,7 +119,7 @@ func GetDeviceMeta(deviceID string) (map[string]interface{}, error) {
 
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			return nil, errNotFound
+			return nil, ErrNotFound
 		}
 		return nil, CodeError{500, "database error: " + err.Error()}
 	}
@@ -189,7 +189,7 @@ func SetDeviceName(deviceID string, name string) (Meta, error) {
 
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			return nil, errNotFound
+			return nil, ErrNotFound
 		}
 		return nil, CodeError{500, "database error: " + err.Error()}
 	}
@@ -208,22 +208,28 @@ func SetDeviceMeta(deviceID string, meta Meta) error {
 
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			return errNotFound
+			return ErrNotFound
 		}
 		return CodeError{500, "database error: " + err.Error()}
 	}
 	return nil
 }
 
+var errDeleteLocal = CodeError{400, "Can not delete the Gateway itself"}
+
 // DeleteDevice removes the device and all sensor and actuator values from the database.
 // This returns the removed device and the number of sensor and actuator values that were removed.
 func DeleteDevice(deviceID string) (*Device, int, int, error) {
+
+	if deviceID == LocalID() {
+		return nil, 0, 0, errDeleteLocal
+	}
 
 	var device Device
 	err := dbDevices.FindId(deviceID).One(&device)
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			return nil, 0, 0, errNotFound
+			return nil, 0, 0, ErrNotFound
 		}
 		return nil, 0, 0, CodeError{500, "database error: " + err.Error()}
 	}
@@ -236,7 +242,7 @@ func DeleteDevice(deviceID string) (*Device, int, int, error) {
 
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			return nil, numS, numA, errNotFound
+			return nil, numS, numA, ErrNotFound
 		}
 		return nil, numS, numA, CodeError{500, "database error: " + err.Error()}
 	}

@@ -34,7 +34,8 @@ type ValueIterator interface {
 	Close() error
 }
 
-var errNotFound = CodeError{404, "device or sensor/actuator not found"}
+// ErrNotFound is returned when the entity was not found.
+var ErrNotFound = CodeError{404, "device or sensor/actuator not found"}
 
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -54,6 +54,8 @@ func (cloud *Cloud) authenticate() int {
 
 func (cloud *Cloud) initialSync() int {
 
+	var resp fetchResponse
+
 	// Call /gateways
 
 	addr := cloud.getRESTAddr()
@@ -63,37 +65,37 @@ func (cloud *Cloud) initialSync() int {
 		cloud.Printf("Internal Error\nCan not get local device.\n%s", -1, err.Error())
 		// cloud.setStatus(0, "Internal Error.\nCan not get local device.")
 		// log.Printf("[Err  ] %s", err.Error())
-		return -1
-	}
-
-	var gateway = v2Gateway{
-		ID:         localDevice.ID,
-		Name:       localDevice.Name,
-		Visibility: "public",
-	}
-
-	// log.Printf("[UP   ] Pushing gateway %q to the cloud ...", localDevice.ID)
-
-	body, _ := json.Marshal(gateway)
-	resp := fetch(addr+"/gateways", fetchInit{
-		method: http.MethodPost,
-		headers: map[string]string{
-			"Content-Type":  "application/json; charset=utf-8",
-			"Authorization": cloud.auth,
-		},
-		body: bytes.NewReader(body),
-	})
-	if resp.status == http.StatusUnprocessableEntity {
-		// cloud.Printf("Gateway already registered.", 200)
 	} else {
-		if !resp.ok {
-			cloud.Printf("Can not register gateway.\nStatus: %s\n%s", resp.status, resp.statusText, strings.TrimSpace(resp.text()))
-			return resp.status
-		}
-		cloud.Printf("Gateway successfully registered.", resp.status)
-	}
 
-	cloud.Registered = true
+		var gateway = v2Gateway{
+			ID:         localDevice.ID,
+			Name:       localDevice.Name,
+			Visibility: "public",
+		}
+
+		// log.Printf("[UP   ] Pushing gateway %q to the cloud ...", localDevice.ID)
+
+		body, _ := json.Marshal(gateway)
+		resp := fetch(addr+"/gateways", fetchInit{
+			method: http.MethodPost,
+			headers: map[string]string{
+				"Content-Type":  "application/json; charset=utf-8",
+				"Authorization": cloud.auth,
+			},
+			body: bytes.NewReader(body),
+		})
+		if resp.status == http.StatusUnprocessableEntity {
+			// cloud.Printf("Gateway already registered.", 200)
+		} else {
+			if !resp.ok {
+				cloud.Printf("Can not register gateway.\nStatus: %s\n%s", resp.status, resp.statusText, strings.TrimSpace(resp.text()))
+				return resp.status
+			}
+			cloud.Printf("Gateway successfully registered.", resp.status)
+		}
+
+		cloud.Registered = true
+	}
 
 	cloud.mqttMutex.Lock()
 	cloud.devices = make(map[string]struct{})

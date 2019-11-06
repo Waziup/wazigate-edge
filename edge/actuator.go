@@ -35,13 +35,13 @@ func GetActuator(deviceID string, actuatorID string) (*Actuator, error) {
 
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			return nil, errNotFound
+			return nil, ErrNotFound
 		}
 		return nil, CodeError{500, "database error: " + err.Error()}
 	}
 
 	if len(device.Actuators) == 0 {
-		return nil, errNotFound
+		return nil, ErrNotFound
 	}
 
 	return device.Actuators[0], nil
@@ -63,7 +63,7 @@ func PostActuator(deviceID string, actuator *Actuator) error {
 
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			return errNotFound
+			return ErrNotFound
 		}
 		return CodeError{500, "database error: " + err.Error()}
 	}
@@ -81,7 +81,7 @@ func PostActuator(deviceID string, actuator *Actuator) error {
 	})
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			return errNotFound
+			return ErrNotFound
 		}
 		return CodeError{500, "database error: " + err.Error()}
 	}
@@ -110,7 +110,7 @@ func SetActuatorName(deviceID string, actuatorID string, name string) (Meta, err
 
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			return nil, errNotFound
+			return nil, ErrNotFound
 		}
 		return nil, CodeError{500, "database error: " + err.Error()}
 	}
@@ -137,7 +137,7 @@ func SetActuatorMeta(deviceID string, actuatorID string, meta map[string]interfa
 
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			return errNotFound
+			return ErrNotFound
 		}
 		return CodeError{500, "database error: " + err.Error()}
 	}
@@ -169,7 +169,7 @@ func DeleteActuator(deviceID string, actuatorID string) (int, error) {
 			err = err2
 		}
 		if err == mgo.ErrNotFound {
-			return 0, errNotFound
+			return 0, ErrNotFound
 		}
 		return 0, CodeError{500, "database error: " + err.Error()}
 	}
@@ -263,13 +263,13 @@ func PostActuatorValue(deviceID string, actuatorID string, val Value) (Meta, err
 
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			return nil, errNotFound
+			return nil, ErrNotFound
 		}
 		return nil, CodeError{500, "database error: " + err.Error()}
 	}
 
 	if len(device.Actuators) == 0 {
-		return nil, errNotFound
+		return nil, ErrNotFound
 	}
 
 	err = dbActuatorValues.Insert(&value)
@@ -318,13 +318,13 @@ func PostActuatorValues(deviceID string, actuatorID string, vals []Value) (Meta,
 
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			return nil, errNotFound
+			return nil, ErrNotFound
 		}
 		return nil, CodeError{500, "database error: " + err.Error()}
 	}
 
 	if len(device.Actuators) == 0 {
-		return nil, errNotFound
+		return nil, ErrNotFound
 	}
 
 	err = dbActuatorValues.Insert(interf...)

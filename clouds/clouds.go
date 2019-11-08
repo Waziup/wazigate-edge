@@ -233,14 +233,10 @@ func (cloud *Cloud) Printf(format string, code int, a ...interface{}) {
 }
 
 func (cloud *Cloud) flag(ent Entity, action Action, remote time.Time, meta edge.Meta) {
-	var needsSig bool
 	var status *Status
 	now := time.Now()
 	cloud.StatusMutex.Lock()
-	if cloud.Status == nil {
-		needsSig = false
-	} else {
-		needsSig = len(cloud.Status) == 0
+	if cloud.Status != nil {
 		if status = cloud.Status[ent]; status != nil {
 			if action == -ActionDelete {
 				delete(cloud.Status, ent)
@@ -279,12 +275,11 @@ func (cloud *Cloud) flag(ent Entity, action Action, remote time.Time, meta edge.
 	}
 	cloud.StatusMutex.Unlock()
 
-	log.Printf("[UP   ] Status %s: %s", ent, status.Action)
-	if statusCallback != nil {
-		statusCallback(cloud, ent, status)
-	}
-
-	if needsSig {
+	if status != nil {
+		log.Printf("[UP   ] Status %s: %s", ent, status.Action)
+		if statusCallback != nil {
+			statusCallback(cloud, ent, status)
+		}
 		select {
 		case cloud.sigDirty <- ent:
 		default: // channel full

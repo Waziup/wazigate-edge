@@ -131,10 +131,12 @@ func (cloud *Cloud) persistentSync() (int, error) {
 	ent, status, wakeup := cloud.nextEntity()
 	for status == nil && !cloud.Pausing {
 		now := time.Now()
-		timer := time.NewTimer(now.Sub(wakeup))
+		timer := time.NewTimer(wakeup.Sub(now))
 		select {
-		case <-cloud.sigDirty:
+		case ent := <-cloud.sigDirty:
+			log.Printf("[UP   ] Wakeup on flagged entity %q.", ent)
 		case <-timer.C:
+			log.Printf("[UP   ] Wakeup on timer.")
 		}
 		ent, status, wakeup = cloud.nextEntity()
 	}
@@ -143,6 +145,8 @@ func (cloud *Cloud) persistentSync() (int, error) {
 	}
 
 	code, err := cloud.processEntity(ent, status)
+	isRetry := false
+PROCESS:
 	if err != nil {
 		switch {
 		case code == 0:
@@ -150,6 +154,13 @@ func (cloud *Cloud) persistentSync() (int, error) {
 		case code == -1:
 			cloud.Printf("Internal Error\n%s", code, err.Error())
 			cloud.flag(ent, ActionError, noTime, nil)
+		case code == http.StatusUnauthorized || code == http.StatusForbidden:
+			// on permission error: re-authenticate (new token) and try again
+			if !isRetry && isOk(cloud.authenticate()) {
+				isRetry = true
+				code, err = cloud.processEntity(ent, status)
+				goto PROCESS
+			}
 		case code >= 500 && code < 600:
 			cloud.Printf("Server Error %d\n%s", code, code, err.Error())
 			cloud.flag(ent, ActionError, noTime, nil)
@@ -159,6 +170,7 @@ func (cloud *Cloud) persistentSync() (int, error) {
 			// cloud.statusMutex.Unlock()
 		case code >= 400 && code < 500:
 			cloud.Printf("Synchronization Error %d\n%s", code, code, err.Error())
+
 			cloud.flag(ent, ActionError, noTime, nil)
 
 			// cloud.statusMutex.Lock()

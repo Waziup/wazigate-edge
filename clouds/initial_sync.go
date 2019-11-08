@@ -3,6 +3,7 @@ package clouds
 import (
 	"bytes"
 	"encoding/json"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -34,7 +35,11 @@ func (cloud *Cloud) authenticate() int {
 		body: bytes.NewReader(body),
 	})
 	if !resp.ok {
-		cloud.Printf("Authentication failed.\n%s", resp.status, resp.statusText)
+		if resp.status <= 0 {
+			cloud.Printf("Can not connect to server.\n%s", resp.status, resp.statusText)
+		} else {
+			cloud.Printf("Authentication failed.\n%s", resp.status, resp.statusText)
+		}
 		// cloud.setStatus(resp.status, fmt.Sprintf("Unable to connect.\n%s", resp.statusText))
 		return resp.status
 	}
@@ -73,7 +78,7 @@ func (cloud *Cloud) initialSync() int {
 			Visibility: "public",
 		}
 
-		// log.Printf("[UP   ] Pushing gateway %q to the cloud ...", localDevice.ID)
+		log.Printf("[UP   ] Pushing gateway %q to the cloud ...", localDevice.ID)
 
 		body, _ := json.Marshal(gateway)
 		resp := fetch(addr+"/gateways", fetchInit{
@@ -85,6 +90,7 @@ func (cloud *Cloud) initialSync() int {
 			body: bytes.NewReader(body),
 		})
 		if resp.status == http.StatusUnprocessableEntity {
+			log.Printf("[UP   ] Gateway already registered.")
 			// cloud.Printf("Gateway already registered.", 200)
 		} else {
 			if !resp.ok {

@@ -72,6 +72,8 @@ func (cloud *Cloud) mqttPersistentSync() {
 			break
 		}
 
+		log.Printf("[UP   ] MQTT is now connected.")
+
 		// cloud.Printf("MQTT sucessfully connected.", 200)
 
 		tunnelDownTopic := "devices/" + edge.LocalID() + "/tunnel-down/"
@@ -121,6 +123,7 @@ func (cloud *Cloud) mqttPersistentSync() {
 			}
 
 			if downstream != nil {
+				log.Printf("[UP   ] Recived: %s [%d]", msg.Topic, len(msg.Data))
 				downstream.Publish(nil, msg)
 			}
 		}

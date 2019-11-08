@@ -65,6 +65,28 @@ func (cloud *Cloud) SetPaused(paused bool) (int, error) {
 	return status, nil
 }
 
+func (cloud *Cloud) reconnect() {
+	nretry := 0
+	for !cloud.Pausing {
+		status := cloud.authenticate()
+		if status == http.StatusForbidden || status == http.StatusUnauthorized {
+			cloud.Printf("Synchronization has been paused because of a login error.", http.StatusUnauthorized)
+			cloud.SetPaused(true)
+			break
+		}
+		if !isOk(status) && !cloud.Pausing {
+			duration := retries[nretry]
+			time.Sleep(duration)
+			nretry++
+			if nretry == len(retries) {
+				nretry = len(retries) - 1
+			}
+			continue
+		}
+		break
+	}
+}
+
 func (cloud *Cloud) sync() {
 
 	nretry := 0
@@ -87,23 +109,8 @@ func (cloud *Cloud) sync() {
 
 	////
 
-	auth := func() {
-		for !cloud.Pausing {
-			status := cloud.authenticate()
-			if status == http.StatusForbidden || status == http.StatusUnauthorized {
-				cloud.SetPaused(true)
-				break
-			}
-			if !isOk(status) {
-				retry()
-				continue
-			}
-			break
-		}
-	}
-
 	if cloud.auth == "" {
-		auth()
+		cloud.reconnect()
 	}
 
 	////
@@ -122,7 +129,7 @@ INITIAL_SYNC:
 
 		status := cloud.initialSync()
 		if status == http.StatusForbidden || status == http.StatusUnauthorized {
-			auth()
+			cloud.reconnect()
 			continue
 		}
 
@@ -145,7 +152,7 @@ INITIAL_SYNC:
 
 		code, _ := cloud.persistentSync()
 		if code == http.StatusForbidden || code == http.StatusUnauthorized {
-			auth()
+			cloud.reconnect()
 			continue
 		}
 

@@ -409,6 +409,8 @@ func ReadCloudConfig(r io.Reader) error {
 	err = json.Unmarshal(data, &clouds)
 	if err == nil {
 		for _, cloud := range clouds {
+			cloud.Pausing = false
+			cloud.PausingMQTT = false
 			if !cloud.Paused {
 				go cloud.sync()
 			}

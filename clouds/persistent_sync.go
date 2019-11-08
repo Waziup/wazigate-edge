@@ -352,6 +352,23 @@ func (cloud *Cloud) postDeviceName(deviceID string, name string) (int, error) {
 		err := fmt.Errorf("Unable to change device name.\nStatus: %s\n%s", resp.statusText, strings.TrimSpace(resp.text()))
 		return resp.status, err
 	}
+
+	if deviceID == edge.LocalID() {
+		resp := fetch(addr+"/gateways/"+deviceID+"/name", fetchInit{
+			method: http.MethodPut,
+			headers: map[string]string{
+				"Content-Type":  "text/plain; charset=utf-8",
+				"Authorization": cloud.auth,
+			},
+			body: bytes.NewReader([]byte(name)),
+		})
+
+		if !resp.ok {
+			err := fmt.Errorf("Unable to change device name.\nStatus: %s\n%s", resp.statusText, strings.TrimSpace(resp.text()))
+			return resp.status, err
+		}
+	}
+
 	return resp.status, nil
 }
 

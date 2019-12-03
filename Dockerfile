@@ -18,7 +18,7 @@ RUN go build -ldflags "-s -w -X main.version=$version -X main.branch=$branch" -o
 FROM alpine:latest AS production
 
 WORKDIR /root/
-RUN apk --no-cache add ca-certificates tzdata
+RUN apk --no-cache add ca-certificates tzdata curl
 COPY --from=development /wazigate-edge/build/wazigate-edge .
 COPY www www/
 ENTRYPOINT ["./wazigate-edge", "-www", "www"]

@@ -2,22 +2,24 @@ package clouds
 
 import "time"
 
-type v2Value struct {
+type v2SensorValue struct {
 	Value        interface{} `json:"value"`
 	Time         time.Time   `json:"timestamp"`
 	TimeReceived time.Time   `json:"date_received"`
 }
 
+type v2ActuatorValue interface{}
+
 type v2Sensor struct {
-	ID    string   `json:"id"`
-	Name  string   `json:"name"`
-	Value *v2Value `json:"value,omitempty"`
+	ID    string         `json:"id"`
+	Name  string         `json:"name"`
+	Value *v2SensorValue `json:"value,omitempty"`
 }
 
 type v2Actuator struct {
-	ID    string   `json:"id"`
-	Name  string   `json:"name"`
-	Value *v2Value `json:"value,omitempty"`
+	ID    string          `json:"id"`
+	Name  string          `json:"name"`
+	Value v2ActuatorValue `json:"value,omitempty"`
 }
 
 type v2Device struct {

@@ -176,18 +176,19 @@ func (cloud *Cloud) initialSync() int {
 				for _, s := range device2.Actuators {
 					if s.ID == acuator.ID {
 						if s.Value != nil {
-							if s.Value.Time == noTime {
-								s.Value.Time = s.Value.TimeReceived
-							}
-							if s.Value.Time.After(acuator.Time) {
-								if acuator.Time == noTime {
-									// log.Printf("[UP   ] Actuator %q outdated! Last value %v.", acuator.ID, acuator.Time)
-								} else {
-									// log.Printf("[UP   ] Actuator %q outdated! No values.", acuator.ID)
+							/*
+								if s.Value.Time == noTime {
+									s.Value.Time = s.Value.TimeReceived
 								}
-								edge.PostActuatorValue(device.ID, acuator.ID, edge.NewValue(s.Value.Value, s.Value.Time))
-							}
-
+								if s.Value.Time.After(acuator.Time) {
+									if acuator.Time == noTime {
+										// log.Printf("[UP   ] Actuator %q outdated! Last value %v.", acuator.ID, acuator.Time)
+									} else {
+										// log.Printf("[UP   ] Actuator %q outdated! No values.", acuator.ID)
+									}
+									edge.PostActuatorValue(device.ID, acuator.ID, edge.NewValue(s.Value.Value, s.Value.Time))
+								}
+							*/
 						}
 						continue ACTUATORS
 					}

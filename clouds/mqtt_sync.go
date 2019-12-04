@@ -14,13 +14,25 @@ import (
 	"github.com/Waziup/wazigate-edge/mqtt"
 )
 
+type namedSender struct {
+	name string
+}
+
+func (s namedSender) ID() string {
+	return s.name
+}
+
+var cloudSender = namedSender{"downstream"}
+
 // IncludeDevice tells the cloud to sync with that device,
 // especially to monitor that device at the remote cloud for actuation data.
 func (cloud *Cloud) IncludeDevice(deviceID string) {
 	cloud.mqttMutex.Lock()
 	cloud.devices[deviceID] = struct{}{}
 	if cloud.client != nil {
-		cloud.client.Subscribe("devices/"+deviceID+"/actuators/+/values", 1)
+		log.Printf("[UP   ] Waiting for actuation on \"devices/%q/actuators/+/value(s)\".", deviceID)
+		cloud.client.Subscribe("devices/"+deviceID+"/actuators/+/values", 0)
+		cloud.client.Subscribe("devices/"+deviceID+"/actuators/+/value", 0)
 	}
 	cloud.mqttMutex.Unlock()
 }
@@ -80,19 +92,15 @@ func (cloud *Cloud) mqttPersistentSync() {
 		tunnelUpTopic := "devices/" + edge.LocalID() + "/tunnel-up/"
 
 		cloud.mqttMutex.Lock()
-		subs := make([]mqtt.TopicSubscription, len(cloud.devices)+1)
+		subs := make([]mqtt.TopicSubscription, len(cloud.devices)*2+1)
 		i := 0
 		for deviceID := range cloud.devices {
-			subs[i] = mqtt.TopicSubscription{
-				Name: "devices/" + deviceID + "/actuators/+/values",
-				QoS:  1,
-			}
+			subs[i] = mqtt.TopicSubscription{Name: "devices/" + deviceID + "/actuators/+/value"}
+			i++
+			subs[i] = mqtt.TopicSubscription{Name: "devices/" + deviceID + "/actuators/+/values"}
 			i++
 		}
-		subs[i] = mqtt.TopicSubscription{
-			Name: tunnelDownTopic + "+",
-			QoS:  0,
-		}
+		subs[i] = mqtt.TopicSubscription{Name: tunnelDownTopic + "+"}
 		cloud.client.SubscribeAll(subs)
 		cloud.mqttMutex.Unlock()
 
@@ -123,8 +131,8 @@ func (cloud *Cloud) mqttPersistentSync() {
 			}
 
 			if downstream != nil {
-				log.Printf("[UP   ] Recived: %s [%d]", msg.Topic, len(msg.Data))
-				downstream.Publish(nil, msg)
+				log.Printf("[UP   ] Received: %s [%d]", msg.Topic, len(msg.Data))
+				downstream.Publish(cloudSender, msg)
 			}
 		}
 

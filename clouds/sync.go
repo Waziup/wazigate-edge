@@ -151,10 +151,6 @@ INITIAL_SYNC:
 	for !cloud.Pausing {
 
 		code, _ := cloud.persistentSync()
-		if code == http.StatusForbidden || code == http.StatusUnauthorized {
-			cloud.reconnect()
-			continue
-		}
 
 		if code <= 0 { // Network Error
 			retry()

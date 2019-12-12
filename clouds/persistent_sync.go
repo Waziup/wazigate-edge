@@ -161,6 +161,8 @@ PROCESS:
 				code, err = cloud.processEntity(ent, status)
 				goto PROCESS
 			}
+			cloud.Printf("Permission Error\n%s", code, err.Error())
+			cloud.flag(ent, ActionError, noTime, nil)
 		case code >= 500 && code < 600:
 			cloud.Printf("Server Error %d\n%s", code, code, err.Error())
 			cloud.flag(ent, ActionError, noTime, nil)

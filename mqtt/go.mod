@@ -1,4 +1,4 @@
-module github.com/j-forster/mqtt
+module github.com/Waziup/wazigate-edge/mqtt
 
 go 1.12
 

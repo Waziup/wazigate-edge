@@ -81,6 +81,18 @@ func GetCurrentDeviceID(resp http.ResponseWriter, req *http.Request, params rout
 	resp.Write([]byte(edge.LocalID()))
 }
 
+// GetCurrentDeviceName implements GET /device/name
+func GetCurrentDeviceName(resp http.ResponseWriter, req *http.Request, params routing.Params) {
+
+	getDeviceName(resp, req, edge.LocalID())
+}
+
+// GetCurrentDeviceMeta implements GET /device/meta
+func GetCurrentDeviceMeta(resp http.ResponseWriter, req *http.Request, params routing.Params) {
+
+	getDeviceMeta(resp, req, edge.LocalID())
+}
+
 // PostDevice implements POST /devices
 func PostDevice(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
@@ -99,6 +111,12 @@ func DeleteCurrentDevice(resp http.ResponseWriter, req *http.Request, params rou
 	deleteDevice(resp, edge.LocalID())
 }
 
+// PostDeviceName implements GET /devices/{deviceID}/name
+func GetDeviceName(resp http.ResponseWriter, req *http.Request, params routing.Params) {
+
+	getDeviceName(resp, req, params.ByName("device_id"))
+}
+
 // PostDeviceName implements POST /devices/{deviceID}/name
 func PostDeviceName(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
@@ -115,6 +133,12 @@ func PostCurrentDeviceName(resp http.ResponseWriter, req *http.Request, params r
 func PostDeviceMeta(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
 	postDeviceMeta(resp, req, params.ByName("device_id"))
+}
+
+// GetDeviceMeta implements GET /devices/{deviceID}/meta
+func GetDeviceMeta(resp http.ResponseWriter, req *http.Request, params routing.Params) {
+
+	getDeviceMeta(resp, req, params.ByName("device_id"))
 }
 
 // PostCurrentDeviceMeta implements POST /device/meta
@@ -166,6 +190,16 @@ func postDevice(resp http.ResponseWriter, req *http.Request) {
 
 ////////////////////
 
+func getDeviceName(resp http.ResponseWriter, req *http.Request, deviceID string) {
+	name, err := edge.GetDeviceName(deviceID)
+	if err != nil {
+		serveError(resp, err)
+		return
+	}
+	resp.Header().Set("Content-Type", "text/plain")
+	resp.Write([]byte(name))
+}
+
 func postDeviceName(resp http.ResponseWriter, req *http.Request, deviceID string) {
 	body, err := tools.ReadAll(req.Body)
 	if err != nil {
@@ -191,6 +225,17 @@ func postDeviceName(resp http.ResponseWriter, req *http.Request, deviceID string
 	}
 
 	clouds.FlagDevice(deviceID, clouds.ActionModify, meta)
+}
+
+func getDeviceMeta(resp http.ResponseWriter, req *http.Request, deviceID string) {
+	meta, err := edge.GetDeviceMeta(deviceID)
+	if err != nil {
+		serveError(resp, err)
+		return
+	}
+	encoder := json.NewEncoder(resp)
+	resp.Header().Set("Content-Type", "application/json")
+	encoder.Encode(meta)
 }
 
 func postDeviceMeta(resp http.ResponseWriter, req *http.Request, deviceID string) {

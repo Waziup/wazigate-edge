@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 
 	"github.com/Waziup/wazigate-edge/mqtt"
 	"github.com/Waziup/wazigate-edge/tools"
@@ -24,10 +25,23 @@ func mqttAuth(client *mqtt.Client, auth *mqtt.ConnectAuth) mqtt.ConnectCode {
 	return mqtt.CodeAccepted
 }
 
+func isUnsupervised(path string) bool {
+	return path != "device" && !strings.HasSuffix(path, "device/") &&
+		path != "sensors" && !strings.HasSuffix(path, "sensors/") &&
+		path != "actuators" && !strings.HasSuffix(path, "actuators/") &&
+		path != "devices" && !strings.HasSuffix(path, "devices/") &&
+		path != "clouds" && !strings.HasSuffix(path, "clouds/") &&
+		path != "sys" && !strings.HasSuffix(path, "sys/")
+}
+
 func (server *MQTTServer) Publish(sender mqtt.Sender, msg *mqtt.Message) int {
 
 	if sender == nil {
 		// internal messages (no client as sender)
+		return server.Server.Publish(nil, msg)
+	}
+
+	if isUnsupervised(msg.Topic) {
 		return server.Server.Publish(nil, msg)
 	}
 

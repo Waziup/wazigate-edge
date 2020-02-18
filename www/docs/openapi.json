@@ -2509,6 +2509,334 @@
         }
       }
     },
+    "/images": {
+      "get": {
+        "tags": [
+          "Containers & Images"
+        ],
+        "summary": "List Images",
+        "description": "Images are docker images.",
+        "parameters": [
+          {
+            "name": "internal",
+            "in": "query",
+            "description": "Include internal images.",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "example": false
+            }
+          },
+          {
+            "name": "updates",
+            "in": "query",
+            "description": "Check if a newer iamge is available. This will query the docker registry.",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "example": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Operation."
+          },
+          "500": {
+            "description": "The was an internal error maybe because the docker daemon did not respond or because there was no internet connection to perform the updates check."
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Containers & Images"
+        ],
+        "summary": "Download Image",
+        "description": "Fetch the given image from the docker repository. Calling this api will use a `docker pull` internally.",
+        "requestBody": {
+          "description": "Image data",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Image name",
+                    "example": "waziup/wazigate-lora:V1.2"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Operation."
+          },
+          "400": {
+            "description": "There is no image with that name."
+          },
+          "500": {
+            "description": "The was an internal error maybe because the docker daemon did not respond or because there was no internet connection to perform this action."
+          }
+        }
+      }
+    },
+    "/images/{name}": {
+      "get": {
+        "tags": [
+          "Containers & Images"
+        ],
+        "summary": "Get Image Data",
+        "description": "Images are docker images.",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "description": "Name of the image.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "waziup/wazigate-lora:V1.2"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Operation."
+          },
+          "404": {
+            "description": "There is no image with that name."
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Containers & Images"
+        ],
+        "summary": "Delete Image",
+        "description": "Images are docker images.",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "description": "Name of the image.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "waziup/wazigate-lora:V1.2"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Operation."
+          },
+          "404": {
+            "description": "There is no image with that name."
+          },
+          "500": {
+            "description": "There was an internal error maybe because the docker daemon did not respond or it refused to delete image because there is still a container using it."
+          }
+        }
+      }
+    },
+    "/containers": {
+      "get": {
+        "tags": [
+          "Containers & Images"
+        ],
+        "summary": "List Containers",
+        "description": "Containers are docker containers.",
+        "parameters": [
+          {
+            "name": "internal",
+            "in": "query",
+            "description": "Include internal containers.",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "example": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Operation."
+          },
+          "500": {
+            "description": "The was an internal error maybe because the docker daemon did not respond."
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Containers & Images"
+        ],
+        "summary": "Create a Container",
+        "description": "Containers are docker containers.",
+        "requestBody": {
+          "description": "Image data",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "image": {
+                    "type": "string",
+                    "description": "Image name",
+                    "example": "waziup/wazigate-lora:V1.2"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Operation."
+          },
+          "500": {
+            "description": "The was an internal error maybe because the docker daemon did not respond."
+          }
+        }
+      }
+    },
+    "/containers/{name}": {
+      "parameters": [
+        {
+          "name": "name",
+          "in": "path",
+          "description": "Name of the container.",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "example": "waziup/wazigate-lora:V1.2"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Containers & Images"
+        ],
+        "summary": "Get Container Data",
+        "description": "Containers are docker containers.",
+        "responses": {
+          "200": {
+            "description": "Successful Operation."
+          },
+          "404": {
+            "description": "There is no container with that name."
+          },
+          "500": {
+            "description": "The was an internal error maybe because the docker daemon did not respond."
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Containers & Images"
+        ],
+        "summary": "Manage Container",
+        "description": "Start or stop a container.",
+        "parameters": [
+          {
+            "name": "start",
+            "in": "query",
+            "description": "Start a container.",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "example": false
+            }
+          },
+          {
+            "name": "stop",
+            "in": "query",
+            "description": "Stop a container.",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "example": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Operation."
+          },
+          "404": {
+            "description": "There is no container with that name."
+          },
+          "500": {
+            "description": "The was an internal error maybe because the docker daemon did not respond."
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Containers & Images"
+        ],
+        "summary": "Delete Container",
+        "description": "Containers are docker containers. The container must be stopped to perform this operation.",
+        "responses": {
+          "200": {
+            "description": "Successful Operation."
+          },
+          "404": {
+            "description": "There is no image with that name."
+          },
+          "500": {
+            "description": "There was an internal error maybe because the docker daemon did not respond or it refused to delete image because there is still a container using it."
+          }
+        }
+      }
+    },
+    "/containers/{name}/{path}": {
+      "parameters": [
+        {
+          "name": "name",
+          "in": "path",
+          "description": "Name of the container.",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "example": "wazigate-lora"
+          }
+        },
+        {
+          "name": "path",
+          "in": "path",
+          "description": "Proxy path.",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "example": "index.html"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Containers & Images"
+        ],
+        "summary": "Container Proxy",
+        "description": "Get container files through the container proxy.\n\nAll containers should host a http server that is listening on `WAZIGATE_ADDR` which is a environment variable given to the container. Wazigate-compatible containers are requred to expose a `package.json` file on http root level.",
+        "responses": {
+          "200": {
+            "description": "Successful Operation."
+          },
+          "404": {
+            "description": "There is no container with that name or the container returned a 404 error."
+          },
+          "500": {
+            "description": "The was an internal error."
+          }
+        }
+      }
+    },
     "/sys/uptime": {
       "get": {
         "tags": [

@@ -1,8 +1,11 @@
 package edge
 
 import (
+	"errors"
 	"io"
 	"net"
+	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -19,6 +22,42 @@ type Device struct {
 	Modified  time.Time   `json:"modified" bson:"modified"`
 	Created   time.Time   `json:"created" bson:"created"`
 	Meta      Meta        `json:"meta" bson:"meta"`
+}
+
+// DevicesQuery is used to range or limit query results.
+type DevicesQuery struct {
+	Limit int64
+	Size  int64
+	Meta  []string
+}
+
+// Parse parses the HTTP Request into the Query parameters.
+var errBadLimitParam = errors.New("query ?limit=.. is mal formatted")
+var errBadSizeParam = errors.New("query ?size=.. is mal formatted")
+
+// Parse reads url.Values into the DevicesQuery.
+func (query *DevicesQuery) Parse(values url.Values) error {
+	var param string
+	var err error
+	if param = values.Get("limit"); param != "" {
+		query.Limit, err = strconv.ParseInt(param, 10, 64)
+		if err != nil {
+			return errBadLimitParam
+		}
+	}
+	if param = values.Get("size"); param != "" {
+		query.Size = parseSize(param)
+		if query.Size == -1 {
+			return errBadSizeParam
+		}
+	}
+	if param = values.Get("meta"); param != "" {
+		query.Meta = strings.Split(param, ",")
+		for i, str := range query.Meta {
+			query.Meta[i] = strings.TrimSpace(str)
+		}
+	}
+	return nil
 }
 
 var localID string
@@ -64,11 +103,25 @@ func (iter *DeviceIterator) Close() error {
 }
 
 // GetDevices returns an iterator over all devices.
-func GetDevices() *DeviceIterator {
+func GetDevices(query *DevicesQuery) *DeviceIterator {
 
-	iter := dbDevices.Find(nil).Iter()
+	sel := bson.M{}
+	if query != nil {
+		if len(query.Meta) != 0 {
+			for _, name := range query.Meta {
+				sel["meta."+name] = bson.M{"$exists": true}
+			}
+		}
+	}
+	q := dbDevices.Find(sel)
+	if query != nil {
+		if query.Limit != 0 {
+			q.Limit(int(query.Limit))
+		}
+	}
+
 	return &DeviceIterator{
-		dbIter: iter,
+		dbIter: q.Iter(),
 	}
 }
 
@@ -126,9 +179,48 @@ func GetDeviceMeta(deviceID string) (map[string]interface{}, error) {
 	return device.Meta, nil
 }
 
+var noTime = time.Time{}
+
 // PostDevice creates a new device a the database.
 func PostDevice(device *Device) error {
 	var err error
+
+	if device.ID == "" {
+		device.ID = bson.NewObjectId().Hex()
+	}
+
+	now := time.Now()
+	device.Created = now
+	device.Modified = now
+
+	if device.Sensors != nil {
+		for _, sensor := range device.Sensors {
+			if sensor.ID == "" {
+				sensor.ID = bson.NewObjectId().Hex()
+			}
+			sensor.Created = now
+			sensor.Modified = now
+			if sensor.Value == nil {
+				sensor.Time = nil
+			} else if sensor.Time == nil {
+				sensor.Time = &now
+			}
+		}
+	}
+	if device.Actuators != nil {
+		for _, actuator := range device.Actuators {
+			if actuator.ID == "" {
+				actuator.ID = bson.NewObjectId().Hex()
+			}
+			actuator.Created = now
+			actuator.Modified = now
+			if actuator.Value == nil {
+				actuator.Time = nil
+			} else if actuator.Time == nil {
+				actuator.Time = &now
+			}
+		}
+	}
 
 	err = dbDevices.Insert(&device)
 	if err != nil {
@@ -136,33 +228,33 @@ func PostDevice(device *Device) error {
 	}
 
 	if len(device.Sensors) != 0 {
-		sensors := make([]interface{}, 0, len(device.Sensors))
+		values := make([]interface{}, 0, len(device.Sensors))
 		for _, sensor := range device.Sensors {
 			if sensor.Value != nil {
-				sensors = append(sensors, sValue{
-					ID:       newID(sensor.Time),
+				values = append(values, sValue{
+					ID:       newID(*sensor.Time),
 					DeviceID: device.ID,
 					SensorID: sensor.ID,
 					Value:    sensor.Value,
 				})
 			}
 		}
-		dbSensorValues.Insert(sensors...)
+		dbSensorValues.Insert(values...)
 	}
 
 	if len(device.Actuators) != 0 {
-		actuators := make([]interface{}, 0, len(device.Actuators))
+		values := make([]interface{}, 0, len(device.Actuators))
 		for _, actuator := range device.Actuators {
 			if actuator.Value != nil {
-				actuators = append(actuators, aValue{
-					ID:         newID(actuator.Time),
+				values = append(values, aValue{
+					ID:         newID(*actuator.Time),
 					DeviceID:   device.ID,
 					ActuatorID: actuator.ID,
 					Value:      actuator.Value,
 				})
 			}
 		}
-		dbActuatorValues.Insert(actuators...)
+		dbActuatorValues.Insert(values...)
 	}
 
 	return nil

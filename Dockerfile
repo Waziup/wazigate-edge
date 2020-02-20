@@ -2,8 +2,7 @@ FROM golang:1.12-alpine AS development
 
 ENV CGO_ENABLED=0
 
-RUN echo "Version: $WAZIGATE_VERSION, Branch: $WAZIGATE_BRANCH" \
-    && apk add --no-cache ca-certificates tzdata git
+RUN apk add --no-cache ca-certificates tzdata git
 
 COPY . /wazigate-edge
 WORKDIR /wazigate-edge

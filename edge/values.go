@@ -20,8 +20,8 @@ func NewValue(v interface{}, time time.Time) Value {
 	return Value{v, time}
 }
 
-// Query is used to range or limit query results
-type Query struct {
+// ValuesQuery is used to range or limit query results.
+type ValuesQuery struct {
 	Limit int64
 	From  time.Time
 	To    time.Time
@@ -50,7 +50,7 @@ var sizeRegex = regexp.MustCompile(`^\d+[kKmMgG]?[bB]?`)
 var sizeUnitRegex = regexp.MustCompile(`[kKmMgG]?[bB]?$`)
 
 // Parse parses the HTTP Request into the Query parameters.
-func (query *Query) Parse(req *http.Request) string {
+func (query *ValuesQuery) Parse(req *http.Request) string {
 
 	var param string
 	var err error

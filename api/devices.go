@@ -10,7 +10,6 @@ import (
 	"github.com/Waziup/wazigate-edge/clouds"
 	"github.com/Waziup/wazigate-edge/edge"
 	"github.com/Waziup/wazigate-edge/tools"
-	"github.com/globalsign/mgo/bson"
 	routing "github.com/julienschmidt/httprouter"
 )
 
@@ -31,15 +30,16 @@ type Device struct {
 // GetDevices implements GET /devices
 func GetDevices(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
-	devices := edge.GetDevices()
+	var devicesQuery edge.DevicesQuery
+	devicesQuery.Parse(req.URL.Query())
+	devices := edge.GetDevices(&devicesQuery)
 	encoder := json.NewEncoder(resp)
 
 	device, err := devices.Next()
-	if err != nil {
+	if err != nil && err.Error() != "EOF" {
 		serveError(resp, err)
 		return
 	}
-
 	resp.Header().Set("Content-Type", "application/json")
 	resp.Write([]byte{'['})
 	for device != nil {
@@ -111,7 +111,7 @@ func DeleteCurrentDevice(resp http.ResponseWriter, req *http.Request, params rou
 	deleteDevice(resp, edge.LocalID())
 }
 
-// PostDeviceName implements GET /devices/{deviceID}/name
+// GetDeviceName implements GET /devices/{deviceID}/name
 func GetDeviceName(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
 	getDeviceName(resp, req, params.ByName("device_id"))
@@ -284,41 +284,6 @@ func getReqDevice(req *http.Request, device *edge.Device) error {
 	err = json.Unmarshal(body, &device)
 	if err != nil {
 		return err
-	}
-	if device.ID == "" {
-		device.ID = bson.NewObjectId().Hex()
-	}
-	var noTime time.Time
-	now := time.Now()
-	if device.Modified == noTime {
-		device.Modified = now
-	}
-
-	if device.Sensors != nil {
-		for _, sensor := range device.Sensors {
-			if sensor.Created == noTime {
-				sensor.Created = now
-			}
-			if sensor.Modified == noTime {
-				sensor.Modified = now
-			}
-			if sensor.Time == noTime {
-				sensor.Time = now
-			}
-		}
-	}
-	if device.Actuators != nil {
-		for _, actuator := range device.Actuators {
-			if actuator.Created == noTime {
-				actuator.Created = now
-			}
-			if actuator.Modified == noTime {
-				actuator.Modified = now
-			}
-			if actuator.Time == noTime {
-				actuator.Time = now
-			}
-		}
 	}
 	return nil
 }

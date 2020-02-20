@@ -132,6 +132,10 @@ func postDeviceActuator(resp http.ResponseWriter, req *http.Request, deviceID st
 		return
 	}
 
+	if actuator.ID == "" {
+		actuator.ID = bson.NewObjectId().Hex()
+	}
+
 	if err := edge.PostActuator(deviceID, &actuator); err != nil {
 		serveError(resp, err)
 		return
@@ -215,18 +219,9 @@ func getReqActuator(req *http.Request, actuator *edge.Actuator) error {
 		return err
 	}
 
-	now := time.Now()
-	actuator.Time = noTime
-	actuator.Modified = now
-	actuator.Created = now
-
 	err = json.Unmarshal(body, &actuator)
 	if err != nil {
 		return err
-	}
-
-	if actuator.ID == "" {
-		actuator.ID = bson.NewObjectId().Hex()
 	}
 	return nil
 }

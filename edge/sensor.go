@@ -14,7 +14,7 @@ type Sensor struct {
 	Name     string      `json:"name" bson:"name"`
 	Modified time.Time   `json:"modified" bson:"modified"`
 	Created  time.Time   `json:"created" bson:"created"`
-	Time     time.Time   `json:"time" bson:"time"`
+	Time     *time.Time  `json:"time" bson:"time"`
 	Value    interface{} `json:"value" bson:"value"`
 	Meta     Meta        `json:"meta" bson:"meta"`
 }
@@ -49,6 +49,20 @@ func GetSensor(deviceID string, sensorID string) (*Sensor, error) {
 
 // PostSensor creates a new sensor for this device.
 func PostSensor(deviceID string, sensor *Sensor) error {
+
+	if sensor.ID == "" {
+		sensor.ID = bson.NewObjectId().Hex()
+	}
+
+	now := time.Now()
+	sensor.Modified = now
+	sensor.Created = now
+
+	if sensor.Value == nil {
+		sensor.Time = nil
+	} else if sensor.Time == nil {
+		sensor.Time = &now
+	}
 
 	var device Device
 	err := dbDevices.Find(bson.M{
@@ -85,6 +99,16 @@ func PostSensor(deviceID string, sensor *Sensor) error {
 		}
 		return CodeError{500, "database error: " + err.Error()}
 	}
+
+	if sensor.Value != nil {
+		dbSensorValues.Insert(&sValue{
+			ID:       newID(*sensor.Time),
+			DeviceID: deviceID,
+			SensorID: sensor.ID,
+			Value:    sensor.Value,
+		})
+	}
+
 	return nil
 }
 
@@ -200,7 +224,7 @@ func (iter sValueIterator) Close() error {
 }
 
 // GetSensorValues returns an iterator over all sensor values.
-func GetSensorValues(deviceID string, sensorID string, query *Query) ValueIterator {
+func GetSensorValues(deviceID string, sensorID string, query *ValuesQuery) ValueIterator {
 
 	// var value SensorValue
 

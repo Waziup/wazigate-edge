@@ -14,7 +14,7 @@ type Actuator struct {
 	Name     string      `json:"name" bson:"name"`
 	Modified time.Time   `json:"modified" bson:"modified"`
 	Created  time.Time   `json:"created" bson:"created"`
-	Time     time.Time   `json:"time" bson:"time"`
+	Time     *time.Time  `json:"time" bson:"time"`
 	Value    interface{} `json:"value" bson:"value"`
 	Meta     Meta        `json:"meta" bson:"meta"`
 }
@@ -50,6 +50,20 @@ func GetActuator(deviceID string, actuatorID string) (*Actuator, error) {
 // PostActuator creates a new actuator for this device.
 func PostActuator(deviceID string, actuator *Actuator) error {
 
+	if actuator.ID == "" {
+		actuator.ID = bson.NewObjectId().Hex()
+	}
+
+	now := time.Now()
+	actuator.Modified = now
+	actuator.Created = now
+
+	if actuator.Value == nil {
+		actuator.Time = nil
+	} else if actuator.Time == nil {
+		actuator.Time = &now
+	}
+
 	var device Device
 	err := dbDevices.Find(bson.M{
 		"_id": deviceID,
@@ -68,7 +82,7 @@ func PostActuator(deviceID string, actuator *Actuator) error {
 		return CodeError{500, "database error: " + err.Error()}
 	}
 
-	if len(device.Sensors) != 0 {
+	if len(device.Actuators) != 0 {
 		return CodeError{409, "actuator already exists"}
 	}
 
@@ -85,6 +99,16 @@ func PostActuator(deviceID string, actuator *Actuator) error {
 		}
 		return CodeError{500, "database error: " + err.Error()}
 	}
+
+	if actuator.Value != nil {
+		dbActuatorValues.Insert(&aValue{
+			ID:         newID(*actuator.Time),
+			DeviceID:   deviceID,
+			ActuatorID: actuator.ID,
+			Value:      actuator.Value,
+		})
+	}
+
 	return nil
 }
 
@@ -200,7 +224,7 @@ func (iter aValueIterator) Close() error {
 }
 
 // GetActuatorValues returns an iterator over all actuator values.
-func GetActuatorValues(deviceID string, actuatorID string, query *Query) ValueIterator {
+func GetActuatorValues(deviceID string, actuatorID string, query *ValuesQuery) ValueIterator {
 
 	// var value ActuatorValue
 

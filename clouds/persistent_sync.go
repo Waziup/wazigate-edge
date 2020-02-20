@@ -291,7 +291,7 @@ func (cloud *Cloud) processEntity(ent Entity, status *Status) (int, error) {
 	if status.Action&ActionSync != 0 {
 		// log.Printf("[UP   ] Pushing values %s/%s ...", ent.Device, ent.Sensor)
 
-		query := &edge.Query{
+		query := &edge.ValuesQuery{
 			From:  status.Remote,
 			Size:  1024 * 1024,
 			Limit: 30000,

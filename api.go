@@ -16,6 +16,16 @@ func init() {
 	router.POST("/auth/token", api.GetDevices)
 	router.GET("/auth/permissions", api.GetDevices)
 
+	//Apps
+
+	router.GET("/apps", api.GetApps)
+	router.GET("/apps/:app_id", api.GetApp)
+
+	router.POST("/apps/:app_id", api.PostApp)
+	router.DELETE("/apps/:app_id", api.DeleteApp)
+
+	router.POST("/apps", api.PostApps) // install a new app
+
 	// Device Endpoints
 
 	router.GET("/devices", api.GetDevices)

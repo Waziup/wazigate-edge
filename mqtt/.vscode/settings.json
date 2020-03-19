@@ -1,7 +1,0 @@
-{
-    "coffeescript.compile": {
-        "sourceMap": false,
-        "bare": true
-    },
-    "go.testTimeout": "3s"
-}

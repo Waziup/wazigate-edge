@@ -1,4 +1,4 @@
-version: '3'
+version: "3"
 services:
   wazigate-edge:
     container_name: wazigate-edge
@@ -9,6 +9,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    volumes:
+      - ./:/go/src/wazigate-edge
+
     environment:
       - WAZIUP_HTTP_ADDR=:80
       # - WAZIUP_HTTPS_ADDR=:4443
@@ -19,10 +22,10 @@ services:
       - WAZIUP_MONGO=localhost:27017
       - WAZIUP_CLOUDS_FILE=/root/conf/clouds.json
     network_mode: host
-    depends_on:
-      - wazigate-mongo
+    # depends_on:
+    #   - wazigate-mongo
     healthcheck:
-      test: curl --fail http://localhost:880/device || exit 1 
+      test: curl --fail http://localhost:880/device || exit 1
       interval: 30s
       retries: 10 # Will try for 5 minutes
-    restart: always
+#    restart: always

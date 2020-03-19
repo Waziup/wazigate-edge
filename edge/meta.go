@@ -6,7 +6,7 @@ import "time"
 type Meta map[string]interface{}
 
 // DefaultInterval for sync.
-const DefaultInterval = time.Minute * 5
+const DefaultInterval = time.Second * 5
 
 // SyncInterval = min time between syncs
 func (meta Meta) SyncInterval() time.Duration {

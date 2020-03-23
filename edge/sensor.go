@@ -244,7 +244,7 @@ func GetSensorValues(deviceID string, sensorID string, query *ValuesQuery) Value
 			mid["$lt"] = bson.NewObjectIdWithTime(query.To)
 		}
 	}
-	q := dbSensorValues.Find(m)
+	q := dbSensorValues.Find(m).Sort("_id")
 	if query.Limit != 0 {
 		q.Limit(int(query.Limit))
 	}

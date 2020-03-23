@@ -44,10 +44,7 @@ func (cloud *Cloud) SetPaused(paused bool) (int, error) {
 		}
 		cloud.mqttMutex.Unlock()
 
-		select {
-		case cloud.sigDirty <- Entity{}:
-		default: // channel full
-		}
+		cloud.Wakeup()
 		return 200, nil
 	}
 
@@ -125,7 +122,7 @@ INITIAL_SYNC:
 		// cloud.setStatus(0, "Beginning initial sync ...")
 
 		cloud.ResetStatus()
-		cloud.sigDirty = make(chan Entity, 1)
+		cloud.wakeup = make(chan struct{}, 1)
 
 		status := cloud.initialSync()
 		if status == http.StatusForbidden || status == http.StatusUnauthorized {

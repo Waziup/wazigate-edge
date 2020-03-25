@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"io/ioutil"
 	"log"
@@ -64,7 +65,7 @@ func GetMACAddr() (addr string) {
 /*-----------------------------*/
 
 // ExecOnHostWithLogs runs bash commands on the host through a unix socket
-func ExecOnHostWithLogs(cmd string, withLogs bool) string {
+func ExecOnHostWithLogs(cmd string, withLogs bool) (string, error) {
 
 	if withLogs {
 		log.Printf("[Exec  ]: Host Command [ %s ]", cmd)
@@ -78,7 +79,7 @@ func ExecOnHostWithLogs(cmd string, withLogs bool) string {
 
 // SockGetReqest makes a request to a unix socket
 // ex:	SockGetReqest( "/var/run/wazigate-host.sock", "/")
-func SockGetReqest(socketAddr string, API string) string {
+func SockGetReqest(socketAddr string, API string) (string, error) {
 
 	httpc := http.Client{
 		Transport: &http.Transport{
@@ -92,27 +93,27 @@ func SockGetReqest(socketAddr string, API string) string {
 
 	if err != nil {
 		log.Printf("[Err   ]: %s ", err.Error())
-		return ""
+		return "", err
 	}
 
 	if response.StatusCode != 200 {
 		log.Printf("[Err]: Status Code: %v ", response.StatusCode)
-		return ""
+		return "", errors.New(response.Status)
 	}
 
 	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		log.Printf("[Err   ]: %s ", err.Error())
-		return ""
+		return "", err
 	}
-	return string(body)
+	return string(body), nil
 }
 
 /*-----------------------------*/
 
 // SockPostReqest makes a POST request to a unix socket
 // ex (post Request):	SockPostReqest( "/var/run/wazigate-host.sock", "cmd", "ls -a")
-func SockPostReqest(socketAddr string, API string, postValues string) string {
+func SockPostReqest(socketAddr string, API string, postValues string) (string, error) {
 
 	httpc := http.Client{
 		Transport: &http.Transport{
@@ -126,20 +127,20 @@ func SockPostReqest(socketAddr string, API string, postValues string) string {
 
 	if err != nil {
 		log.Printf("[Err   ]: %s ", err.Error())
-		return ""
+		return "", err
 	}
 
 	if response.StatusCode != 200 {
 		log.Printf("[Err]: Status Code: %v ", response.StatusCode)
-		return ""
+		return "", errors.New(response.Status)
 	}
 
 	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		log.Printf("[Err   ]: %s ", err.Error())
-		return ""
+		return "", err
 	}
-	return string(body)
+	return string(body), nil
 }
 
 /*-----------------------------*/

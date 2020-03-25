@@ -26,6 +26,9 @@ func init() {
 
 	router.POST("/apps", api.PostApps) // install a new app
 
+	router.GET("/apps/:app_id/*file_path", api.HandleAppProxyRequest)
+	router.POST("/apps/:app_id/*file_path", api.HandleAppProxyRequest)
+
 	// Device Endpoints
 
 	router.GET("/devices", api.GetDevices)

@@ -167,24 +167,26 @@ func (resp *ResponseWriter) WriteHeader(statusCode int) {
 
 func Serve(resp http.ResponseWriter, req *http.Request) int {
 
-	if strings.HasSuffix(req.RequestURI, "/") {
-		req.RequestURI += "index.html"
-	}
+	// if strings.HasSuffix(req.RequestURI, "/") {
+	// 	req.RequestURI += "index.html"
+	// }
 
 	wrapper := ResponseWriter{resp, 200}
 
 	if static != nil {
 
-		if strings.HasSuffix(req.RequestURI, ".js") ||
-			strings.HasSuffix(req.RequestURI, ".json") ||
-			strings.HasSuffix(req.RequestURI, ".css") ||
-			strings.HasSuffix(req.RequestURI, ".map") ||
-			strings.HasSuffix(req.RequestURI, ".png") ||
-			strings.HasSuffix(req.RequestURI, ".svg") ||
-			strings.HasSuffix(req.RequestURI, ".woff") ||
-			strings.HasSuffix(req.RequestURI, ".woff2") ||
-			strings.HasSuffix(req.RequestURI, ".ttf") ||
-			strings.HasSuffix(req.RequestURI, ".html") {
+		if !strings.HasPrefix(req.RequestURI, "/apps/") &&
+			(strings.HasSuffix(req.RequestURI, ".js") ||
+				strings.HasSuffix(req.RequestURI, ".json") ||
+				strings.HasSuffix(req.RequestURI, ".css") ||
+				strings.HasSuffix(req.RequestURI, ".map") ||
+				strings.HasSuffix(req.RequestURI, ".png") ||
+				strings.HasSuffix(req.RequestURI, ".svg") ||
+				strings.HasSuffix(req.RequestURI, ".woff") ||
+				strings.HasSuffix(req.RequestURI, ".woff2") ||
+				strings.HasSuffix(req.RequestURI, ".ttf") ||
+				strings.HasSuffix(req.RequestURI, ".html") ||
+				strings.HasSuffix(req.RequestURI, "/")) {
 
 			static.ServeHTTP(&wrapper, req)
 

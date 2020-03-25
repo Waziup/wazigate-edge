@@ -1,9 +1,11 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 	"strings"
 
@@ -19,57 +21,79 @@ const appsDirectoryOnHost = "../apps/"
 // The apps folder is also mapped to make it easier and faster for some operation
 const appsDirectoryMapped = "./apps"
 
-// Container represents the container running the App
-type Container struct {
-	Names   []string `json:"Names" bson:"Names"`
-	ID      string   `json:"Id" bson:"Id"` // Container Id given by docker
-	Created uint64   `json:"Created" bson:"Created"`
-	State   string   `json:"State" bson:"State"`
-	Status  string   `json:"Status" bson:"Status"`
-}
-
 /*-----------------------------*/
 
-var installAppStatus = ""
+type installingAppStatusType struct {
+	id   string
+	done bool
+	log  string
+}
+
+var installingAppStatus []installingAppStatusType
 
 // GetApps implements GET /apps
 func GetApps(resp http.ResponseWriter, req *http.Request, params routing.Params) {
-
-	// data, err := json.Marshal(clouds.GetClouds())
-	// if err != nil {
-	// 	log.Printf("[ERR  ] Error %v", err)
-	// 	http.Error(resp, "internal server error", http.StatusInternalServerError)
-	// 	return
-	// }
-	// resp.Header().Set("Content-Type", "application/json")
-	// resp.Write(data)
 
 	qryParams := req.URL.Query()
 
 	if _, ok := qryParams["install_logs"]; ok {
 
-		resp.Write([]byte(installAppStatus))
+		tools.SendJSON(resp, installingAppStatus)
 		return
 	}
 
 	/*------------*/
+
+	var out []map[string]interface{}
 
 	if _, ok := qryParams["available"]; ok {
 
-		resp.Write([]byte("List of all available Apps"))
-		return
+		out = getListOfAvailableApps()
+
+	} else {
+
+		out = getListOfInstalledApps()
+
 	}
 
 	/*------------*/
 
-	out := getListOfInstalledApps()
+	tools.SendJSON(resp, out)
+}
 
-	outJSON, err := json.Marshal(out)
+/*-----------------------------*/
+
+func getListOfAvailableApps() []map[string]interface{} {
+
+	url := "http://localhost/available-apps.json"
+	var out []map[string]interface{}
+
+	resp, err := http.Get(url)
 	if err != nil {
-		log.Printf("[Err   ] %s", err.Error())
+		log.Printf("[Err   ]: %s ", err.Error())
+		return out
 	}
 
-	resp.Write([]byte(outJSON))
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("[Err   ]: %s ", err.Error())
+		return out
+	}
+
+	err = json.Unmarshal(body, &out)
+	if err != nil {
+		log.Printf("[Err   ]: %s ", err.Error())
+	}
+
+	// for _, app := range appsList {
+	// 	out = append(out, map[string]interface{}{
+	// 		"id":    app["id"],
+	// 		"image": app["image"],
+	// 		// "status": ,
+	// 	})
+	// }
+
+	return out
 }
 
 /*-----------------------------*/
@@ -91,7 +115,6 @@ func getListOfInstalledApps() []map[string]interface{} {
 			continue
 		}
 		for _, app := range appsList {
-			log.Println(app.Name())
 			out = append(out, map[string]interface{}{"id": repo.Name() + "." + app.Name()})
 		}
 	}
@@ -101,7 +124,10 @@ func getListOfInstalledApps() []map[string]interface{} {
 
 /*-----------------------------*/
 
+/*-----------------------------*/
+
 // GetApp implements GET /apps/{app_id}
+// GetApp implements GET /apps/{app_id}?install_logs
 func GetApp(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
 	appID := params.ByName("app_id")
@@ -109,8 +135,30 @@ func GetApp(resp http.ResponseWriter, req *http.Request, params routing.Params) 
 
 	/*----------*/
 
+	qryParams := req.URL.Query()
+
+	if _, ok := qryParams["install_logs"]; ok {
+		for i := range installingAppStatus {
+			if installingAppStatus[i].id == appID {
+
+				out := map[string]interface{}{
+					"log":  installingAppStatus[i].log,
+					"done": installingAppStatus[i].done,
+				}
+
+				tools.SendJSON(resp, out)
+				return
+			}
+		}
+
+		tools.SendJSON(resp, installingAppStatusType{})
+		return
+	}
+
+	/*----------*/
+
 	cmd := "docker inspect " + appID
-	dockerJSONRaw := tools.ExecOnHostWithLogs(cmd, true)
+	dockerJSONRaw, _ := tools.ExecOnHostWithLogs(cmd, true)
 
 	var dockerJSON []struct {
 		State struct {
@@ -185,14 +233,16 @@ func GetApp(resp http.ResponseWriter, req *http.Request, params routing.Params) 
 		"package":     appPkg["wazigate"],
 	}
 
-	outJSON, err := json.Marshal(out)
-	if err != nil {
-		log.Printf("[Err   ] %s", err.Error())
-		resp.WriteHeader(500)
-		resp.Write([]byte(err.Error()))
-	}
+	tools.SendJSON(resp, out)
 
-	resp.Write([]byte(outJSON))
+	// outJSON, err := json.Marshal(out)
+	// if err != nil {
+	// 	log.Printf("[Err   ] %s", err.Error())
+	// 	resp.WriteHeader(500)
+	// 	resp.Write([]byte(err.Error()))
+	// }
+
+	// resp.Write([]byte(outJSON))
 }
 
 /*-----------------------------*/
@@ -201,15 +251,19 @@ func GetApp(resp http.ResponseWriter, req *http.Request, params routing.Params) 
 func PostApps(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
 	// imageName := "waziup/wazi-on-sensors:1.0.0"
-	input, err := ioutil.ReadAll(req.Body)
+	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		log.Printf("[Err   ] installing app [%v] error: %s ", input, err.Error())
+		log.Printf("[Err   ] installing app [%v] error: %s ", body, err.Error())
 		http.Error(resp, err.Error(), http.StatusBadRequest)
 		return
 	}
-	imageName := string(input)
 
-	installAppStatus = "Installing initialized\n"
+	var imageName string
+	err = json.Unmarshal(body, &imageName)
+	if err != nil {
+		http.Error(resp, err.Error(), http.StatusBadRequest)
+		return
+	}
 
 	//<!-- Get the App information
 
@@ -232,59 +286,105 @@ func PostApps(resp http.ResponseWriter, req *http.Request, params routing.Params
 
 	//-->
 
-	installAppStatus += "\nDownloading [ " + appName + " : " + tag + " ] \n"
+	/*-----------*/
+	appID := repoName + "." + appName
+	appStatusIndex := -1
+	for i := range installingAppStatus {
+		if installingAppStatus[i].id == appID {
+			appStatusIndex = i
+		}
+	}
+	if appStatusIndex == -1 {
+		installingAppStatus = append(installingAppStatus, installingAppStatusType{appID, false, ""})
+		appStatusIndex = len(installingAppStatus) - 1
+	}
+
+	/*-----------*/
+
+	installingAppStatus[appStatusIndex].log = "Installing initialized\n"
+
+	installingAppStatus[appStatusIndex].log += "\nDownloading [ " + appName + " : " + tag + " ] \n"
 
 	cmd := "docker pull " + imageName
-	out := tools.ExecOnHostWithLogs(cmd, true)
+	out, err := tools.ExecOnHostWithLogs(cmd, true)
 
-	// Status: Downloaded newer image for waziup/wazi-on-sensors:1.0.0
-	installAppStatus += out
+	installingAppStatus[appStatusIndex].log += out
 
-	if strings.Contains(out, "Error") {
+	if err != nil {
 		resp.WriteHeader(400)
-		resp.Write([]byte("Download Failed!"))
+		installingAppStatus[appStatusIndex].done = true
+		tools.SendJSON(resp, "Download Failed!")
 		return
 	}
+
+	/*-----------*/
 
 	cmd = "docker create " + imageName
-	containerID := tools.ExecOnHostWithLogs(cmd, true)
+	containerID, err := tools.ExecOnHostWithLogs(cmd, true)
 
-	installAppStatus += "\nTermporary container created\n"
-
-	cmd = "docker cp " + containerID + ":/index.zip " + appFullPath
-	out = tools.ExecOnHostWithLogs(cmd, true)
-
-	installAppStatus += out
-
-	// Error: No such container:path....
-
-	if strings.Contains(out, "Error") {
+	if err != nil {
 		resp.WriteHeader(400)
-		resp.Write([]byte("`index.zip` file extraction failed!"))
+		installingAppStatus[appStatusIndex].done = true
+		tools.SendJSON(resp, err.Error())
 		return
 	}
+
+	installingAppStatus[appStatusIndex].log += "\nTermporary container created\n"
+
+	/*-----------*/
+
+	cmd = "mkdir -p \"" + appsDirectoryOnHost + repoName + "\" ;"
+	cmd = "mkdir -p \"" + appFullPath + "\""
+	out, err = tools.ExecOnHostWithLogs(cmd, true)
+	if err != nil {
+		resp.WriteHeader(400)
+		installingAppStatus[appStatusIndex].done = true
+		tools.SendJSON(resp, err.Error())
+		return
+	}
+
+	/*-----------*/
+
+	cmd = "docker cp " + containerID + ":/index.zip " + appFullPath + "/"
+	out, err = tools.ExecOnHostWithLogs(cmd, true)
+
+	installingAppStatus[appStatusIndex].log += out
+
+	if err != nil {
+		resp.WriteHeader(400)
+		installingAppStatus[appStatusIndex].done = true
+		tools.SendJSON(resp, "`index.zip` file extraction failed!")
+		return
+	}
+
+	/*-----------*/
 
 	cmd = "docker rm " + containerID
-	out = tools.ExecOnHostWithLogs(cmd, true)
+	out, _ = tools.ExecOnHostWithLogs(cmd, true)
+
+	/*-----------*/
 
 	cmd = "unzip -o " + appFullPath + "/index.zip -d " + appFullPath
-	out = tools.ExecOnHostWithLogs(cmd, true)
+	out, err = tools.ExecOnHostWithLogs(cmd, true)
 
-	if strings.Contains(out, "cannot find") {
-		installAppStatus += out
+	if err != nil {
+		installingAppStatus[appStatusIndex].log += out
+		installingAppStatus[appStatusIndex].done = true
 		resp.WriteHeader(400)
-		resp.Write([]byte("Could not unzip `index.zip`!"))
+		tools.SendJSON(resp, "Could not unzip `index.zip`!")
 		return
 	}
+
+	/*-----------*/
 
 	/*outJson, err := json.Marshal( out)
 	if( err != nil) {
 		log.Printf( "[Err   ] %s", err.Error())
 	}/**/
 
-	installAppStatus += "\nAll done :)"
-	resp.Write([]byte("Install successfull"))
-
+	installingAppStatus[appStatusIndex].log += "\nAll done :)"
+	installingAppStatus[appStatusIndex].done = true
+	tools.SendJSON(resp, "Install successfull")
 }
 
 /*-----------------------------*/
@@ -319,17 +419,21 @@ func PostApp(resp http.ResponseWriter, req *http.Request, params routing.Params)
 	if appConfig.Action != "" {
 
 		cmd := ""
-		if appConfig.Action == "uninstall" {
-			cmd = "docker stop " + appID
-			cmd += " ; docker rm --force " + appID
-			cmd += " ; rm -r \"" + appFullPath + "\""
+		// if appConfig.Action == "uninstall" {
+		// 	cmd = "docker stop " + appID
+		// 	cmd += " ; docker rm --force " + appID
+		// 	cmd += " ; rm -r \"" + appFullPath + "\""
 
-		} else {
+		// } else {
 
-			cmd = "cd \"" + appFullPath + "\"; docker-compose " + appConfig.Action
+		cmd = "cd \"" + appFullPath + "\"; docker-compose " + appConfig.Action
+		// }
+
+		out, err := tools.ExecOnHostWithLogs(cmd, true)
+		if err != nil {
+			log.Printf("[Err   ] %s ", err.Error())
+			out = err.Error()
 		}
-
-		out := tools.ExecOnHostWithLogs(cmd, true)
 		if out == "" {
 			out = "[ " + appConfig.Action + " ] done"
 		}
@@ -344,7 +448,12 @@ func PostApp(resp http.ResponseWriter, req *http.Request, params routing.Params)
 	if appConfig.Restart != "" {
 
 		cmd := "docker update --restart=" + appConfig.Restart + " " + appID
-		out := tools.ExecOnHostWithLogs(cmd, true)
+		out, err := tools.ExecOnHostWithLogs(cmd, true)
+
+		if err != nil {
+			log.Printf("[Err   ] %s ", err.Error())
+			out = err.Error()
+		}
 
 		if out == "" {
 			out = "Restart policy set to [ " + appConfig.Restart + " ]"
@@ -375,15 +484,26 @@ func DeleteApp(resp http.ResponseWriter, req *http.Request, params routing.Param
 
 	/*------*/
 
-	cmd := "docker stop " + appID
-	cmd += " ; docker rm --force " + appID
+	cmd := "docker stop \"" + appID + "\"; "
+	cmd += "docker rm --force \"" + appID + "\"; "
 
 	if !keepConfig {
-		cmd += " ; rm -r \"" + appFullPath + "\""
+		cmd += "rm -r \"" + appFullPath + "\""
+
+	} else {
+
+		cmd += "rm \"" + appFullPath + "/package.json\""
 	}
 
-	out := tools.ExecOnHostWithLogs(cmd, true)
-	if out == "" {
+	out, err := tools.ExecOnHostWithLogs(cmd, true)
+	if err != nil {
+		log.Printf("[Err   ] %s ", err.Error())
+		out = err.Error()
+	}
+
+	log.Printf("[Info   ] DELETE App: %s\n\t%v\n", appID, out)
+
+	if len(out) == 0 {
 		if keepConfig {
 			out = "Uninstallation done, but the config is not deleted"
 		} else {
@@ -392,6 +512,74 @@ func DeleteApp(resp http.ResponseWriter, req *http.Request, params routing.Param
 	}
 
 	tools.SendJSON(resp, out)
+}
+
+/*-----------------------------*/
+
+// HandleAppProxyRequest implements GET and POST /apps/{app_id}/*file_path
+func HandleAppProxyRequest(resp http.ResponseWriter, req *http.Request, params routing.Params) {
+
+	//TODO: We need a security mechanism here in order to prevent calls to internal parts
+
+	appID := params.ByName("app_id")
+
+	socketAddr := appsDirectoryMapped + "/" + strings.Replace(appID, ".", "/", 1) + "/conf/socket.sock"
+
+	httpc := http.Client{
+		Transport: &http.Transport{
+			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
+				return net.Dial("unix", socketAddr)
+			},
+		},
+	}
+
+	filePath := params.ByName("file_path")
+
+	var socketResponse *http.Response
+	var err error
+
+	switch req.Method {
+	case http.MethodGet:
+		socketResponse, err = httpc.Get("http://localhost/" + filePath)
+		break
+
+	case http.MethodPost:
+		socketResponse, err = httpc.Post(
+			"http://localhost/"+filePath,
+			req.Header.Get("Content-Type"),
+			req.Body)
+		break
+
+	}
+
+	if err != nil {
+		log.Printf("[Err   ]: %s ", err.Error())
+		resp.WriteHeader(500)
+		resp.Write([]byte(err.Error()))
+		return
+	}
+
+	if socketResponse.StatusCode != 200 {
+		log.Printf("[Err]: Status Code: %v ", socketResponse.StatusCode)
+		resp.WriteHeader(socketResponse.StatusCode)
+		resp.Write([]byte(socketResponse.Status))
+		return
+	}
+
+	body, err := ioutil.ReadAll(socketResponse.Body)
+	if err != nil {
+		log.Printf("[Err   ]: %s ", err.Error())
+		resp.WriteHeader(500)
+		resp.Write([]byte(err.Error()))
+		return
+	}
+
+	// We have issue that unix socket does not set corret mime type for css
+	if strings.HasSuffix(filePath, ".css") {
+		resp.Header().Set("Content-Type", "text/css; charset=utf-8")
+	}
+
+	resp.Write(body)
 }
 
 /*-----------------------------*/

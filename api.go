@@ -16,13 +16,25 @@ func init() {
 	router.POST("/auth/token", api.GetDevices)
 	router.GET("/auth/permissions", api.GetDevices)
 
+	//Apps
+
+	router.GET("/apps", api.GetApps)
+	router.GET("/apps/:app_id", api.GetApp)
+
+	router.POST("/apps/:app_id", api.PostApp)
+	router.DELETE("/apps/:app_id", api.DeleteApp)
+
+	router.POST("/apps", api.PostApps) // install a new app
+
 	// Device Endpoints
 
 	router.GET("/devices", api.GetDevices)
 	router.GET("/devices/:device_id", api.GetDevice)
 	router.POST("/devices", api.PostDevice)
 	router.DELETE("/devices/:device_id", api.DeleteDevice)
+	router.GET("/devices/:device_id/name", api.GetDeviceName)
 	router.POST("/devices/:device_id/name", api.PostDeviceName)
+	router.GET("/devices/:device_id/meta", api.GetDeviceMeta)
 	router.POST("/devices/:device_id/meta", api.PostDeviceMeta)
 
 	// Sensor Endpoints
@@ -61,6 +73,8 @@ func init() {
 
 	router.GET("/device", api.GetCurrentDevice)
 	router.GET("/device/id", api.GetCurrentDeviceID)
+	router.GET("/device/name", api.GetCurrentDeviceName)
+	router.GET("/device/meta", api.GetCurrentDeviceMeta)
 	router.POST("/device/name", api.PostCurrentDeviceName)
 	router.POST("/device/meta", api.PostCurrentDeviceMeta)
 

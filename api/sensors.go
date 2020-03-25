@@ -10,7 +10,6 @@ import (
 	"github.com/Waziup/wazigate-edge/clouds"
 	"github.com/Waziup/wazigate-edge/edge"
 	"github.com/Waziup/wazigate-edge/tools"
-	"github.com/globalsign/mgo/bson"
 	routing "github.com/julienschmidt/httprouter"
 )
 
@@ -216,18 +215,10 @@ func getReqSensor(req *http.Request, sensor *edge.Sensor) error {
 		return err
 	}
 
-	now := time.Now()
-	sensor.Time = noTime
-	sensor.Modified = now
-	sensor.Created = now
-
 	err = json.Unmarshal(body, &sensor)
 	if err != nil {
 		return err
 	}
 
-	if sensor.ID == "" {
-		sensor.ID = bson.NewObjectId().Hex()
-	}
 	return nil
 }

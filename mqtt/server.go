@@ -83,8 +83,8 @@ type server struct {
 
 	MaxPending int
 
-	sessions      map[string]*Client
-	sessionsMutex sync.Mutex
+	// sessions      map[string]*Client
+	// sessionsMutex sync.Mutex
 
 	log      *log.Logger
 	LogLevel LogLevel
@@ -97,9 +97,9 @@ type Authenticate func(client *Client, auth *ConnectAuth) ConnectCode
 func NewServer(auth Authenticate, log *log.Logger, ll LogLevel) Server {
 
 	server := &server{
-		auth:       auth,
-		topics:     newTopic(nil, ""),
-		sessions:   make(map[string]*Client),
+		auth:   auth,
+		topics: newTopic(nil, ""),
+		// sessions:   make(map[string]*Client),
 		log:        log,
 		LogLevel:   ll,
 		MaxPending: MaxPending,
@@ -109,16 +109,16 @@ func NewServer(auth Authenticate, log *log.Logger, ll LogLevel) Server {
 }
 
 func (server *server) Close() error {
-	server.sessionsMutex.Lock()
-	sessions := server.sessions
-	server.sessions = nil
-	for _, client := range sessions {
-		client.Disconnect()
-	}
-	server.sessionsMutex.Unlock()
-	for _, client := range sessions {
-		server.Disconnect(client, ErrServerClose)
-	}
+	// server.sessionsMutex.Lock()
+	// sessions := server.sessions
+	// server.sessions = nil
+	// for _, client := range sessions {
+	// 	client.Disconnect()
+	// }
+	// server.sessionsMutex.Unlock()
+	// for _, client := range sessions {
+	// 	server.Disconnect(client, ErrServerClose)
+	// }
 	return nil
 }
 
@@ -197,18 +197,18 @@ func (server *server) Serve(stream Stream) {
 
 	connectPkt = nil
 
-	server.sessionsMutex.Lock()
-	oldClient := server.sessions[client.id]
-	server.sessions[client.id] = client
-	server.sessionsMutex.Unlock()
+	// server.sessionsMutex.Lock()
+	// oldClient := server.sessions[client.id]
+	// server.sessions[client.id] = client
+	// server.sessionsMutex.Unlock()
 
-	if oldClient != nil {
-		if server.log != nil && server.LogLevel >= LogLevelVerbose {
-			server.log.Printf("%.24q Session overtake", id)
-		}
-		oldClient.Disconnect()
-		s.Disconnect(oldClient, ErrSessionOvertake)
-	}
+	// if oldClient != nil {
+	// 	if server.log != nil && server.LogLevel >= LogLevelVerbose {
+	// 		server.log.Printf("%.24q Session overtake", id)
+	// 	}
+	// 	oldClient.Disconnect()
+	// 	s.Disconnect(oldClient, ErrSessionOvertake)
+	// }
 
 	client.Send(ConnAck(CodeAccepted, false))
 
@@ -269,17 +269,17 @@ func (server *server) Serve(stream Stream) {
 		}
 	}
 
-	server.sessionsMutex.Lock()
-	oldClient = server.sessions[id]
-	if oldClient == client {
-		delete(server.sessions, id)
-	}
-	server.sessionsMutex.Unlock()
+	// server.sessionsMutex.Lock()
+	// oldClient = server.sessions[id]
+	// if oldClient == client {
+	// 	delete(server.sessions, id)
+	// }
+	// server.sessionsMutex.Unlock()
 
-	if oldClient == client {
-		client.Disconnect()
-		s.Disconnect(client, err)
-	}
+	// if oldClient == client {
+	// 	client.Disconnect()
+	// 	s.Disconnect(client, err)
+	// }
 }
 
 func (server *server) Publish(sender Sender, msg *Message) int {

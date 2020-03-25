@@ -181,6 +181,9 @@ func Serve(resp http.ResponseWriter, req *http.Request) int {
 			strings.HasSuffix(req.RequestURI, ".map") ||
 			strings.HasSuffix(req.RequestURI, ".png") ||
 			strings.HasSuffix(req.RequestURI, ".svg") ||
+			strings.HasSuffix(req.RequestURI, ".woff") ||
+			strings.HasSuffix(req.RequestURI, ".woff2") ||
+			strings.HasSuffix(req.RequestURI, ".ttf") ||
 			strings.HasSuffix(req.RequestURI, ".html") {
 
 			static.ServeHTTP(&wrapper, req)

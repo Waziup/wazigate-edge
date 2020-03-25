@@ -27,7 +27,7 @@ func GetActuatorValue(resp http.ResponseWriter, req *http.Request, params routin
 // GetDeviceActuatorValues implements GET /devices/{deviceID}/actuators/{actuatorID}/values
 func GetDeviceActuatorValues(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
-	var query edge.Query
+	var query edge.ValuesQuery
 	if err := query.Parse(req); err != "" {
 		http.Error(resp, "bad request: "+err, http.StatusBadRequest)
 		return
@@ -38,7 +38,7 @@ func GetDeviceActuatorValues(resp http.ResponseWriter, req *http.Request, params
 // GetActuatorValues implements GET /actuators/{actuatorID}/values
 func GetActuatorValues(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
-	var query edge.Query
+	var query edge.ValuesQuery
 	if err := query.Parse(req); err != "" {
 		http.Error(resp, "bad request: "+err, http.StatusBadRequest)
 		return
@@ -85,7 +85,7 @@ func getLastActuatorValue(resp http.ResponseWriter, deviceID string, actuatorID 
 	resp.Write(data)
 }
 
-func getActuatorValues(resp http.ResponseWriter, deviceID string, actuatorID string, query *edge.Query) {
+func getActuatorValues(resp http.ResponseWriter, deviceID string, actuatorID string, query *edge.ValuesQuery) {
 
 	values := edge.GetActuatorValues(deviceID, actuatorID, query)
 	encoder := json.NewEncoder(resp)

@@ -131,10 +131,12 @@ func (cloud *Cloud) persistentSync() (int, error) {
 	ent, status, wakeup := cloud.nextEntity()
 	for status == nil && !cloud.Pausing {
 		now := time.Now()
-		timer := time.NewTimer(wakeup.Sub(now))
+		wait := wakeup.Sub(now)
+		timer := time.NewTimer(wait)
+		log.Printf("[UP   ] The cloud will sleep for %s ... zZzZ", wait)
 		select {
-		case ent := <-cloud.sigDirty:
-			log.Printf("[UP   ] Wakeup on flagged entity %q.", ent)
+		case <-cloud.wakeup:
+			log.Printf("[UP   ] Wakeup on flagged entity.")
 		case <-timer.C:
 			log.Printf("[UP   ] Wakeup on timer.")
 		}
@@ -291,7 +293,7 @@ func (cloud *Cloud) processEntity(ent Entity, status *Status) (int, error) {
 	if status.Action&ActionSync != 0 {
 		// log.Printf("[UP   ] Pushing values %s/%s ...", ent.Device, ent.Sensor)
 
-		query := &edge.Query{
+		query := &edge.ValuesQuery{
 			From:  status.Remote,
 			Size:  1024 * 1024,
 			Limit: 30000,
@@ -301,10 +303,10 @@ func (cloud *Cloud) processEntity(ent Entity, status *Status) (int, error) {
 		remote, n, code, err := cloud.postValues(ent.Device, ent.Sensor, values)
 		if err == nil {
 			if n == 0 {
-				// log.Printf("[UP   ] Values are now up-to-date.")
 				cloud.flag(ent, -ActionSync, noTime, nil)
+				log.Printf("[UP   ] Values for this entity are now up-to-date.")
 			} else {
-				// log.Printf("[UP   ] Pushed %d values successfull until %s.", n, remote.UTC())
+				log.Printf("[UP   ] Pushed %d values until %s, buffered %s.", n, remote.UTC(), remote.Sub(status.Remote))
 				cloud.flag(ent, 0, remote.Add(time.Second), nil)
 			}
 		}

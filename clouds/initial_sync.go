@@ -108,7 +108,7 @@ func (cloud *Cloud) initialSync() int {
 	cloud.mqttMutex.Unlock()
 
 	// Get all devices from this gateway and compare them with the cloud
-	devices := edge.GetDevices()
+	devices := edge.GetDevices(nil)
 	for device, err := devices.Next(); err == nil; device, err = devices.Next() {
 		// log.Printf("[UP   ] Checking device %q ...", device.ID)
 
@@ -147,11 +147,11 @@ func (cloud *Cloud) initialSync() int {
 				// }
 				for _, s := range device2.Sensors {
 					if s.ID == sensor.ID {
-						if sensor.Time != noTime {
+						if sensor.Time != nil {
 							if s.Value == nil {
 								cloud.flag(Entity{device.ID, sensor.ID, ""}, ActionSync, noTime, meta)
 								// log.Printf("[UP   ] Sensor %q outdated! No time.", sensor.ID)
-							} else if s.Value.Time.Add(time.Second).Before(sensor.Time) {
+							} else if s.Value.Time.Add(time.Second).Before(*sensor.Time) {
 								cloud.flag(Entity{device.ID, sensor.ID, ""}, ActionSync, s.Value.Time, meta)
 								// log.Printf("[UP   ] Sensor %q outdated! Last value %v (latest: %v).", sensor.ID, s.Value.Time, sensor.Time)
 							} else {

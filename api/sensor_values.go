@@ -27,7 +27,7 @@ func GetSensorValue(resp http.ResponseWriter, req *http.Request, params routing.
 // GetDeviceSensorValues implements GET /devices/{deviceID}/sensors/{sensorID}/values
 func GetDeviceSensorValues(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
-	var query edge.Query
+	var query edge.ValuesQuery
 	if err := query.Parse(req); err != "" {
 		http.Error(resp, "bad request: "+err, http.StatusBadRequest)
 		return
@@ -38,7 +38,7 @@ func GetDeviceSensorValues(resp http.ResponseWriter, req *http.Request, params r
 // GetSensorValues implements GET /sensors/{sensorID}/values
 func GetSensorValues(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
-	var query edge.Query
+	var query edge.ValuesQuery
 	if err := query.Parse(req); err != "" {
 		http.Error(resp, "bad request: "+err, http.StatusBadRequest)
 		return
@@ -85,7 +85,7 @@ func getLastSensorValue(resp http.ResponseWriter, deviceID string, sensorID stri
 	resp.Write(data)
 }
 
-func getSensorValues(resp http.ResponseWriter, deviceID string, sensorID string, query *edge.Query) {
+func getSensorValues(resp http.ResponseWriter, deviceID string, sensorID string, query *edge.ValuesQuery) {
 
 	values := edge.GetSensorValues(deviceID, sensorID, query)
 	encoder := json.NewEncoder(resp)

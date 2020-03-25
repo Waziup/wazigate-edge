@@ -310,7 +310,7 @@ func (client *Client) Unsubscribe(topics ...string) {
 		return
 	}
 
-	subs := make([]*Subscription, len(topics))
+	subs := make([]*Subscription, 0, len(topics))
 	for _, topic := range topics {
 
 		if sub, ok := client.subscriptions[topic]; ok {

@@ -2,11 +2,14 @@ package tools
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"io/ioutil"
+	"log"
 	"net"
 	"net/http"
+	"strings"
 )
 
 type ClosingBuffer struct {
@@ -57,3 +60,86 @@ func GetMACAddr() (addr string) {
 	}
 	return
 }
+
+/*-----------------------------*/
+
+// ExecOnHostWithLogs runs bash commands on the host through a unix socket
+func ExecOnHostWithLogs(cmd string, withLogs bool) string {
+
+	if withLogs {
+		log.Printf("[Exec  ]: Host Command [ %s ]", cmd)
+	}
+
+	//Later we may change this with an env var
+	return SockPostReqest("/var/run/wazigate-host.sock", "cmd", cmd)
+}
+
+/*-----------------------------*/
+
+// SockGetReqest makes a request to a unix socket
+// ex:	SockGetReqest( "/var/run/wazigate-host.sock", "/")
+func SockGetReqest(socketAddr string, API string) string {
+
+	httpc := http.Client{
+		Transport: &http.Transport{
+			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
+				return net.Dial("unix", socketAddr)
+			},
+		},
+	}
+
+	response, err := httpc.Get("http://localhost/" + API)
+
+	if err != nil {
+		log.Printf("[Err   ]: %s ", err.Error())
+		return ""
+	}
+
+	if response.StatusCode != 200 {
+		log.Printf("[Err]: Status Code: %v ", response.StatusCode)
+		return ""
+	}
+
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		log.Printf("[Err   ]: %s ", err.Error())
+		return ""
+	}
+	return string(body)
+}
+
+/*-----------------------------*/
+
+// SockPostReqest makes a POST request to a unix socket
+// ex (post Request):	SockPostReqest( "/var/run/wazigate-host.sock", "cmd", "ls -a")
+func SockPostReqest(socketAddr string, API string, postValues string) string {
+
+	httpc := http.Client{
+		Transport: &http.Transport{
+			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
+				return net.Dial("unix", socketAddr)
+			},
+		},
+	}
+
+	response, err := httpc.Post("http://localhost/"+API, "application/json", strings.NewReader(postValues))
+
+	if err != nil {
+		log.Printf("[Err   ]: %s ", err.Error())
+		return ""
+	}
+
+	if response.StatusCode != 200 {
+		log.Printf("[Err]: Status Code: %v ", response.StatusCode)
+		return ""
+	}
+
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		log.Printf("[Err   ]: %s ", err.Error())
+		return ""
+	}
+	return string(body)
+}
+
+/*-----------------------------*/

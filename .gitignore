@@ -9,3 +9,4 @@ __debug_bin
 
 # NPM
 node_modules
+/.project

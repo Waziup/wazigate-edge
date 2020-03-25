@@ -1,19 +1,16 @@
 FROM golang:1.12-alpine AS development
 
-ENV PROJECT_PATH=/wazigate-edge
-ENV PATH=$PATH:$PROJECT_PATH/build
 ENV CGO_ENABLED=0
 
-RUN apk add --no-cache ca-certificates tzdata make git bash
+RUN apk add --no-cache ca-certificates tzdata git
 
-RUN mkdir -p $PROJECT_PATH
-COPY . $PROJECT_PATH
-WORKDIR $PROJECT_PATH
+COPY . /wazigate-edge
+WORKDIR /wazigate-edge
 
-RUN export branch=$(git rev-parse --abbrev-ref HEAD);
-RUN export version=$(git describe --always);
 
-RUN go build -ldflags "-s -w -X main.version=$version -X main.branch=$branch" -o build/wazigate-edge .
+# WAZIGATE_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+# WAZIGATE_VERSION=$(git describe --always);
+RUN go build -ldflags "-s -w -X main.version=$WAZIGATE_VERSION -X main.branch=$WAZIGATE_BRANCH" -o build/wazigate-edge .
 
 FROM alpine:latest AS production
 

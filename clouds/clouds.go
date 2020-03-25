@@ -101,8 +101,8 @@ type Cloud struct {
 	Status      map[Entity]*Status `json:"-"`
 	StatusMutex sync.Mutex         `json:"-"`
 
-	sigDirty chan Entity
-	auth     string
+	wakeup chan struct{}
+	auth   string
 }
 
 // Clouds lists all clouds that we synchronize.
@@ -192,16 +192,19 @@ func FlagActuator(deviceID string, actuatorID string, action Action, time time.T
 // FlagDevice marks the device as dirty.
 func (cloud *Cloud) FlagDevice(deviceID string, action Action, meta edge.Meta) {
 	cloud.flag(Entity{deviceID, "", ""}, action, noTime, meta)
+	cloud.Wakeup()
 }
 
 // FlagSensor marks the sensor as dirty.
 func (cloud *Cloud) FlagSensor(deviceID string, sensorID string, action Action, time time.Time, meta edge.Meta) {
 	cloud.flag(Entity{deviceID, sensorID, ""}, action, time, meta)
+	cloud.Wakeup()
 }
 
 // FlagActuator marks the actuator as dirty.
 func (cloud *Cloud) FlagActuator(deviceID string, actuatorID string, action Action, time time.Time, meta edge.Meta) {
 	cloud.flag(Entity{deviceID, "", actuatorID}, action, time, meta)
+	cloud.Wakeup()
 }
 
 // ResetStatus clears the status field.
@@ -242,12 +245,13 @@ func (cloud *Cloud) flag(ent Entity, action Action, remote time.Time, meta edge.
 				delete(cloud.Status, ent)
 			} else if action == 0 {
 				status.Wakeup = now.Add(status.Sleep)
+				status.Remote = remote
 			} else {
 				if action < 0 {
 					status.Action = status.Action ^ -action
-					if action == -ActionSync {
-						status.Wakeup = now.Add(status.Sleep)
-					}
+					// if action == -ActionSync {
+					// 	status.Wakeup = now.Add(status.Sleep)
+					// }
 					if status.Action == 0 {
 						if !now.Before(status.Wakeup) {
 							delete(cloud.Status, ent)
@@ -280,10 +284,13 @@ func (cloud *Cloud) flag(ent Entity, action Action, remote time.Time, meta edge.
 		if statusCallback != nil {
 			statusCallback(cloud, ent, status)
 		}
-		select {
-		case cloud.sigDirty <- ent:
-		default: // channel full
-		}
+	}
+}
+
+func (cloud *Cloud) Wakeup() {
+	select {
+	case cloud.wakeup <- struct{}{}:
+	default: // channel full
 	}
 }
 

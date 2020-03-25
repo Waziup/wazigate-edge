@@ -1,12 +1,27 @@
 package edge
 
-import "time"
+import (
+	"log"
+	"os"
+	"time"
+)
 
 // Meta holds entity metadata.
 type Meta map[string]interface{}
 
 // DefaultInterval for sync.
-const DefaultInterval = time.Minute * 5
+var DefaultInterval = time.Second * 5
+
+func init() {
+	defaultDelay := os.Getenv("WAZIGATE_EDGE_DELAY")
+	if defaultDelay != "" {
+		duration, err := time.ParseDuration(defaultDelay)
+		if err != nil {
+			log.Panicf("WAZIGATE_EDGE_DELAY is not a valid duration.\nSee https://pkg.go.dev/time?tab=doc#ParseDuration")
+		}
+		DefaultInterval = duration
+	}
+}
 
 // SyncInterval = min time between syncs
 func (meta Meta) SyncInterval() time.Duration {

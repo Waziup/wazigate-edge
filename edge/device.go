@@ -5,6 +5,7 @@ import (
 	"io"
 	"net"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -64,6 +65,11 @@ var localID string
 
 // LocalID returns the ID of this device
 func LocalID() string {
+	if localID != "" {
+		return localID
+	}
+
+	localID = os.Getenv("WAZIGATE_ID")
 	if localID != "" {
 		return localID
 	}

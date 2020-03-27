@@ -149,14 +149,24 @@ func SetSensorName(deviceID string, sensorID string, name string) (Meta, error) 
 // SetSensorMeta changes this sensors metadata.
 func SetSensorMeta(deviceID string, sensorID string, meta Meta) error {
 
+	var unset = bson.M{}
+	var set = bson.M{
+		"sensors.$.modified": time.Now(),
+	}
+	for key, value := range meta {
+		if value == nil {
+			unset["sensors.$.meta."+key] = 1
+		} else {
+			set["sensors.$.meta."+key] = value
+		}
+	}
+
 	err := dbDevices.Update(bson.M{
 		"_id":        deviceID,
 		"sensors.id": sensorID,
 	}, bson.M{
-		"$set": bson.M{
-			"sensors.$.modified": time.Now(),
-			"sensors.$.meta":     meta,
-		},
+		"$set":   set,
+		"$unset": unset,
 	})
 
 	if err != nil {

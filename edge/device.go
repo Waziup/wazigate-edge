@@ -291,11 +291,21 @@ func SetDeviceName(deviceID string, name string) (Meta, error) {
 // SetDeviceMeta changes a device metadata.
 func SetDeviceMeta(deviceID string, meta Meta) error {
 
+	var unset = bson.M{}
+	var set = bson.M{
+		"modified": time.Now(),
+	}
+	for key, value := range meta {
+		if value == nil {
+			unset["meta."+key] = 1
+		} else {
+			set["meta."+key] = value
+		}
+	}
+
 	err := dbDevices.UpdateId(deviceID, bson.M{
-		"$set": bson.M{
-			"modified": time.Now(),
-			"meta":     meta,
-		},
+		"$set":   set,
+		"$unset": unset,
 	})
 
 	if err != nil {

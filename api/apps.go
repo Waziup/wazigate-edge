@@ -1,11 +1,10 @@
 package api
 
 import (
-	"context"
 	"encoding/json"
 	"io/ioutil"
 	"log"
-	"net"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -19,7 +18,9 @@ import (
 const appsDirectoryOnHost = "../apps/"
 
 // The apps folder is also mapped to make it easier and faster for some operation
-const appsDirectoryMapped = "./apps"
+const appsDirectoryMapped = "/root/apps"
+
+const dockerSocketAddress = "/var/run/docker.sock"
 
 /*-----------------------------*/
 
@@ -65,7 +66,9 @@ func GetApps(resp http.ResponseWriter, req *http.Request, params routing.Params)
 
 func getListOfAvailableApps() []map[string]interface{} {
 
-	url := "http://localhost/available-apps.json"
+	// I keep it hard-coded because later we can update this via update the edge through the update mechanism ;)
+	// url := "http://localhost/available-apps.json"
+	url := "https://raw.githack.com/Waziup/wazigate-dashboard/master/available-apps.json"
 	var out []map[string]interface{}
 
 	resp, err := http.Get(url)
@@ -124,14 +127,11 @@ func getListOfInstalledApps() []map[string]interface{} {
 
 /*-----------------------------*/
 
-/*-----------------------------*/
-
 // GetApp implements GET /apps/{app_id}
 // GetApp implements GET /apps/{app_id}?install_logs
 func GetApp(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
 	appID := params.ByName("app_id")
-	appPath := strings.Replace(appID, ".", "/", 1)
 
 	/*----------*/
 
@@ -156,11 +156,33 @@ func GetApp(resp http.ResponseWriter, req *http.Request, params routing.Params) 
 	}
 
 	/*----------*/
+	
+	out := getAppInfo( appID);
 
-	cmd := "docker inspect " + appID
-	dockerJSONRaw, _ := tools.ExecOnHostWithLogs(cmd, true)
+	if out == nil{
+		resp.Write([]byte("{}"))
+		return
+	}
 
-	var dockerJSON []struct {
+	/*----------*/
+
+	tools.SendJSON(resp, out)
+
+}
+
+/*-----------------------------*/
+
+
+func getAppInfo( appID string) map[string]interface{}{
+
+	appPath := strings.Replace(appID, ".", "/", 1)
+	
+	// cmd := "docker inspect " + appID
+	// dockerJSONRaw, _ := tools.ExecOnHostWithLogs(cmd, true)
+
+	dockerJSONRaw, _ := tools.SockGetReqest( dockerSocketAddress, "containers/"+ appID +"/json" )
+
+	var dockerJSON struct {
 		State struct {
 			Status     string `json:"Status"`
 			Running    bool   `json:"Running"`
@@ -181,22 +203,22 @@ func GetApp(resp http.ResponseWriter, req *http.Request, params routing.Params) 
 
 	var dockerState map[string]interface{}
 
-	if dockerJSONRaw != "" {
-		if err := json.Unmarshal([]byte(dockerJSONRaw), &dockerJSON); err != nil {
+	if dockerJSONRaw != nil {
+		if err := json.Unmarshal(dockerJSONRaw, &dockerJSON); err != nil {
 
 			log.Printf("[Err   ] docker_inspect: %s", err.Error())
 
 		} else {
 
 			dockerState = map[string]interface{}{
-				"Status":        dockerJSON[0].State.Status,
-				"Running":       dockerJSON[0].State.Running,
-				"Paused":        dockerJSON[0].State.Paused,
-				"Error":         dockerJSON[0].State.Error,
-				"StartedAt":     dockerJSON[0].State.StartedAt,
-				"FinishedAt":    dockerJSON[0].State.FinishedAt,
-				"Health":        dockerJSON[0].State.Health.Status,
-				"RestartPolicy": dockerJSON[0].HostConfig.RestartPolicy.Name,
+				"Status":        dockerJSON.State.Status,
+				"Running":       dockerJSON.State.Running,
+				"Paused":        dockerJSON.State.Paused,
+				"Error":         dockerJSON.State.Error,
+				"StartedAt":     dockerJSON.State.StartedAt,
+				"FinishedAt":    dockerJSON.State.FinishedAt,
+				"Health":        dockerJSON.State.Health.Status,
+				"RestartPolicy": dockerJSON.HostConfig.RestartPolicy.Name,
 			}
 		}
 	}
@@ -206,23 +228,23 @@ func GetApp(resp http.ResponseWriter, req *http.Request, params routing.Params) 
 	bytes, err := ioutil.ReadFile(appsDirectoryMapped + "/" + appPath + "/package.json")
 	if err != nil {
 		// resp.WriteHeader(404)
-		resp.Write([]byte("{}"))
+		
 		log.Printf("[Err   ] package.json: %s", err.Error())
-		return
+		return nil
 	}
 
 	var appPkg map[string]interface{}
 
 	if err := json.Unmarshal(bytes, &appPkg); err != nil {
 		// resp.WriteHeader(404)
-		resp.Write([]byte("{}"))
+		
 		log.Printf("[Err   ] package.json: %s", err.Error())
-		return
+		return nil
 	}
 
 	/*------*/
 
-	out := map[string]interface{}{
+	return map[string]interface{}{
 		"id":          appID,
 		"name":        appPkg["name"],
 		"author":      appPkg["author"],
@@ -233,16 +255,6 @@ func GetApp(resp http.ResponseWriter, req *http.Request, params routing.Params) 
 		"package":     appPkg["wazigate"],
 	}
 
-	tools.SendJSON(resp, out)
-
-	// outJSON, err := json.Marshal(out)
-	// if err != nil {
-	// 	log.Printf("[Err   ] %s", err.Error())
-	// 	resp.WriteHeader(500)
-	// 	resp.Write([]byte(err.Error()))
-	// }
-
-	// resp.Write([]byte(outJSON))
 }
 
 /*-----------------------------*/
@@ -305,6 +317,8 @@ func PostApps(resp http.ResponseWriter, req *http.Request, params routing.Params
 
 	installingAppStatus[appStatusIndex].log += "\nDownloading [ " + appName + " : " + tag + " ] \n"
 
+	// out, err := tools.SockPostReqest( dockerSocketAddress, "containers/create", imageName)
+	
 	cmd := "docker pull " + imageName
 	out, err := tools.ExecOnHostWithLogs(cmd, true)
 
@@ -319,6 +333,8 @@ func PostApps(resp http.ResponseWriter, req *http.Request, params routing.Params
 
 	/*-----------*/
 
+	// out, err = tools.SockPostReqest( dockerSocketAddress, "images/create", "{\"Image\": \""+ imageName +"\"}")
+	
 	cmd = "docker create " + imageName
 	containerID, err := tools.ExecOnHostWithLogs(cmd, true)
 
@@ -328,6 +344,21 @@ func PostApps(resp http.ResponseWriter, req *http.Request, params routing.Params
 		tools.SendJSON(resp, err.Error())
 		return
 	}
+
+
+	// dockerJSONRaw, _ := tools.SockGetReqest( dockerSocketAddress, "containers/"+ appID +"/json" )
+
+	// var dockerJSON struct {
+	// 	Image	string `json:"Image"`
+	// }
+
+	// if dockerJSONRaw != nil {
+	// 	if err := json.Unmarshal(dockerJSONRaw, &dockerJSON); err == nil {
+	// 		appImageID = dockerJSON.Image;
+	// 	}
+	// }	
+
+	// containerID := 
 
 	installingAppStatus[appStatusIndex].log += "\nTermporary container created\n"
 
@@ -377,6 +408,11 @@ func PostApps(resp http.ResponseWriter, req *http.Request, params routing.Params
 
 	/*-----------*/
 
+	cmd = "rm -f " + appFullPath + "/index.zip"
+	out, _ = tools.ExecOnHostWithLogs(cmd, true)
+
+	/*-----------*/
+
 	/*outJson, err := json.Marshal( out)
 	if( err != nil) {
 		log.Printf( "[Err   ] %s", err.Error())
@@ -405,7 +441,7 @@ func PostApp(resp http.ResponseWriter, req *http.Request, params routing.Params)
 	}
 
 	type _appConfig struct {
-		Action  string `json:"action" bson:"action"`   //"start" | "stop" | "uninstall"
+		Action  string `json:"action" bson:"action"`   //"start" | "stop" | "first-start"
 		Restart string `json:"restart" bson:"restart"` // "always" | "on-failure" | "unless-stopped" | "no"
 	}
 
@@ -418,16 +454,13 @@ func PostApp(resp http.ResponseWriter, req *http.Request, params routing.Params)
 
 	if appConfig.Action != "" {
 
-		cmd := ""
-		// if appConfig.Action == "uninstall" {
-		// 	cmd = "docker stop " + appID
-		// 	cmd += " ; docker rm --force " + appID
-		// 	cmd += " ; rm -r \"" + appFullPath + "\""
+		// /containers/{id}/start // docker-compose is much simpler to use than docker APIs
 
-		// } else {
+		cmd := "cd \"" + appFullPath + "\"; docker-compose " + appConfig.Action
 
-		cmd = "cd \"" + appFullPath + "\"; docker-compose " + appConfig.Action
-		// }
+		if appConfig.Action == "first-start" {
+			cmd = "cd \"" + appFullPath + "\"; docker-compose pull ; docker-compose up -d --no-build"
+		}
 
 		out, err := tools.ExecOnHostWithLogs(cmd, true)
 		if err != nil {
@@ -447,21 +480,23 @@ func PostApp(resp http.ResponseWriter, req *http.Request, params routing.Params)
 
 	if appConfig.Restart != "" {
 
-		cmd := "docker update --restart=" + appConfig.Restart + " " + appID
-		out, err := tools.ExecOnHostWithLogs(cmd, true)
+		// cmd := "docker update --restart=" + appConfig.Restart + " " + appID
+		// out, err := tools.ExecOnHostWithLogs(cmd, true)
+		 
+		updateStr := fmt.Sprintf( `{"RestartPolicy": { "Name": "%s"}}`, appConfig.Restart)
+		out, err := tools.SockPostReqest( dockerSocketAddress, "containers/"+ appID +"/update", updateStr)
 
 		if err != nil {
 			log.Printf("[Err   ] %s ", err.Error())
-			out = err.Error()
+			out = []byte( err.Error())
 		}
 
-		if out == "" {
-			out = "Restart policy set to [ " + appConfig.Restart + " ]"
+		if out == nil {
+			out = []byte( "Restart policy set to [ " + appConfig.Restart + " ]")
 		}
 
 		tools.SendJSON(resp, out)
 
-		// resp.Write([]byte(out))
 	}
 }
 
@@ -484,15 +519,38 @@ func DeleteApp(resp http.ResponseWriter, req *http.Request, params routing.Param
 
 	/*------*/
 
-	cmd := "docker stop \"" + appID + "\"; "
-	cmd += "docker rm --force \"" + appID + "\"; "
+	appImageID := ""
 
+	dockerJSONRaw, _ := tools.SockGetReqest( dockerSocketAddress, "containers/"+ appID +"/json" )
+
+	var dockerJSON struct {
+		Image	string `json:"Image"`
+	}
+
+	if dockerJSONRaw != nil {
+		if err := json.Unmarshal(dockerJSONRaw, &dockerJSON); err == nil {
+			appImageID = dockerJSON.Image;
+		}
+	}
+	
+	/*------*/
+
+	tools.SockDeleteReqest( dockerSocketAddress, "containers/"+ appID +"?force=true")
+	
+	if appImageID != ""{
+		tools.SockDeleteReqest( dockerSocketAddress, "images/"+ appImageID +"?force=true")
+	}
+
+	// Note: for the apps that have multiple containers and images, we need to find another way.
+	// Like this: docker-compose rm -fs
+
+	cmd := ""
 	if !keepConfig {
-		cmd += "rm -r \"" + appFullPath + "\""
+		cmd = "rm -r \"" + appFullPath + "\""
 
 	} else {
 
-		cmd += "rm \"" + appFullPath + "/package.json\""
+		cmd = "rm \"" + appFullPath + "/package.json\""
 	}
 
 	out, err := tools.ExecOnHostWithLogs(cmd, true)
@@ -516,59 +574,39 @@ func DeleteApp(resp http.ResponseWriter, req *http.Request, params routing.Param
 
 /*-----------------------------*/
 
-// HandleAppProxyRequest implements GET and POST /apps/{app_id}/*file_path
+// HandleAppProxyRequest implements GET, POST, PUT and DELETE /apps/{app_id}/*file_path
 func HandleAppProxyRequest(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
 	//TODO: We need a security mechanism here in order to prevent calls to internal parts
 
 	appID := params.ByName("app_id")
 
-	socketAddr := appsDirectoryMapped + "/" + strings.Replace(appID, ".", "/", 1) + "/conf/socket.sock"
+	/*----------*/
 
-	httpc := http.Client{
-		Transport: &http.Transport{
-			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
-				return net.Dial("unix", socketAddr)
-			},
-		},
-	}
-
+	socketAddr := appsDirectoryMapped + "/" + strings.Replace(appID, ".", "/", 1) + "/proxy.sock"
 	filePath := params.ByName("file_path")
 
-	var socketResponse *http.Response
-	var err error
-
-	switch req.Method {
-	case http.MethodGet:
-		socketResponse, err = httpc.Get("http://localhost/" + filePath)
-		break
-
-	case http.MethodPost:
-		socketResponse, err = httpc.Post(
-			"http://localhost/"+filePath,
-			req.Header.Get("Content-Type"),
-			req.Body)
-		break
-
-	}
+	socketResponse, err := tools.SocketReqest( socketAddr, filePath, req.Method, req.Header.Get("Content-Type"), req.Body)
 
 	if err != nil {
-		log.Printf("[Err   ]: %s ", err.Error())
+		log.Printf("[Proxy   ]: %s ", err.Error())
 		resp.WriteHeader(500)
-		resp.Write([]byte(err.Error()))
+		resp.Write([]byte( handleAppProxyError( appID )))
 		return
 	}
+	
+	/*----------*/
 
 	if socketResponse.StatusCode != 200 {
-		log.Printf("[Err]: Status Code: %v ", socketResponse.StatusCode)
+		log.Printf("[Proxy]: Status Code: %v ", socketResponse.StatusCode)
 		resp.WriteHeader(socketResponse.StatusCode)
-		resp.Write([]byte(socketResponse.Status))
-		return
+		// resp.Write([]byte(socketResponse.Status))
+		// return
 	}
-
+	
 	body, err := ioutil.ReadAll(socketResponse.Body)
 	if err != nil {
-		log.Printf("[Err   ]: %s ", err.Error())
+		log.Printf("[Proxy   ]: %s ", err.Error())
 		resp.WriteHeader(500)
 		resp.Write([]byte(err.Error()))
 		return
@@ -580,6 +618,46 @@ func HandleAppProxyRequest(resp http.ResponseWriter, req *http.Request, params r
 	}
 
 	resp.Write(body)
+}
+
+/*-----------------------------*/
+
+func handleAppProxyError( appID string) string{
+
+	appInfo := getAppInfo( appID);
+
+	appName := appID;
+	if( appInfo["name"] != nil){
+		appName = appInfo["name"].(string)
+	}
+
+	errMsg := ""
+	if( appInfo["package"] == nil){
+		
+		errMsg = "This app is not installed!"
+
+	}else if( appInfo["state"] == nil){
+		
+		errMsg = "This app has not launched yet!"
+
+	}else {
+		
+		errMsg = "This app is not running!"
+	}
+
+	return fmt.Sprintf( `<!DOCTYPE html>
+	<html>
+		<head>
+			<link rel="stylesheet" href="/dist/main.css">
+		</head>
+		<body>
+			<div class="error">
+				<h2>%s</h2>
+				<h4>Error on loading the app [ %s ]<h4>
+			</div>
+		</body>
+	</html>`, errMsg, appName);
+
 }
 
 /*-----------------------------*/

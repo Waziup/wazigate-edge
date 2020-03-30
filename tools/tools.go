@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"io"
 	"io/ioutil"
 	"log"
@@ -72,49 +71,72 @@ func ExecOnHostWithLogs(cmd string, withLogs bool) (string, error) {
 	}
 
 	//Later we may change this with an env var
-	return SockPostReqest("/var/run/wazigate-host.sock", "cmd", cmd)
+	out, err := SockPostReqest("/var/run/wazigate-host.sock", "cmd", cmd)
+	return string( out), err
 }
 
 /*-----------------------------*/
 
-// SockGetReqest makes a request to a unix socket
+// SockDeleteReqest makes a DELETE request to a unix socket
+// ex:	SockDeleteReqest( "/var/run/wazigate-host.sock", "containers/waziup.wazigate-test")
+func SockDeleteReqest(socketAddr string, API string) ([]byte, error) {
+
+	response, err := SocketReqest(socketAddr, API, "DELETE", "", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resBody, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return nil, err
+	}
+	return resBody, nil	
+}
+
+/*-----------------------------*/
+
+// SockGetReqest makes a GET request to a unix socket
 // ex:	SockGetReqest( "/var/run/wazigate-host.sock", "/")
-func SockGetReqest(socketAddr string, API string) (string, error) {
+func SockGetReqest(socketAddr string, API string) ([]byte, error) {
 
-	httpc := http.Client{
-		Transport: &http.Transport{
-			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
-				return net.Dial("unix", socketAddr)
-			},
-		},
-	}
-
-	response, err := httpc.Get("http://localhost/" + API)
-
+	response, err := SocketReqest(socketAddr, API, "GET", "", nil)
 	if err != nil {
-		log.Printf("[Err   ]: %s ", err.Error())
-		return "", err
+		return nil, err
 	}
 
-	if response.StatusCode != 200 {
-		log.Printf("[Err]: Status Code: %v ", response.StatusCode)
-		return "", errors.New(response.Status)
-	}
-
-	body, err := ioutil.ReadAll(response.Body)
+	resBody, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		log.Printf("[Err   ]: %s ", err.Error())
-		return "", err
+		return nil, err
 	}
-	return string(body), nil
+	return resBody, nil	
 }
 
 /*-----------------------------*/
 
 // SockPostReqest makes a POST request to a unix socket
 // ex (post Request):	SockPostReqest( "/var/run/wazigate-host.sock", "cmd", "ls -a")
-func SockPostReqest(socketAddr string, API string, postValues string) (string, error) {
+func SockPostReqest(socketAddr string, API string, postValues string) ([]byte, error) {
 
+	response, err := SocketReqest(socketAddr, API, "POST", "application/json", strings.NewReader(postValues))
+
+	if err != nil {
+		return nil, err
+	}
+
+	resBody, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return nil, err
+	}
+	return resBody, nil
+}
+
+/*-----------------------------*/
+
+// SocketReqest makes a request to a unix socket
+func SocketReqest(socketAddr string, url string, method string, contentType string, body io.Reader) (*http.Response, error) {
+
+	log.Printf("[SOCK ] `%s` %s \"%s\"", socketAddr, method, url)
+	
 	httpc := http.Client{
 		Transport: &http.Transport{
 			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
@@ -123,24 +145,25 @@ func SockPostReqest(socketAddr string, API string, postValues string) (string, e
 		},
 	}
 
-	response, err := httpc.Post("http://localhost/"+API, "application/json", strings.NewReader(postValues))
-
+	req, err := http.NewRequest( method, "http://localhost/"+url, body)
+	
 	if err != nil {
-		log.Printf("[Err   ]: %s ", err.Error())
-		return "", err
+		log.Printf("[Socket   ]: %s ", err.Error())
+		return nil, err
 	}
-
-	if response.StatusCode != 200 {
-		log.Printf("[Err]: Status Code: %v ", response.StatusCode)
-		return "", errors.New(response.Status)
+	
+	if contentType != "" {
+		req.Header.Set("Content-Type", contentType)
 	}
-
-	body, err := ioutil.ReadAll(response.Body)
+	
+	response, err := httpc.Do( req)
+	
 	if err != nil {
-		log.Printf("[Err   ]: %s ", err.Error())
-		return "", err
+		log.Printf("[Socket]: %s ", err.Error())
+		return nil, err
 	}
-	return string(body), nil
+
+	return response, nil
 }
 
 /*-----------------------------*/

@@ -28,6 +28,8 @@ func init() {
 
 	router.GET("/apps/:app_id/*file_path", api.HandleAppProxyRequest)
 	router.POST("/apps/:app_id/*file_path", api.HandleAppProxyRequest)
+	router.PUT("/apps/:app_id/*file_path", api.HandleAppProxyRequest)
+	router.DELETE("/apps/:app_id/*file_path", api.HandleAppProxyRequest)
 
 	// Device Endpoints
 

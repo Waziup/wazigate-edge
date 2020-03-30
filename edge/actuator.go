@@ -149,14 +149,24 @@ func SetActuatorName(deviceID string, actuatorID string, name string) (Meta, err
 // SetActuatorMeta changes this actuators metadata.
 func SetActuatorMeta(deviceID string, actuatorID string, meta map[string]interface{}) error {
 
+	var unset = bson.M{}
+	var set = bson.M{
+		"actuators.$.modified": time.Now(),
+	}
+	for key, value := range meta {
+		if value == nil {
+			unset["actuators.$.meta."+key] = 1
+		} else {
+			set["actuators.$.meta."+key] = value
+		}
+	}
+
 	err := dbDevices.Update(bson.M{
 		"_id":          deviceID,
 		"actuators.id": actuatorID,
 	}, bson.M{
-		"$set": bson.M{
-			"actuators.$.modified": time.Now(),
-			"actuators.$.meta":     meta,
-		},
+		"$set":   set,
+		"$unset": unset,
 	})
 
 	if err != nil {

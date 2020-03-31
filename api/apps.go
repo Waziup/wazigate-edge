@@ -584,7 +584,10 @@ func HandleAppProxyRequest(resp http.ResponseWriter, req *http.Request, params r
 	/*----------*/
 
 	socketAddr := appsDirectoryMapped + "/" + strings.Replace(appID, ".", "/", 1) + "/proxy.sock"
-	filePath := params.ByName("file_path")
+	
+	
+	//Removing the begining slash which creates issues for API calls
+	filePath := strings.TrimLeft( params.ByName("file_path"), "/")
 
 	socketResponse, err := tools.SocketReqest( socketAddr, filePath, req.Method, req.Header.Get("Content-Type"), req.Body)
 

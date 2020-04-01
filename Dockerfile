@@ -16,22 +16,22 @@ ENTRYPOINT ["tail", "-f", "/dev/null"]
 ################################################################################
 
 
-# FROM alpine:latest AS production
+FROM alpine:latest AS production
 
-# WORKDIR /root/
+WORKDIR /root/
 
-# RUN apk --no-cache add ca-certificates tzdata curl
+RUN apk --no-cache add ca-certificates tzdata curl
 
-# COPY wazigate-dashboard/node_modules/react/umd wazigate-dashboard/node_modules/react/umd
-# COPY wazigate-dashboard/node_modules/react-dom/umd wazigate-dashboard/node_modules/react-dom/umd
-# COPY wazigate-dashboard/index.html \
-# #    wazigate-dashboard/dev.html \
-#     wazigate-dashboard/favicon.ico \
-#     wazigate-dashboard/wazigate.png \
-#     wazigate-dashboard/site.webmanifest \
-#     wazigate-dashboard/
-# COPY wazigate-dashboard/dist wazigate-dashboard/dist
-# 
-# COPY --from=development /wazigate-edge/build/wazigate-edge .
-# 
-# ENTRYPOINT ["./wazigate-edge", "-www", "wazigate-dashboard"]
+COPY wazigate-dashboard/node_modules/react/umd wazigate-dashboard/node_modules/react/umd
+COPY wazigate-dashboard/node_modules/react-dom/umd wazigate-dashboard/node_modules/react-dom/umd
+COPY wazigate-dashboard/index.html \
+#    wazigate-dashboard/dev.html \
+    wazigate-dashboard/favicon.ico \
+    wazigate-dashboard/wazigate.png \
+    wazigate-dashboard/site.webmanifest \
+    wazigate-dashboard/
+COPY wazigate-dashboard/dist wazigate-dashboard/dist
+
+COPY --from=development /wazigate-edge/build/wazigate-edge .
+
+ENTRYPOINT ["./wazigate-edge", "-www", "wazigate-dashboard"]

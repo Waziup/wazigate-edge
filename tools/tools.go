@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type ClosingBuffer struct {
@@ -88,12 +89,18 @@ func SockDeleteReqest(socketAddr string, API string) ([]byte, error) {
 
 	response, err := SocketReqest(socketAddr, API, "DELETE", "", nil)
 	if err != nil {
-		response.Body.Close()
+		if response != nil {
+			response.Body.Close()
+		}
 		return nil, err
 	}
 
 	resBody, err := ioutil.ReadAll(response.Body)
-	response.Body.Close()
+	
+	if response != nil {
+		response.Body.Close()
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -108,12 +115,16 @@ func SockGetReqest(socketAddr string, API string) ([]byte, error) {
 
 	response, err := SocketReqest(socketAddr, API, "GET", "", nil)
 	if err != nil {
-		response.Body.Close()
+		if response != nil {
+			response.Body.Close()
+		}
 		return nil, err
 	}
 
 	resBody, err := ioutil.ReadAll(response.Body)
-	response.Body.Close()
+	if response != nil {
+		response.Body.Close()
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -129,12 +140,16 @@ func SockPostReqest(socketAddr string, API string, postValues string) ([]byte, e
 	response, err := SocketReqest(socketAddr, API, "POST", "application/json", strings.NewReader(postValues))
 
 	if err != nil {
-		response.Body.Close()
+		if response != nil {
+			response.Body.Close()
+		}
 		return nil, err
 	}
 
 	resBody, err := ioutil.ReadAll(response.Body)
-	response.Body.Close()
+	if response != nil {
+		response.Body.Close()
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -154,6 +169,8 @@ func SocketReqest(socketAddr string, url string, method string, contentType stri
 			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
 				return net.Dial("unix", socketAddr)
 			},
+			MaxIdleConns:       50,
+			IdleConnTimeout:    4 * 60 * time.Second,
 		},
 	}
 

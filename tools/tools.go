@@ -88,6 +88,7 @@ func SockDeleteReqest(socketAddr string, API string) ([]byte, error) {
 
 	response, err := SocketReqest(socketAddr, API, "DELETE", "", nil)
 	if err != nil {
+		response.Body.Close()
 		return nil, err
 	}
 
@@ -107,6 +108,7 @@ func SockGetReqest(socketAddr string, API string) ([]byte, error) {
 
 	response, err := SocketReqest(socketAddr, API, "GET", "", nil)
 	if err != nil {
+		response.Body.Close()
 		return nil, err
 	}
 
@@ -127,6 +129,7 @@ func SockPostReqest(socketAddr string, API string, postValues string) ([]byte, e
 	response, err := SocketReqest(socketAddr, API, "POST", "application/json", strings.NewReader(postValues))
 
 	if err != nil {
+		response.Body.Close()
 		return nil, err
 	}
 

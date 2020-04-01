@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"os"
 	"io"
 	"io/ioutil"
 	"log"
@@ -69,9 +70,13 @@ func ExecOnHostWithLogs(cmd string, withLogs bool) (string, error) {
 	if withLogs {
 		log.Printf("[Exec  ]: Host Command [ %s ]", cmd)
 	}
+	
+	socketAddr := os.Getenv( "WAZIGATE_HOST_ADDR")
+	if socketAddr == "" {
+		socketAddr = "/var/run/wazigate-host.sock" // Default address for the Host
+	}
 
-	//Later we may change this with an env var
-	out, err := SockPostReqest("/var/run/wazigate-host.sock", "cmd", cmd)
+	out, err := SockPostReqest( socketAddr, "cmd", cmd)
 	return string( out), err
 }
 
@@ -87,6 +92,7 @@ func SockDeleteReqest(socketAddr string, API string) ([]byte, error) {
 	}
 
 	resBody, err := ioutil.ReadAll(response.Body)
+	response.Body.Close()
 	if err != nil {
 		return nil, err
 	}
@@ -105,6 +111,7 @@ func SockGetReqest(socketAddr string, API string) ([]byte, error) {
 	}
 
 	resBody, err := ioutil.ReadAll(response.Body)
+	response.Body.Close()
 	if err != nil {
 		return nil, err
 	}
@@ -124,9 +131,11 @@ func SockPostReqest(socketAddr string, API string, postValues string) ([]byte, e
 	}
 
 	resBody, err := ioutil.ReadAll(response.Body)
+	response.Body.Close()
 	if err != nil {
 		return nil, err
 	}
+
 	return resBody, nil
 }
 
@@ -148,7 +157,7 @@ func SocketReqest(socketAddr string, url string, method string, contentType stri
 	req, err := http.NewRequest( method, "http://localhost/"+url, body)
 	
 	if err != nil {
-		log.Printf("[Socket   ]: %s ", err.Error())
+		log.Printf("[SOCK ]: %s ", err.Error())
 		return nil, err
 	}
 	
@@ -159,7 +168,7 @@ func SocketReqest(socketAddr string, url string, method string, contentType stri
 	response, err := httpc.Do( req)
 	
 	if err != nil {
-		log.Printf("[Socket]: %s ", err.Error())
+		log.Printf("[SOCK ]: %s ", err.Error())
 		return nil, err
 	}
 

@@ -593,7 +593,9 @@ func HandleAppProxyRequest(resp http.ResponseWriter, req *http.Request, params r
 	socketResponse, err := tools.SocketReqest( socketAddr, filePath, req.Method, req.Header.Get("Content-Type"), req.Body)
 
 	if err != nil {
-		socketResponse.Body.Close()
+		if socketResponse != nil && socketResponse.Body != nil{
+			socketResponse.Body.Close()
+		}
 		log.Printf("[Proxy   ]: %s ", err.Error())
 		resp.WriteHeader(500)
 		resp.Write([]byte( handleAppProxyError( appID )))

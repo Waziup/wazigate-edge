@@ -586,11 +586,10 @@ func HandleAppProxyRequest(resp http.ResponseWriter, req *http.Request, params r
 
 	socketAddr := appsDirectoryMapped + "/" + strings.Replace(appID, ".", "/", 1) + "/proxy.sock"
 	
-	
-	//Removing the begining slash which creates issues for API calls
-	filePath := strings.TrimLeft( params.ByName("file_path"), "/")
+	//Removing the leading slash which creates issues for API calls
+	url := strings.TrimLeft( strings.Replace( req.URL.String(), "/apps/" + appID, "", 1), "/")
 
-	socketResponse, err := tools.SocketReqest( socketAddr, filePath, req.Method, req.Header.Get("Content-Type"), req.Body)
+	socketResponse, err := tools.SocketReqest( socketAddr, url, req.Method, req.Header.Get("Content-Type"), req.Body)
 
 	if err != nil {
 		if socketResponse != nil && socketResponse.Body != nil{
@@ -622,7 +621,7 @@ func HandleAppProxyRequest(resp http.ResponseWriter, req *http.Request, params r
 	}
 
 	// We have issue that unix socket does not set corret mime type for css
-	if strings.HasSuffix(filePath, ".css") {
+	if strings.HasSuffix(params.ByName("file_path"), ".css") {
 		resp.Header().Set("Content-Type", "text/css; charset=utf-8")
 	}
 

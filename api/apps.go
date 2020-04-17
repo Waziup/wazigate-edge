@@ -119,7 +119,16 @@ func getListOfInstalledApps() []map[string]interface{} {
 			continue
 		}
 		for _, app := range appsList {
-			out = append(out, map[string]interface{}{"id": repo.Name() + "." + app.Name()})
+
+			appID := repo.Name() + "." + app.Name()
+			appInfo := getAppInfo( appID)
+
+			if appInfo != nil{
+				out = append(out, appInfo)
+			} 
+			// else {
+			// 	out = append(out, map[string]interface{}{"id": repo.Name() + "." + app.Name()})
+			// }
 		}
 	}
 

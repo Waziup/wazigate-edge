@@ -598,6 +598,7 @@ func HandleAppProxyRequest(resp http.ResponseWriter, req *http.Request, params r
 	proxy := http.Client{
 		Transport: &http.Transport{
 			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
+				// the proxy uses linux sockets that are created by each app
 				return net.Dial("unix", socketAddr)
 			},
 			MaxIdleConns:    50,
@@ -605,8 +606,11 @@ func HandleAppProxyRequest(resp http.ResponseWriter, req *http.Request, params r
 		},
 	}
 
+	// remove /apps/{id} from the URI
 	proxyURI := req.URL.RequestURI()[len(appID)+6:]
+
 	proxyURL := "http://localhost" + proxyURI
+
 	proxyReq, err := http.NewRequest(req.Method, proxyURL, req.Body)
 	if err != nil {
 		log.Printf("[APP  ] Err %v", err)

@@ -1,12 +1,16 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
-	"fmt"
+	"net"
 	"net/http"
 	"strings"
+	"time"
 
 	tools "github.com/Waziup/wazigate-edge/tools"
 	routing "github.com/julienschmidt/httprouter"
@@ -73,20 +77,20 @@ func getListOfAvailableApps() []map[string]interface{} {
 
 	resp, err := http.Get(url)
 	if err != nil {
-		log.Printf("[Err   ]: %s ", err.Error())
+		log.Printf("[ERR  ]: %s ", err.Error())
 		return out
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
 	if err != nil {
-		log.Printf("[Err   ]: %s ", err.Error())
+		log.Printf("[ERR  ]: %s ", err.Error())
 		return out
 	}
 
 	err = json.Unmarshal(body, &out)
 	if err != nil {
-		log.Printf("[Err   ]: %s ", err.Error())
+		log.Printf("[ERR  ]: %s ", err.Error())
 	}
 
 	// for _, app := range appsList {
@@ -108,24 +112,24 @@ func getListOfInstalledApps() []map[string]interface{} {
 
 	repoList, err := ioutil.ReadDir(appsDirectoryMapped)
 	if err != nil {
-		log.Printf("[Err   ]: %s ", err.Error())
+		log.Printf("[ERR  ]: %s ", err.Error())
 		return out
 	}
 
 	for _, repo := range repoList {
 		appsList, err := ioutil.ReadDir(appsDirectoryMapped + "/" + repo.Name())
 		if err != nil {
-			log.Printf("[Err   ]: %s ", err.Error())
+			log.Printf("[ERR  ]: %s ", err.Error())
 			continue
 		}
 		for _, app := range appsList {
 
 			appID := repo.Name() + "." + app.Name()
-			appInfo := getAppInfo( appID)
+			appInfo := getAppInfo(appID)
 
-			if appInfo != nil{
+			if appInfo != nil {
 				out = append(out, appInfo)
-			} 
+			}
 			// else {
 			// 	out = append(out, map[string]interface{}{"id": repo.Name() + "." + app.Name()})
 			// }
@@ -166,10 +170,10 @@ func GetApp(resp http.ResponseWriter, req *http.Request, params routing.Params) 
 	}
 
 	/*----------*/
-	
-	out := getAppInfo( appID);
 
-	if out == nil{
+	out := getAppInfo(appID)
+
+	if out == nil {
 		resp.Write([]byte("{}"))
 		return
 	}
@@ -182,15 +186,14 @@ func GetApp(resp http.ResponseWriter, req *http.Request, params routing.Params) 
 
 /*-----------------------------*/
 
-
-func getAppInfo( appID string) map[string]interface{}{
+func getAppInfo(appID string) map[string]interface{} {
 
 	appPath := strings.Replace(appID, ".", "/", 1)
-	
+
 	// cmd := "docker inspect " + appID
 	// dockerJSONRaw, _ := tools.ExecOnHostWithLogs(cmd, true)
 
-	dockerJSONRaw, _ := tools.SockGetReqest( dockerSocketAddress, "containers/"+ appID +"/json" )
+	dockerJSONRaw, _ := tools.SockGetReqest(dockerSocketAddress, "containers/"+appID+"/json")
 
 	var dockerJSON struct {
 		State struct {
@@ -216,7 +219,7 @@ func getAppInfo( appID string) map[string]interface{}{
 	if dockerJSONRaw != nil {
 		if err := json.Unmarshal(dockerJSONRaw, &dockerJSON); err != nil {
 
-			log.Printf("[Err   ] docker_inspect: %s", err.Error())
+			log.Printf("[ERR  ] docker_inspect: %s", err.Error())
 
 		} else {
 
@@ -238,8 +241,8 @@ func getAppInfo( appID string) map[string]interface{}{
 	bytes, err := ioutil.ReadFile(appsDirectoryMapped + "/" + appPath + "/package.json")
 	if err != nil {
 		// resp.WriteHeader(404)
-		
-		log.Printf("[Err   ] package.json: %s", err.Error())
+
+		log.Printf("[ERR  ] package.json: %s", err.Error())
 		return nil
 	}
 
@@ -247,8 +250,8 @@ func getAppInfo( appID string) map[string]interface{}{
 
 	if err := json.Unmarshal(bytes, &appPkg); err != nil {
 		// resp.WriteHeader(404)
-		
-		log.Printf("[Err   ] package.json: %s", err.Error())
+
+		log.Printf("[ERR  ] package.json: %s", err.Error())
 		return nil
 	}
 
@@ -275,7 +278,7 @@ func PostApps(resp http.ResponseWriter, req *http.Request, params routing.Params
 	// imageName := "waziup/wazi-on-sensors:1.0.0"
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		log.Printf("[Err   ] installing app [%v] error: %s ", body, err.Error())
+		log.Printf("[ERR  ] installing app [%v] error: %s ", body, err.Error())
 		http.Error(resp, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -328,7 +331,7 @@ func PostApps(resp http.ResponseWriter, req *http.Request, params routing.Params
 	installingAppStatus[appStatusIndex].log += "\nDownloading [ " + appName + " : " + tag + " ] \n"
 
 	// out, err := tools.SockPostReqest( dockerSocketAddress, "containers/create", imageName)
-	
+
 	cmd := "docker pull " + imageName
 	out, err := tools.ExecOnHostWithLogs(cmd, true)
 
@@ -344,7 +347,7 @@ func PostApps(resp http.ResponseWriter, req *http.Request, params routing.Params
 	/*-----------*/
 
 	// out, err = tools.SockPostReqest( dockerSocketAddress, "images/create", "{\"Image\": \""+ imageName +"\"}")
-	
+
 	cmd = "docker create " + imageName
 	containerID, err := tools.ExecOnHostWithLogs(cmd, true)
 
@@ -354,7 +357,6 @@ func PostApps(resp http.ResponseWriter, req *http.Request, params routing.Params
 		tools.SendJSON(resp, err.Error())
 		return
 	}
-
 
 	// dockerJSONRaw, _ := tools.SockGetReqest( dockerSocketAddress, "containers/"+ appID +"/json" )
 
@@ -366,9 +368,9 @@ func PostApps(resp http.ResponseWriter, req *http.Request, params routing.Params
 	// 	if err := json.Unmarshal(dockerJSONRaw, &dockerJSON); err == nil {
 	// 		appImageID = dockerJSON.Image;
 	// 	}
-	// }	
+	// }
 
-	// containerID := 
+	// containerID :=
 
 	installingAppStatus[appStatusIndex].log += "\nTermporary container created\n"
 
@@ -425,7 +427,7 @@ func PostApps(resp http.ResponseWriter, req *http.Request, params routing.Params
 
 	/*outJson, err := json.Marshal( out)
 	if( err != nil) {
-		log.Printf( "[Err   ] %s", err.Error())
+		log.Printf( "[ERR  ] %s", err.Error())
 	}/**/
 
 	installingAppStatus[appStatusIndex].log += "\nAll done :)"
@@ -474,7 +476,7 @@ func PostApp(resp http.ResponseWriter, req *http.Request, params routing.Params)
 
 		out, err := tools.ExecOnHostWithLogs(cmd, true)
 		if err != nil {
-			log.Printf("[Err   ] %s ", err.Error())
+			log.Printf("[ERR  ] %s ", err.Error())
 			out = err.Error()
 		}
 		if out == "" {
@@ -492,17 +494,17 @@ func PostApp(resp http.ResponseWriter, req *http.Request, params routing.Params)
 
 		// cmd := "docker update --restart=" + appConfig.Restart + " " + appID
 		// out, err := tools.ExecOnHostWithLogs(cmd, true)
-		 
-		updateStr := fmt.Sprintf( `{"RestartPolicy": { "Name": "%s"}}`, appConfig.Restart)
-		out, err := tools.SockPostReqest( dockerSocketAddress, "containers/"+ appID +"/update", updateStr)
+
+		updateStr := fmt.Sprintf(`{"RestartPolicy": { "Name": "%s"}}`, appConfig.Restart)
+		out, err := tools.SockPostReqest(dockerSocketAddress, "containers/"+appID+"/update", updateStr)
 
 		if err != nil {
-			log.Printf("[Err   ] %s ", err.Error())
-			out = []byte( err.Error())
+			log.Printf("[ERR  ] %s ", err.Error())
+			out = []byte(err.Error())
 		}
 
 		if out == nil {
-			out = []byte( "Restart policy set to [ " + appConfig.Restart + " ]")
+			out = []byte("Restart policy set to [ " + appConfig.Restart + " ]")
 		}
 
 		tools.SendJSON(resp, out)
@@ -531,24 +533,24 @@ func DeleteApp(resp http.ResponseWriter, req *http.Request, params routing.Param
 
 	appImageID := ""
 
-	dockerJSONRaw, _ := tools.SockGetReqest( dockerSocketAddress, "containers/"+ appID +"/json" )
+	dockerJSONRaw, _ := tools.SockGetReqest(dockerSocketAddress, "containers/"+appID+"/json")
 
 	var dockerJSON struct {
-		Image	string `json:"Image"`
+		Image string `json:"Image"`
 	}
 
 	if dockerJSONRaw != nil {
 		if err := json.Unmarshal(dockerJSONRaw, &dockerJSON); err == nil {
-			appImageID = dockerJSON.Image;
+			appImageID = dockerJSON.Image
 		}
 	}
-	
+
 	/*------*/
 
-	tools.SockDeleteReqest( dockerSocketAddress, "containers/"+ appID +"?force=true")
-	
-	if appImageID != ""{
-		tools.SockDeleteReqest( dockerSocketAddress, "images/"+ appImageID +"?force=true")
+	tools.SockDeleteReqest(dockerSocketAddress, "containers/"+appID+"?force=true")
+
+	if appImageID != "" {
+		tools.SockDeleteReqest(dockerSocketAddress, "images/"+appImageID+"?force=true")
 	}
 
 	// Note: for the apps that have multiple containers and images, we need to find another way.
@@ -565,11 +567,11 @@ func DeleteApp(resp http.ResponseWriter, req *http.Request, params routing.Param
 
 	out, err := tools.ExecOnHostWithLogs(cmd, true)
 	if err != nil {
-		log.Printf("[Err   ] %s ", err.Error())
+		log.Printf("[ERR  ] %s ", err.Error())
 		out = err.Error()
 	}
 
-	log.Printf("[Info   ] DELETE App: %s\n\t%v\n", appID, out)
+	log.Printf("[APP  ] DELETE App: %s\n\t%v\n", appID, out)
 
 	if len(out) == 0 {
 		if keepConfig {
@@ -591,78 +593,82 @@ func HandleAppProxyRequest(resp http.ResponseWriter, req *http.Request, params r
 
 	appID := params.ByName("app_id")
 
-	/*----------*/
-
 	socketAddr := appsDirectoryMapped + "/" + strings.Replace(appID, ".", "/", 1) + "/proxy.sock"
-	
-	//Removing the leading slash which creates issues for API calls
-	url := strings.TrimLeft( strings.Replace( req.URL.String(), "/apps/" + appID, "", 1), "/")
 
-	socketResponse, err := tools.SocketReqest( socketAddr, url, req.Method, req.Header.Get("Content-Type"), req.Body)
-
-	if err != nil {
-		if socketResponse != nil && socketResponse.Body != nil{
-			socketResponse.Body.Close()
-		}
-		log.Printf("[Proxy   ]: %s ", err.Error())
-		resp.WriteHeader(500)
-		resp.Write([]byte( handleAppProxyError( appID )))
-		return
+	proxy := http.Client{
+		Transport: &http.Transport{
+			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
+				// the proxy uses linux sockets that are created by each app
+				return net.Dial("unix", socketAddr)
+			},
+			MaxIdleConns:    50,
+			IdleConnTimeout: 4 * 60 * time.Second,
+		},
 	}
-	
-	/*----------*/
 
-	if socketResponse.StatusCode != 200 {
-		log.Printf("[Proxy]: Status Code: %v ", socketResponse.StatusCode)
-		resp.WriteHeader(socketResponse.StatusCode)
-		// socketResponse.Body.Close()
-		// resp.Write([]byte(socketResponse.Status))
-		// return
-	}
-	
-	body, err := ioutil.ReadAll(socketResponse.Body)
-	socketResponse.Body.Close()
+	// remove /apps/{id} from the URI
+	proxyURI := req.URL.RequestURI()[len(appID)+6:]
+
+	proxyURL := "http://localhost" + proxyURI
+
+	proxyReq, err := http.NewRequest(req.Method, proxyURL, req.Body)
 	if err != nil {
-		log.Printf("[Proxy   ]: %s ", err.Error())
-		resp.WriteHeader(500)
+		log.Printf("[APP  ] Err %v", err)
+		resp.WriteHeader(http.StatusBadRequest)
 		resp.Write([]byte(err.Error()))
 		return
 	}
 
-	// We have issue that unix socket does not set corret mime type for css
-	if strings.HasSuffix(params.ByName("file_path"), ".css") {
-		resp.Header().Set("Content-Type", "text/css; charset=utf-8")
+	log.Printf("[APP  ] >> %q %s %s", appID, req.Method, proxyURI)
+
+	proxyReq.Header = req.Header
+
+	proxyResp, err := proxy.Do(proxyReq)
+	if err != nil {
+		log.Printf("[APP  ] Err %v", err)
+		resp.WriteHeader(http.StatusBadGateway)
+		resp.Write([]byte(err.Error()))
+		return
 	}
 
-	resp.Write(body)
+	for key, value := range proxyResp.Header {
+		resp.Header()[key] = value
+	}
+	resp.WriteHeader(proxyResp.StatusCode)
+
+	var written int64
+	if proxyResp.Body != nil {
+		written, _ = io.Copy(resp, proxyResp.Body)
+	}
+	log.Printf("[APP  ] << %d %s (%d B)", proxyResp.StatusCode, proxyResp.Status, written)
 }
 
 /*-----------------------------*/
 
-func handleAppProxyError( appID string) string{
+func handleAppProxyError(appID string) string {
 
-	appInfo := getAppInfo( appID);
+	appInfo := getAppInfo(appID)
 
-	appName := appID;
-	if( appInfo["name"] != nil){
+	appName := appID
+	if appInfo["name"] != nil {
 		appName = appInfo["name"].(string)
 	}
 
 	errMsg := ""
-	if( appInfo["package"] == nil){
-		
+	if appInfo["package"] == nil {
+
 		errMsg = "This app is not installed!"
 
-	}else if( appInfo["state"] == nil){
-		
+	} else if appInfo["state"] == nil {
+
 		errMsg = "This app has not launched yet!"
 
-	}else {
-		
+	} else {
+
 		errMsg = "This app is not running!"
 	}
 
-	return fmt.Sprintf( `<!DOCTYPE html>
+	return fmt.Sprintf(`<!DOCTYPE html>
 	<html>
 		<head>
 			<link rel="stylesheet" href="/dist/main.css">
@@ -673,7 +679,7 @@ func handleAppProxyError( appID string) string{
 				<h4>Error on loading the app [ %s ]<h4>
 			</div>
 		</body>
-	</html>`, errMsg, appName);
+	</html>`, errMsg, appName)
 
 }
 

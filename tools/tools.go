@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"os"
 	"io"
 	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 )
@@ -71,14 +71,14 @@ func ExecOnHostWithLogs(cmd string, withLogs bool) (string, error) {
 	if withLogs {
 		log.Printf("[Exec  ]: Host Command [ %s ]", cmd)
 	}
-	
-	socketAddr := os.Getenv( "WAZIGATE_HOST_ADDR")
+
+	socketAddr := os.Getenv("WAZIGATE_HOST_ADDR")
 	if socketAddr == "" {
 		socketAddr = "/var/run/wazigate-host.sock" // Default address for the Host
 	}
 
-	out, err := SockPostReqest( socketAddr, "cmd", cmd)
-	return string( out), err
+	out, err := SockPostReqest(socketAddr, "cmd", cmd)
+	return string(out), err
 }
 
 /*-----------------------------*/
@@ -96,7 +96,7 @@ func SockDeleteReqest(socketAddr string, API string) ([]byte, error) {
 	}
 
 	resBody, err := ioutil.ReadAll(response.Body)
-	
+
 	if response != nil {
 		response.Body.Close()
 	}
@@ -104,7 +104,7 @@ func SockDeleteReqest(socketAddr string, API string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return resBody, nil	
+	return resBody, nil
 }
 
 /*-----------------------------*/
@@ -128,7 +128,7 @@ func SockGetReqest(socketAddr string, API string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return resBody, nil	
+	return resBody, nil
 }
 
 /*-----------------------------*/
@@ -162,33 +162,33 @@ func SockPostReqest(socketAddr string, API string, postValues string) ([]byte, e
 // SocketReqest makes a request to a unix socket
 func SocketReqest(socketAddr string, url string, method string, contentType string, body io.Reader) (*http.Response, error) {
 
-	log.Printf("[SOCK ] `%s` %s \"%s\"", socketAddr, method, url)
-	
+	log.Printf("[APP  ] Proxy `%s` %s \"%s\"", socketAddr, method, url)
+
 	httpc := http.Client{
 		Transport: &http.Transport{
 			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
 				return net.Dial("unix", socketAddr)
 			},
-			MaxIdleConns:       50,
-			IdleConnTimeout:    4 * 60 * time.Second,
+			MaxIdleConns:    50,
+			IdleConnTimeout: 4 * 60 * time.Second,
 		},
 	}
 
-	req, err := http.NewRequest( method, "http://localhost/"+url, body)
-	
+	req, err := http.NewRequest(method, "http://localhost/"+url, body)
+
 	if err != nil {
-		log.Printf("[SOCK ]: %s ", err.Error())
+		log.Printf("[APP  ] Proxy Err %s ", err.Error())
 		return nil, err
 	}
-	
+
 	if contentType != "" {
 		req.Header.Set("Content-Type", contentType)
 	}
-	
-	response, err := httpc.Do( req)
-	
+
+	response, err := httpc.Do(req)
+
 	if err != nil {
-		log.Printf("[SOCK ]: %s ", err.Error())
+		log.Printf("[APP  ] Proxy Err %s ", err.Error())
 		return nil, err
 	}
 

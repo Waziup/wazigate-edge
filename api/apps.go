@@ -1,12 +1,16 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 	"strings"
+	"time"
 
 	tools "github.com/Waziup/wazigate-edge/tools"
 	routing "github.com/julienschmidt/httprouter"
@@ -589,50 +593,50 @@ func HandleAppProxyRequest(resp http.ResponseWriter, req *http.Request, params r
 
 	appID := params.ByName("app_id")
 
-	/*----------*/
-
 	socketAddr := appsDirectoryMapped + "/" + strings.Replace(appID, ".", "/", 1) + "/proxy.sock"
 
-	//Removing the leading slash which creates issues for API calls
-	url := strings.TrimLeft(strings.Replace(req.URL.String(), "/apps/"+appID, "", 1), "/")
-
-	socketResponse, err := tools.SocketReqest(socketAddr, url, req.Method, req.Header.Get("Content-Type"), req.Body)
-
-	if err != nil {
-		if socketResponse != nil && socketResponse.Body != nil {
-			socketResponse.Body.Close()
-		}
-		log.Printf("[APP  ] Proxy %s ", err.Error())
-		resp.WriteHeader(500)
-		resp.Write([]byte(handleAppProxyError(appID)))
-		return
+	proxy := http.Client{
+		Transport: &http.Transport{
+			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
+				return net.Dial("unix", socketAddr)
+			},
+			MaxIdleConns:    50,
+			IdleConnTimeout: 4 * 60 * time.Second,
+		},
 	}
 
-	/*----------*/
-
-	if socketResponse.StatusCode != 200 {
-		log.Printf("[App  ] Proxy Status Code: %v ", socketResponse.StatusCode)
-		resp.WriteHeader(socketResponse.StatusCode)
-		// socketResponse.Body.Close()
-		// resp.Write([]byte(socketResponse.Status))
-		// return
-	}
-
-	body, err := ioutil.ReadAll(socketResponse.Body)
-	socketResponse.Body.Close()
+	proxyURI := req.URL.RequestURI()[len(appID)+6:]
+	proxyURL := "http://localhost" + proxyURI
+	proxyReq, err := http.NewRequest(req.Method, proxyURL, req.Body)
 	if err != nil {
-		log.Printf("[App  ] Proxy %s ", err.Error())
-		resp.WriteHeader(500)
+		log.Printf("[APP  ] Err %v", err)
+		resp.WriteHeader(http.StatusBadRequest)
 		resp.Write([]byte(err.Error()))
 		return
 	}
 
-	// We have issue that unix socket does not set corret mime type for css
-	if strings.HasSuffix(params.ByName("file_path"), ".css") {
-		resp.Header().Set("Content-Type", "text/css; charset=utf-8")
+	log.Printf("[APP  ] >> %q %s %s", appID, req.Method, proxyURI)
+
+	proxyReq.Header = req.Header
+
+	proxyResp, err := proxy.Do(proxyReq)
+	if err != nil {
+		log.Printf("[APP  ] Err %v", err)
+		resp.WriteHeader(http.StatusBadGateway)
+		resp.Write([]byte(err.Error()))
+		return
 	}
 
-	resp.Write(body)
+	for key, value := range proxyResp.Header {
+		resp.Header()[key] = value
+	}
+	resp.WriteHeader(proxyResp.StatusCode)
+
+	var written int64
+	if proxyResp.Body != nil {
+		written, _ = io.Copy(resp, proxyResp.Body)
+	}
+	log.Printf("[APP  ] << %d %s (%d B)", proxyResp.StatusCode, proxyResp.Status, written)
 }
 
 /*-----------------------------*/

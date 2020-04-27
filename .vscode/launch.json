@@ -10,7 +10,7 @@
             "env": {},
             "args": [
                 "-www",
-                "${workspaceFolder}/www"
+                "${workspaceFolder}/../wazigate-dashboard"
             ]
         }, {
             "name": "Debug",
@@ -23,7 +23,7 @@
             },
             "args": [
                 "-www",
-                "${workspaceFolder}/www"
+                "${workspaceFolder}/../wazigate-dashboard"
             ]
         }
     ]

@@ -1,9 +1,15 @@
 package mqtt
 
 import (
-	"net"
+	"io"
 	"time"
 )
+
+// Conn is a client connection (like TCP or WebSocket).
+type Conn interface {
+	io.ReadWriteCloser
+	SetReadDeadline(t time.Time) error
+}
 
 // Stream is a Read/Write/Close interface for MQTT Packet streams.
 type Stream interface {
@@ -13,14 +19,14 @@ type Stream interface {
 }
 
 type stream struct {
-	conn    net.Conn
+	conn    Conn
 	timeout time.Duration
 	version byte
 }
 
 // NewStream creates a Stream that can read and write MQTT Packets
 // from and to the io.ReadWriteCloser.
-func NewStream(conn net.Conn, tout time.Duration) Stream {
+func NewStream(conn Conn, tout time.Duration) Stream {
 	return &stream{conn, tout, 0}
 }
 

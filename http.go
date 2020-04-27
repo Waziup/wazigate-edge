@@ -44,33 +44,55 @@ type wsWrapper struct {
 	conn    *websocket.Conn
 	mutex   sync.Mutex
 	version byte
+	timeout time.Duration
+	heap    []byte
 }
 
-var errTextMsg = errors.New("unexpected TEST message")
+var errTextMsg = errors.New("unexpected TEXT message")
 
-func (w *wsWrapper) ReadPacket() (mqtt.Packet, error) {
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func (w *wsWrapper) Read(p []byte) (n int, err error) {
+	if len(w.heap) != 0 {
+		l := min(len(w.heap), len(p))
+		copy(p[:l], w.heap[:l])
+		w.heap = w.heap[l:]
+		return l, nil
+	}
 	messageType, data, err := w.conn.ReadMessage()
 	if err != nil {
 		w.conn.Close()
-		return nil, err
+		return 0, err
 	}
 	if messageType != websocket.BinaryMessage {
 		w.conn.Close()
-		return nil, errTextMsg
+		return 0, errTextMsg
 	}
-	pkt, err := mqtt.ReadBuffer(data, w.version)
+	w.heap = data
+	return w.Read(p)
+}
+
+func (w *wsWrapper) ReadPacket() (pkt mqtt.Packet, err error) {
+	if w.timeout != 0 {
+		w.conn.SetReadDeadline(time.Now().Add(w.timeout))
+	}
+	pkt, _, err = mqtt.Read(w, w.version)
 	if pkt != nil {
-		if connectPacket, ok := pkt.(*mqtt.ConnectPacket); ok {
-			w.version = connectPacket.Version
+		if connectPkt, ok := pkt.(*mqtt.ConnectPacket); ok {
+			w.version = connectPkt.Version
 		}
 	}
-	return pkt, err
+	return
 }
 
 func (w *wsWrapper) WritePacket(pkt mqtt.Packet) (err error) {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
-
 	writer, err := w.conn.NextWriter(websocket.BinaryMessage)
 	if err != nil {
 		return err
@@ -81,10 +103,6 @@ func (w *wsWrapper) WritePacket(pkt mqtt.Packet) (err error) {
 		return err
 	}
 	return writer.Close()
-}
-
-func (w *wsWrapper) SetTimeout(dur time.Duration) error {
-	return nil
 }
 
 func (w *wsWrapper) Close() error {
@@ -149,13 +167,13 @@ func serveHTTP(resp http.ResponseWriter, req *http.Request) {
 	} else {
 
 		proto := req.Header.Get("Sec-WebSocket-Protocol")
-		if proto != "mqttv3.1" {
-			http.Error(resp, "Requires WebSocket Protocol Header 'mqttv3.1'.", http.StatusBadRequest)
+		if proto != "mqttv3.1" && proto != "mqtt" {
+			http.Error(resp, "Requires WebSocket Protocol Header 'mqttv3.1' or 'mqtt'.", http.StatusBadRequest)
 			return
 		}
 
 		responseHeader := make(http.Header)
-		responseHeader.Set("Sec-WebSocket-Protocol", "mqttv3.1")
+		responseHeader.Set("Sec-WebSocket-Protocol", proto)
 
 		conn, err := upgrader.Upgrade(resp, req, responseHeader)
 		if err != nil {

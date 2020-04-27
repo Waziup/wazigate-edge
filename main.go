@@ -186,6 +186,7 @@ func Serve(resp http.ResponseWriter, req *http.Request) int {
 				strings.HasSuffix(req.RequestURI, ".woff2") ||
 				strings.HasSuffix(req.RequestURI, ".ttf") ||
 				strings.HasSuffix(req.RequestURI, ".html") ||
+				strings.HasSuffix(req.RequestURI, ".webmanifest") ||
 				strings.HasSuffix(req.RequestURI, "/")) {
 
 			static.ServeHTTP(&wrapper, req)

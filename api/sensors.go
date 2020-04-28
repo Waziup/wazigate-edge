@@ -139,7 +139,9 @@ func postDeviceSensor(resp http.ResponseWriter, req *http.Request, deviceID stri
 	log.Printf("[DB   ] Sensor %s/%s created.\n", deviceID, sensor.ID)
 	clouds.FlagSensor(deviceID, sensor.ID, clouds.ActionCreate, noTime, sensor.Meta)
 
-	resp.Write([]byte(sensor.ID))
+	resp.Header().Set("Content-Type", "application/json")
+	data, _ := json.Marshal(sensor.ID)
+	resp.Write(data)
 }
 
 func postDeviceSensorName(resp http.ResponseWriter, req *http.Request, deviceID string, sensorID string) {
@@ -151,7 +153,7 @@ func postDeviceSensorName(resp http.ResponseWriter, req *http.Request, deviceID 
 	}
 	var name string
 	contentType := req.Header.Get("Content-Type")
-	if strings.HasSuffix(contentType, "application/json") {
+	if strings.HasPrefix(contentType, "application/json") {
 		err = json.Unmarshal(body, &name)
 		if err != nil {
 			http.Error(resp, "bad request: "+err.Error(), http.StatusBadRequest)

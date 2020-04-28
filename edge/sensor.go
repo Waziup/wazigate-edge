@@ -4,19 +4,27 @@ import (
 	"io"
 	"time"
 
+	"github.com/Waziup/wazigate-edge/edge/ontology"
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 )
 
 // Sensor represents a Waziup sensor
 type Sensor struct {
-	ID       string      `json:"id" bson:"id"`
-	Name     string      `json:"name" bson:"name"`
-	Modified time.Time   `json:"modified" bson:"modified"`
-	Created  time.Time   `json:"created" bson:"created"`
-	Time     *time.Time  `json:"time" bson:"time"`
-	Value    interface{} `json:"value" bson:"value"`
-	Meta     Meta        `json:"meta" bson:"meta"`
+	ID   string `json:"id" bson:"id"`
+	Name string `json:"name" bson:"name"`
+
+	Modified time.Time `json:"modified" bson:"modified"`
+	Created  time.Time `json:"created" bson:"created"`
+
+	Kind     ontology.SensingKind `json:"kind" bson:"kind"`
+	Quantity ontology.Quantity    `json:"quantity" bson:"quantity"`
+	Unit     ontology.Unit        `json:"unit" bson:"unit"`
+
+	Time  *time.Time  `json:"time" bson:"time"`
+	Value interface{} `json:"value" bson:"value"`
+
+	Meta Meta `json:"meta" bson:"meta"`
 }
 
 // GetSensor returns the Waziup sensor.
@@ -161,13 +169,16 @@ func SetSensorMeta(deviceID string, sensorID string, meta Meta) error {
 		}
 	}
 
+	var update = bson.M{
+		"$set": set,
+	}
+	if len(unset) != 0 {
+		update["$unset"] = unset
+	}
 	err := dbDevices.Update(bson.M{
 		"_id":        deviceID,
 		"sensors.id": sensorID,
-	}, bson.M{
-		"$set":   set,
-		"$unset": unset,
-	})
+	}, update)
 
 	if err != nil {
 		if err == mgo.ErrNotFound {

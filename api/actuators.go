@@ -144,7 +144,9 @@ func postDeviceActuator(resp http.ResponseWriter, req *http.Request, deviceID st
 	log.Printf("[DB   ] Actuator %s/%s created.\n", deviceID, actuator.ID)
 	clouds.FlagActuator(deviceID, actuator.ID, clouds.ActionCreate, noTime, actuator.Meta)
 
-	resp.Write([]byte(actuator.ID))
+	resp.Header().Set("Content-Type", "application/json")
+	data, _ := json.Marshal(actuator.ID)
+	resp.Write(data)
 }
 
 func postDeviceActuatorName(resp http.ResponseWriter, req *http.Request, deviceID string, actuatorID string) {
@@ -156,7 +158,7 @@ func postDeviceActuatorName(resp http.ResponseWriter, req *http.Request, deviceI
 	}
 	var name string
 	contentType := req.Header.Get("Content-Type")
-	if strings.HasSuffix(contentType, "application/json") {
+	if strings.HasPrefix(contentType, "application/json") {
 		err = json.Unmarshal(body, &name)
 		if err != nil {
 			http.Error(resp, "bad request: "+err.Error(), http.StatusBadRequest)

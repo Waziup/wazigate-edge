@@ -10,13 +10,16 @@ import (
 
 // Actuator represents a Waziup actuator
 type Actuator struct {
-	ID       string      `json:"id" bson:"id"`
-	Name     string      `json:"name" bson:"name"`
-	Modified time.Time   `json:"modified" bson:"modified"`
-	Created  time.Time   `json:"created" bson:"created"`
-	Time     *time.Time  `json:"time" bson:"time"`
-	Value    interface{} `json:"value" bson:"value"`
-	Meta     Meta        `json:"meta" bson:"meta"`
+	ID   string `json:"id" bson:"id"`
+	Name string `json:"name" bson:"name"`
+
+	Modified time.Time `json:"modified" bson:"modified"`
+	Created  time.Time `json:"created" bson:"created"`
+
+	Time  *time.Time  `json:"time" bson:"time"`
+	Value interface{} `json:"value" bson:"value"`
+
+	Meta Meta `json:"meta" bson:"meta"`
 }
 
 // GetActuator returns the Waziup actuator.
@@ -161,13 +164,16 @@ func SetActuatorMeta(deviceID string, actuatorID string, meta map[string]interfa
 		}
 	}
 
+	var update = bson.M{
+		"$set": set,
+	}
+	if len(unset) != 0 {
+		update["$unset"] = unset
+	}
 	err := dbDevices.Update(bson.M{
 		"_id":          deviceID,
 		"actuators.id": actuatorID,
-	}, bson.M{
-		"$set":   set,
-		"$unset": unset,
-	})
+	}, update)
 
 	if err != nil {
 		if err == mgo.ErrNotFound {

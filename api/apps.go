@@ -224,14 +224,14 @@ func getAppInfo(appID string) map[string]interface{} {
 		} else {
 
 			dockerState = map[string]interface{}{
-				"Status":        dockerJSON.State.Status,
-				"Running":       dockerJSON.State.Running,
-				"Paused":        dockerJSON.State.Paused,
-				"Error":         dockerJSON.State.Error,
-				"StartedAt":     dockerJSON.State.StartedAt,
-				"FinishedAt":    dockerJSON.State.FinishedAt,
-				"Health":        dockerJSON.State.Health.Status,
-				"RestartPolicy": dockerJSON.HostConfig.RestartPolicy.Name,
+				"status":        dockerJSON.State.Status,
+				"running":       dockerJSON.State.Running,
+				"paused":        dockerJSON.State.Paused,
+				"error":         dockerJSON.State.Error,
+				"startedAt":     dockerJSON.State.StartedAt,
+				"finishedAt":    dockerJSON.State.FinishedAt,
+				"health":        dockerJSON.State.Health.Status,
+				"restartPolicy": dockerJSON.HostConfig.RestartPolicy.Name,
 			}
 		}
 	}

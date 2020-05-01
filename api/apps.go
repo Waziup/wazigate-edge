@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"regexp"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -71,8 +72,7 @@ func GetApps(resp http.ResponseWriter, req *http.Request, params routing.Params)
 func getListOfAvailableApps() []map[string]interface{} {
 
 	// I keep it hard-coded because later we can update this via update the edge through the update mechanism ;)
-	// url := "http://localhost/available-apps.json"
-	url := "https://raw.githack.com/Waziup/wazigate-dashboard/master/available-apps.json"
+	url := "https://raw.githack.com/Waziup/WaziApps/master/available-apps.json"
 	var out []map[string]interface{}
 
 	resp, err := http.Get(url)
@@ -273,9 +273,10 @@ func getAppInfo(appID string) map[string]interface{} {
 /*-----------------------------*/
 
 // PostApps implements POST /apps
+// It installs a new app
 func PostApps(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
-	// imageName := "waziup/wazi-on-sensors:1.0.0"
+	// imageName := "waziup/wazi-on-sensors:beta"
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		log.Printf("[ERR  ] installing app [%v] error: %s ", body, err.Error())
@@ -331,8 +332,8 @@ func PostApps(resp http.ResponseWriter, req *http.Request, params routing.Params
 	installingAppStatus[appStatusIndex].log += "\nDownloading [ " + appName + " : " + tag + " ] \n"
 
 	// out, err := tools.SockPostReqest( dockerSocketAddress, "containers/create", imageName)
-
 	cmd := "docker pull " + imageName
+
 	out, err := tools.ExecOnHostWithLogs(cmd, true)
 
 	installingAppStatus[appStatusIndex].log += out
@@ -684,3 +685,116 @@ func handleAppProxyError(appID string) string {
 }
 
 /*-----------------------------*/
+
+// GetUpdateApp implements GET /update/:app_id
+func GetUpdateApp(resp http.ResponseWriter, req *http.Request, params routing.Params) {
+
+	appID := params.ByName("app_id")
+	newUpdate := false;
+
+	images, err := getAppImages( appID)
+	if err != nil {
+		log.Printf("[APP  ] Err %v", err)
+		resp.WriteHeader(http.StatusBadGateway)
+		resp.Write([]byte(err.Error()))
+		return
+	}
+
+	for _, image := range images{
+
+		/*-------*/
+
+		remoteImageInfoRaw, _ := tools.SockGetReqest(dockerSocketAddress, "distribution/"+ image +"/json")
+		if err != nil{
+			log.Printf("[APP  ] %v", err)
+			continue;
+		}
+
+		var remoteImageInfo struct {
+			Descriptor struct {
+				Digest		string	`json:"Digest"`
+				Size		int64	`json:"Size"`
+			} `json:"Descriptor"`
+		}
+	
+		if remoteImageInfoRaw == nil {
+			continue;
+		}
+		if err := json.Unmarshal(remoteImageInfoRaw, &remoteImageInfo); err != nil {
+			log.Printf("[APP  ] Err %v", err)
+			continue;
+		}
+
+		/*-------*/
+
+		localImageInfoRaw, _ := tools.SockGetReqest(dockerSocketAddress, "images/"+ image +"/json")
+		if err != nil{
+			log.Printf("[APP  ] %v", err)
+			continue;
+		}
+
+		var localImageInfo struct {
+			Digests		[]string	`json:"RepoDigests"`
+		}
+	
+		if localImageInfoRaw == nil {
+			continue;
+		}
+		if err := json.Unmarshal(localImageInfoRaw, &localImageInfo); err != nil {
+			log.Printf("[APP  ] Err %v", err)
+			continue;
+		}
+
+		/*-------*/
+
+		localImageDigest := "";
+		if len( localImageInfo.Digests) > 0{
+			re := regexp.MustCompile(`[^@]+@`)
+			localImageDigest = re.ReplaceAllString(localImageInfo.Digests[0], "")
+		}
+
+		// Even if the local digest does not exist (due to building it instead of pulling), we update the app
+		if( localImageDigest != remoteImageInfo.Descriptor.Digest){
+			// New update is available
+			newUpdate = true;
+			break;
+		}
+	}
+
+	/*------------*/
+
+	out := map[string]interface{}{
+		"newUpdate":  newUpdate,
+	}
+
+	tools.SendJSON(resp, out)
+}
+
+/*-----------------------------*/
+
+func getAppImages( appID string) ([]string, error){
+
+	appFullPath := appsDirectoryMapped + "/" + strings.Replace(appID, ".", "/", 1)
+	var out []string;
+
+	yamlFile, err := ioutil.ReadFile( appFullPath + "/docker-compose.yml")
+    if err != nil {
+		log.Printf("[APP  ] docker-compose.yml : %v ", err)
+		return out, err
+	}
+
+	// err = yaml.Unmarshal( yamlFile, &dockerCompose) // it did not work without giving the service name
+
+	re := regexp.MustCompile(`image[\s]*:[\s]*([a-zA-Z0-9/\:\-]+)`)
+
+	submatchall := re.FindAllStringSubmatch( string( yamlFile), -1)
+	for _, element := range submatchall {
+		out = append( out, element[1])
+	}		
+
+	return out, nil
+}
+
+/*-----------------------------*/
+
+// out = getListOfInstalledApps()

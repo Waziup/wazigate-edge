@@ -31,6 +31,14 @@ func init() {
 	router.PUT("/apps/:app_id/*file_path", api.HandleAppProxyRequest)
 	router.DELETE("/apps/:app_id/*file_path", api.HandleAppProxyRequest)
 
+	//Update Appps
+
+	// router.GET("/update", api.GetUpdateApps)
+	router.GET("/update/:app_id", api.GetUpdateApp)
+
+	// router.POST("/update", api.PostUpdateApps)
+	// router.POST("/update/:app_id", api.PostUpdateApp)
+
 	// Device Endpoints
 
 	router.GET("/devices", api.GetDevices)

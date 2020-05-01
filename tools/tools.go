@@ -83,6 +83,20 @@ func ExecOnHostWithLogs(cmd string, withLogs bool) (string, error) {
 
 /*-----------------------------*/
 
+// // exeCmdWithLogs runs bash commands in the container
+// func exeCmd( cmd string) ( string, error) {
+
+// 	exe := exec.Command( "sh", "-c", cmd)
+//     stdout, err := exe.Output()
+
+//     if( err != nil) {
+//         return "", err
+// 	}
+// 	return strings.Trim( string( stdout), " \n\t\r"), nil
+// }
+
+/*-----------------------------*/
+
 // SockDeleteReqest makes a DELETE request to a unix socket
 // ex:	SockDeleteReqest( "/var/run/wazigate-host.sock", "containers/waziup.wazigate-test")
 func SockDeleteReqest(socketAddr string, API string) ([]byte, error) {

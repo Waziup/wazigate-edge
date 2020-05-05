@@ -212,6 +212,9 @@ func getAppInfo(appID string) map[string]interface{} {
 				Name string `json:"Name"`
 			} `json:"RestartPolicy"`
 		} `json:"HostConfig"`
+		Config struct{
+			Image string `json:"Image"`
+		} `json:"Config"`		
 	}
 
 	var dockerState map[string]interface{}
@@ -232,6 +235,7 @@ func getAppInfo(appID string) map[string]interface{} {
 				"finishedAt":    dockerJSON.State.FinishedAt,
 				"health":        dockerJSON.State.Health.Status,
 				"restartPolicy": dockerJSON.HostConfig.RestartPolicy.Name,
+				"image": 		 dockerJSON.Config.Image,
 			}
 		}
 	}
@@ -291,149 +295,13 @@ func PostApps(resp http.ResponseWriter, req *http.Request, params routing.Params
 		return
 	}
 
-	//<!-- Get the App information
-
-	sp1 := strings.Split(imageName, ":")
-
-	tag := ""
-	if len(sp1) == 2 {
-		tag = sp1[1] //Image tag
-	}
-
-	sp2 := strings.Split(sp1[0], "/")
-
-	repoName := sp2[0]
-	appName := repoName + "_app" // some random default name in case of error
-	if len(sp2) > 1 {
-		appName = sp2[1]
-	}
-
-	appFullPath := appsDirectoryOnHost + repoName + "/" + appName
-
-	//-->
-
-	/*-----------*/
-	appID := repoName + "." + appName
-	appStatusIndex := -1
-	for i := range installingAppStatus {
-		if installingAppStatus[i].id == appID {
-			appStatusIndex = i
-		}
-	}
-	if appStatusIndex == -1 {
-		installingAppStatus = append(installingAppStatus, installingAppStatusType{appID, false, ""})
-		appStatusIndex = len(installingAppStatus) - 1
-	}
-
-	/*-----------*/
-
-	installingAppStatus[appStatusIndex].log = "Installing initialized\n"
-
-	installingAppStatus[appStatusIndex].log += "\nDownloading [ " + appName + " : " + tag + " ] \n"
-
-	// out, err := tools.SockPostReqest( dockerSocketAddress, "containers/create", imageName)
-	cmd := "docker pull " + imageName
-
-	out, err := tools.ExecOnHostWithLogs(cmd, true)
-
-	installingAppStatus[appStatusIndex].log += out
-
-	if err != nil {
+	out, err := installApp( imageName);
+	if err != nil{
 		resp.WriteHeader(400)
-		installingAppStatus[appStatusIndex].done = true
-		tools.SendJSON(resp, "Download Failed!")
-		return
+		log.Printf("[ERR  ] installing app [%v] error: %s ", imageName, err.Error())
 	}
 
-	/*-----------*/
-
-	// out, err = tools.SockPostReqest( dockerSocketAddress, "images/create", "{\"Image\": \""+ imageName +"\"}")
-
-	cmd = "docker create " + imageName
-	containerID, err := tools.ExecOnHostWithLogs(cmd, true)
-
-	if err != nil {
-		resp.WriteHeader(400)
-		installingAppStatus[appStatusIndex].done = true
-		tools.SendJSON(resp, err.Error())
-		return
-	}
-
-	// dockerJSONRaw, _ := tools.SockGetReqest( dockerSocketAddress, "containers/"+ appID +"/json" )
-
-	// var dockerJSON struct {
-	// 	Image	string `json:"Image"`
-	// }
-
-	// if dockerJSONRaw != nil {
-	// 	if err := json.Unmarshal(dockerJSONRaw, &dockerJSON); err == nil {
-	// 		appImageID = dockerJSON.Image;
-	// 	}
-	// }
-
-	// containerID :=
-
-	installingAppStatus[appStatusIndex].log += "\nTermporary container created\n"
-
-	/*-----------*/
-
-	cmd = "mkdir -p \"" + appsDirectoryOnHost + repoName + "\" ;"
-	cmd = "mkdir -p \"" + appFullPath + "\""
-	out, err = tools.ExecOnHostWithLogs(cmd, true)
-	if err != nil {
-		resp.WriteHeader(400)
-		installingAppStatus[appStatusIndex].done = true
-		tools.SendJSON(resp, err.Error())
-		return
-	}
-
-	/*-----------*/
-
-	cmd = "docker cp " + containerID + ":/index.zip " + appFullPath + "/"
-	out, err = tools.ExecOnHostWithLogs(cmd, true)
-
-	installingAppStatus[appStatusIndex].log += out
-
-	if err != nil {
-		resp.WriteHeader(400)
-		installingAppStatus[appStatusIndex].done = true
-		tools.SendJSON(resp, "`index.zip` file extraction failed!")
-		return
-	}
-
-	/*-----------*/
-
-	cmd = "docker rm " + containerID
-	out, _ = tools.ExecOnHostWithLogs(cmd, true)
-
-	/*-----------*/
-
-	cmd = "unzip -o " + appFullPath + "/index.zip -d " + appFullPath
-	out, err = tools.ExecOnHostWithLogs(cmd, true)
-
-	if err != nil {
-		installingAppStatus[appStatusIndex].log += out
-		installingAppStatus[appStatusIndex].done = true
-		resp.WriteHeader(400)
-		tools.SendJSON(resp, "Could not unzip `index.zip`!")
-		return
-	}
-
-	/*-----------*/
-
-	cmd = "rm -f " + appFullPath + "/index.zip"
-	out, _ = tools.ExecOnHostWithLogs(cmd, true)
-
-	/*-----------*/
-
-	/*outJson, err := json.Marshal( out)
-	if( err != nil) {
-		log.Printf( "[ERR  ] %s", err.Error())
-	}/**/
-
-	installingAppStatus[appStatusIndex].log += "\nAll done :)"
-	installingAppStatus[appStatusIndex].done = true
-	tools.SendJSON(resp, "Install successfull")
+	tools.SendJSON(resp, out)
 }
 
 /*-----------------------------*/
@@ -519,7 +387,6 @@ func PostApp(resp http.ResponseWriter, req *http.Request, params routing.Params)
 func DeleteApp(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
 	appID := params.ByName("app_id")
-	appFullPath := appsDirectoryOnHost + strings.Replace(appID, ".", "/", 1)
 
 	/*------*/
 
@@ -531,50 +398,17 @@ func DeleteApp(resp http.ResponseWriter, req *http.Request, params routing.Param
 	}
 
 	/*------*/
+	
+	err := uninstallApp( appID, keepConfig);
 
-	appImageID := ""
-
-	dockerJSONRaw, _ := tools.SockGetReqest(dockerSocketAddress, "containers/"+appID+"/json")
-
-	var dockerJSON struct {
-		Image string `json:"Image"`
-	}
-
-	if dockerJSONRaw != nil {
-		if err := json.Unmarshal(dockerJSONRaw, &dockerJSON); err == nil {
-			appImageID = dockerJSON.Image
-		}
-	}
-
-	/*------*/
-
-	tools.SockDeleteReqest(dockerSocketAddress, "containers/"+appID+"?force=true")
-
-	if appImageID != "" {
-		tools.SockDeleteReqest(dockerSocketAddress, "images/"+appImageID+"?force=true")
-	}
-
-	// Note: for the apps that have multiple containers and images, we need to find another way.
-	// Like this: docker-compose rm -fs
-
-	cmd := ""
-	if !keepConfig {
-		cmd = "rm -r \"" + appFullPath + "\""
-
-	} else {
-
-		cmd = "rm \"" + appFullPath + "/package.json\""
-	}
-
-	out, err := tools.ExecOnHostWithLogs(cmd, true)
+	out := ""
 	if err != nil {
+
 		log.Printf("[ERR  ] %s ", err.Error())
 		out = err.Error()
-	}
+	
+	}else{
 
-	log.Printf("[APP  ] DELETE App: %s\n\t%v\n", appID, out)
-
-	if len(out) == 0 {
 		if keepConfig {
 			out = "Uninstallation done, but the config is not deleted"
 		} else {
@@ -797,4 +631,262 @@ func getAppImages( appID string) ([]string, error){
 
 /*-----------------------------*/
 
-// out = getListOfInstalledApps()
+func dockerHubAccessible() bool{
+
+	cmd := "timeout 3 curl -Is https://hub.docker.com/ | head -n 1 | awk '{print $2}'"
+	rCode, err := tools.ExecOnHostWithLogs(cmd, true)
+
+	if err != nil {
+		log.Printf("[ERR  ] Docker Hub Accesibility Error: %s\n", err.Error())
+		return false
+	}
+
+	return rCode == "200"
+}
+
+/*-----------------------------*/
+
+// PostUpdateApp implements POST /update/:app_id
+// it updates the given app by pulling the latest images from docker hub and replace with the current one (uninstall the current version and install a new one ;])
+// please note that it will replace docker-compose.yml and package.json files with the new version as well.
+func PostUpdateApp(resp http.ResponseWriter, req *http.Request, params routing.Params) {
+
+	appID := params.ByName("app_id")
+
+	//<!-- Checking the connectivity
+
+		if ! dockerHubAccessible(){
+			err := "Update failed. Please check your connectivity!"
+			tools.SendJSON(resp, err)
+			log.Printf("[ERR  ] updating app [%v] error: %s ", appID, err)
+			return
+		}
+
+	//-->
+
+	//<!-- Finding the image name of the app
+
+		appInfo := getAppInfo( appID)	
+		if appInfo == nil {
+			resp.WriteHeader(400)
+			err := "App image name cannot be found!"
+			tools.SendJSON(resp, err)
+			log.Printf("[ERR  ] updating app [%v] error: %s ", appID, err)
+			return
+		}
+
+		imageName := ""
+		if state, ok := appInfo["state"]; ok{
+			if image, ok := state.(map[string]interface{})["image"].(string); ok{
+				imageName = image
+			}
+		}
+
+		if( imageName == ""){
+
+			resp.WriteHeader(400)
+			err := "App Image Name cannot be found in the inspection!"
+			tools.SendJSON(resp, err)
+			log.Printf("[ERR  ] updating app [%v] error: %s ", appID, err)
+			return
+		}
+
+	//-->
+
+	// Update begins here:
+
+	err := uninstallApp( appID, true);
+	if err != nil{
+		msg := "Removing the old version failed!"
+		tools.SendJSON(resp, msg)
+		log.Printf("[ERR  ] updating app [%v] error: %s ", appID, msg)
+	}
+
+	
+	_, err = installApp( imageName);
+	if err != nil{
+		resp.WriteHeader(400)
+		log.Printf("[ERR  ] installing app [%v] error: %s ", imageName, err.Error())
+		tools.SendJSON(resp, err.Error())
+		return
+	}
+
+	tools.SendJSON(resp, "The App is updated successfully")
+}
+
+/*-----------------------------*/
+
+func installApp( imageName string) (string, error){
+
+	var msg string
+	var err error
+
+	//<!-- Get the App information
+
+	sp1 := strings.Split(imageName, ":")
+
+	tag := ""
+	if len(sp1) == 2 {
+		tag = sp1[1] //Image tag
+	}
+
+	sp2 := strings.Split(sp1[0], "/")
+
+	repoName := sp2[0]
+	appName := repoName + "_app" // some random default name in case of error
+	if len(sp2) > 1 {
+		appName = sp2[1]
+	}
+
+	appFullPath := appsDirectoryOnHost + repoName + "/" + appName
+
+	//-->
+
+	/*-----------*/
+	appID := repoName + "." + appName
+	appStatusIndex := -1
+	for i := range installingAppStatus {
+		if installingAppStatus[i].id == appID {
+			appStatusIndex = i
+		}
+	}
+	if appStatusIndex == -1 {
+		installingAppStatus = append(installingAppStatus, installingAppStatusType{appID, false, ""})
+		appStatusIndex = len(installingAppStatus) - 1
+	}
+
+	/*-----------*/
+
+	installingAppStatus[appStatusIndex].log = "Installing initialized\n"
+
+	installingAppStatus[appStatusIndex].log += "\nDownloading [ " + appName + " : " + tag + " ] \n"
+
+	// out, err := tools.SockPostReqest( dockerSocketAddress, "containers/create", imageName)
+	cmd := "docker pull " + imageName
+
+	out, err := tools.ExecOnHostWithLogs(cmd, true)
+
+	installingAppStatus[appStatusIndex].log += out
+
+	if err != nil {
+		installingAppStatus[appStatusIndex].done = true
+		msg = "Download Failed!"
+		return msg, err
+	}
+
+	/*-----------*/
+
+	// out, err = tools.SockPostReqest( dockerSocketAddress, "images/create", "{\"Image\": \""+ imageName +"\"}")
+
+	cmd = "docker create " + imageName
+	containerID, err := tools.ExecOnHostWithLogs(cmd, true)
+
+	if err != nil {
+		installingAppStatus[appStatusIndex].done = true
+
+		msg = err.Error()
+		return msg, err
+	}
+
+	// dockerJSONRaw, _ := tools.SockGetReqest( dockerSocketAddress, "containers/"+ appID +"/json" )
+
+	// var dockerJSON struct {
+	// 	Image	string `json:"Image"`
+	// }
+
+	// if dockerJSONRaw != nil {
+	// 	if err := json.Unmarshal(dockerJSONRaw, &dockerJSON); err == nil {
+	// 		appImageID = dockerJSON.Image;
+	// 	}
+	// }
+
+	// containerID :=
+
+	installingAppStatus[appStatusIndex].log += "\nTermporary container created\n"
+
+	/*-----------*/
+
+	cmd = "mkdir -p \"" + appsDirectoryOnHost + repoName + "\" ;"
+	cmd = "mkdir -p \"" + appFullPath + "\""
+	out, err = tools.ExecOnHostWithLogs(cmd, true)
+	if err != nil {
+		installingAppStatus[appStatusIndex].done = true
+
+		msg = err.Error()
+		return msg, err
+	}
+
+	/*-----------*/
+
+	cmd = "docker cp " + containerID + ":/index.zip " + appFullPath + "/"
+	out, err = tools.ExecOnHostWithLogs(cmd, true)
+
+	installingAppStatus[appStatusIndex].log += out
+
+	if err != nil {
+		installingAppStatus[appStatusIndex].done = true
+
+		msg = "`index.zip` file extraction failed!"
+		return msg, err
+	}
+
+	/*-----------*/
+
+	cmd = "docker rm " + containerID
+	out, _ = tools.ExecOnHostWithLogs(cmd, true)
+
+	/*-----------*/
+
+	cmd = "unzip -o " + appFullPath + "/index.zip -d " + appFullPath
+	out, err = tools.ExecOnHostWithLogs(cmd, true)
+
+	if err != nil {
+		installingAppStatus[appStatusIndex].log += out
+		installingAppStatus[appStatusIndex].done = true
+		
+		msg = "Could not unzip `index.zip`!"
+		return msg, err
+	}
+
+	/*-----------*/
+
+	cmd = "rm -f " + appFullPath + "/index.zip"
+	out, _ = tools.ExecOnHostWithLogs(cmd, true)
+
+	/*-----------*/
+
+	/*outJson, err := json.Marshal( out)
+	if( err != nil) {
+		log.Printf( "[ERR  ] %s", err.Error())
+	}/**/
+
+	installingAppStatus[appStatusIndex].log += "\nAll done :)"
+	installingAppStatus[appStatusIndex].done = true
+
+	return "Install successfull", nil
+}
+
+/*-----------------------------*/
+
+func uninstallApp( appID string, keepConfig bool) error{
+
+	appFullPath := appsDirectoryOnHost + strings.Replace(appID, ".", "/", 1)
+
+	cmd := "cd \""+ appFullPath +"\"; IMG=$(docker-compose images -q); docker-compose rm -fs; docker rmi -f $IMG; "
+	if keepConfig {
+
+		cmd += "rm ./package.json;"
+
+	} else {
+			
+		cmd += "docker system prune -f; rm -r ./;"
+	}
+
+	out, err := tools.ExecOnHostWithLogs(cmd, true)
+
+	log.Printf("[APP  ] DELETE App: %s\n\t%v\n", appID, out)
+	
+	return err
+}
+
+/*-----------------------------*/

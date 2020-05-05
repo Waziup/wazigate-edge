@@ -37,7 +37,7 @@ func init() {
 	router.GET("/update/:app_id", api.GetUpdateApp)
 
 	// router.POST("/update", api.PostUpdateApps)
-	// router.POST("/update/:app_id", api.PostUpdateApp)
+	router.POST("/update/:app_id", api.PostUpdateApp)
 
 	// Device Endpoints
 

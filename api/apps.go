@@ -51,47 +51,47 @@ func GetApps(resp http.ResponseWriter, req *http.Request, params routing.Params)
 	/*------------*/
 
 	var out []map[string]interface{}
+	var err error
 
 	if _, ok := qryParams["available"]; ok {
 
-		out = getListOfAvailableApps()
+		out, err = getListOfAvailableApps()
 
 	} else {
 
-		out = getListOfInstalledApps()
-
+		out, err = getListOfInstalledApps()
 	}
 
 	/*------------*/
+
+	if err != nil{
+		resp.WriteHeader(500)
+		log.Printf("[ERR  ]: %s ", err.Error())
+	}
 
 	tools.SendJSON(resp, out)
 }
 
 /*-----------------------------*/
 
-func getListOfAvailableApps() []map[string]interface{} {
+func getListOfAvailableApps() ( []map[string]interface{}, error) {
 
 	// I keep it hard-coded because later we can update this via update the edge through the update mechanism ;)
-	url := "https://raw.githack.com/Waziup/WaziApps/master/available-apps.json"
+	url := "https://raw.githubusercontent.com/Waziup/WaziApps/master/available-apps.json"
 	var out []map[string]interface{}
 
 	resp, err := http.Get(url)
 	if err != nil {
-		log.Printf("[ERR  ]: %s ", err.Error())
-		return out
+		return out, err
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
 	if err != nil {
-		log.Printf("[ERR  ]: %s ", err.Error())
-		return out
+		return out, err
 	}
 
 	err = json.Unmarshal(body, &out)
-	if err != nil {
-		log.Printf("[ERR  ]: %s ", err.Error())
-	}
 
 	// for _, app := range appsList {
 	// 	out = append(out, map[string]interface{}{
@@ -100,20 +100,23 @@ func getListOfAvailableApps() []map[string]interface{} {
 	// 		// "status": ,
 	// 	})
 	// }
-
-	return out
+	
+	return out, err
 }
 
 /*-----------------------------*/
 
-func getListOfInstalledApps() []map[string]interface{} {
+func getListOfInstalledApps() ([]map[string]interface{}, error) {
 
 	var out []map[string]interface{}
+	
+	// We need to add edge as an app to have a unify update interface in the ui
+	// However we treat it differently
+	out = append( out, getAppInfo( "wazigate-edge" ));
 
 	repoList, err := ioutil.ReadDir(appsDirectoryMapped)
 	if err != nil {
-		log.Printf("[ERR  ]: %s ", err.Error())
-		return out
+		return out, err
 	}
 
 	for _, repo := range repoList {
@@ -136,7 +139,7 @@ func getListOfInstalledApps() []map[string]interface{} {
 		}
 	}
 
-	return out
+	return out, nil
 }
 
 /*-----------------------------*/
@@ -242,21 +245,37 @@ func getAppInfo(appID string) map[string]interface{} {
 
 	/*----------*/
 
-	bytes, err := ioutil.ReadFile(appsDirectoryMapped + "/" + appPath + "/package.json")
-	if err != nil {
-		// resp.WriteHeader(404)
-
-		log.Printf("[ERR  ] package.json: %s", err.Error())
-		return nil
-	}
-
 	var appPkg map[string]interface{}
 
-	if err := json.Unmarshal(bytes, &appPkg); err != nil {
-		// resp.WriteHeader(404)
+	if( appID == "wazigate-edge"){
 
-		log.Printf("[ERR  ] package.json: %s", err.Error())
-		return nil
+		//TODO: Find the edge version through an API
+		//TODO: we may do something nicer than this in future
+
+		appPkg = map[string]interface{}{
+			"name":        "Wazigate Edge Framework",
+			"author":      "Waziup",
+			"version":     "0.0.0",
+			"description": "",
+			"homepage":    "https://www.waziup.io/",
+			"wazigate":     nil,	
+		}
+
+	}else{	
+
+		appPkgRaw, err := ioutil.ReadFile(appsDirectoryMapped + "/" + appPath + "/package.json")
+		if err != nil {
+			// resp.WriteHeader(404)
+
+			log.Printf("[ERR  ] package.json: %s", err.Error())
+			return nil
+		}
+
+		if err := json.Unmarshal(appPkgRaw, &appPkg); err != nil {
+			// resp.WriteHeader(404)
+			log.Printf("[ERR  ] package.json: %s", err.Error())
+			return nil
+		}
 	}
 
 	/*------*/
@@ -610,6 +629,11 @@ func getAppImages( appID string) ([]string, error){
 
 	appFullPath := appsDirectoryMapped + "/" + strings.Replace(appID, ".", "/", 1)
 	var out []string;
+
+	if( appID == "wazigate-edge"){
+		return out, nil // Just for the moment that not ot make Johann wait more than this for me ;)
+	}
+
 
 	yamlFile, err := ioutil.ReadFile( appFullPath + "/docker-compose.yml")
     if err != nil {

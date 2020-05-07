@@ -44,6 +44,7 @@ func GetApps(resp http.ResponseWriter, req *http.Request, params routing.Params)
 
 	if _, ok := qryParams["install_logs"]; ok {
 
+		getUpdateEdgeStatus(); // we call this because for Edge update the procedure is different
 		tools.SendJSON(resp, installingAppStatus)
 		return
 	}
@@ -258,7 +259,7 @@ func getAppInfo(appID string) map[string]interface{} {
 			"version":     "0.0.0",
 			"description": "",
 			"homepage":    "https://www.waziup.io/",
-			"wazigate":     nil,	
+			"wazigate":     map[string]interface{}{ "menu": nil },
 		}
 
 	}else{	
@@ -631,9 +632,11 @@ func getAppImages( appID string) ([]string, error){
 	var out []string;
 
 	if( appID == "wazigate-edge"){
-		return out, nil // Just for the moment that not ot make Johann wait more than this for me ;)
+		cmd := "cd ../; CNTS=$(sudo docker-compose ps -q); for cId in $CNTS; do cImage=$(sudo docker ps --format '{{.Image}}' -f id=${cId}); echo $cImage; done;"
+		stdout, err := tools.ExecOnHostWithLogs(cmd, true)
+		out = strings.Split(strings.TrimSpace(stdout), "\n")
+		return out, err
 	}
-
 
 	yamlFile, err := ioutil.ReadFile( appFullPath + "/docker-compose.yml")
     if err != nil {
@@ -688,6 +691,24 @@ func PostUpdateApp(resp http.ResponseWriter, req *http.Request, params routing.P
 
 	//-->
 
+
+	//<!-- Updating the Edge, it is an exeption because I have to stop myself, 
+	//	then download the latest version of myself, remove my older version and then start myself ;)
+
+		if( appID == "wazigate-edge"){
+			
+			err := updateEdge()
+			if err != nil{
+				tools.SendJSON(resp, err.Error())
+				log.Printf("[ERR  ] updating the Edge error: %s ", err.Error())
+				return
+			}
+			tools.SendJSON(resp, "Update Done.")
+			return
+		}
+			
+	//-->
+
 	//<!-- Finding the image name of the app
 
 		appInfo := getAppInfo( appID)	
@@ -736,6 +757,57 @@ func PostUpdateApp(resp http.ResponseWriter, req *http.Request, params routing.P
 	}
 
 	tools.SendJSON(resp, "The App is updated successfully")
+}
+
+/*-----------------------------*/
+var updateEdgeInProgress = false
+func updateEdge() error{
+
+	updateEdgeInProgress = true;
+	
+	cmd := "sudo bash update.sh | sudo tee update.logs &" // Run it and unlock the thing
+	stdout, err := tools.ExecOnHostWithLogs(cmd, true)
+	
+	log.Printf( "[INFO ] Updating the edge: %s", stdout)
+
+	updateEdgeInProgress = false;
+	return err
+
+	// out = strings.Split(strings.TrimSpace(stdout), "\n")
+
+}
+
+/*-----------------------------*/
+
+func getUpdateEdgeStatus() {
+
+	if( ! updateEdgeInProgress){
+		return
+	}
+
+	appID := "wazigate-edge"
+	appStatusIndex := -1
+	for i := range installingAppStatus {
+		if installingAppStatus[i].id == appID {
+			appStatusIndex = i
+		}
+	}
+	if appStatusIndex == -1 {
+		installingAppStatus = append(installingAppStatus, installingAppStatusType{appID, false, ""})
+		appStatusIndex = len(installingAppStatus) - 1
+	}
+
+	/*-----------*/
+
+	cmd := "cat update.logs";
+	stdout, err := tools.ExecOnHostWithLogs(cmd, false)
+	if( err != nil) {
+		stdout = ""
+	}
+
+	/*-----------*/
+
+	installingAppStatus[appStatusIndex].log = stdout
 }
 
 /*-----------------------------*/

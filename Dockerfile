@@ -3,7 +3,7 @@ FROM golang:1.13-alpine AS development
 ENV CGO_ENABLED=0
 ENV GO111MODULE=on
 
-RUN apk add --no-cache ca-certificates tzdata git
+RUN apk add --no-cache ca-certificates tzdata git curl
 
 COPY . /wazigate-edge
 WORKDIR /wazigate-edge
@@ -14,7 +14,7 @@ ENTRYPOINT ["tail", "-f", "/dev/null"]
 
 
 ################################################################################
-
+# Uncomment the follwoing lines for production:
 
 FROM alpine:latest AS production
 

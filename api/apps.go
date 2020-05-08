@@ -470,6 +470,7 @@ func HandleAppProxyRequest(resp http.ResponseWriter, req *http.Request, params r
 	if err != nil {
 		log.Printf("[APP  ] Err %v", err)
 		resp.WriteHeader(http.StatusBadRequest)
+		resp.Write([]byte( handleAppProxyError(appID))) //Showing a nice user friendly error msg
 		resp.Write([]byte(err.Error()))
 		return
 	}
@@ -482,6 +483,7 @@ func HandleAppProxyRequest(resp http.ResponseWriter, req *http.Request, params r
 	if err != nil {
 		log.Printf("[APP  ] Err %v", err)
 		resp.WriteHeader(http.StatusBadGateway)
+		resp.Write([]byte( handleAppProxyError(appID)))
 		resp.Write([]byte(err.Error()))
 		return
 	}

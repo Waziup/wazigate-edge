@@ -259,7 +259,7 @@ func getAppInfo(appID string) map[string]interface{} {
 			"version":     "0.0.0",
 			"description": "",
 			"homepage":    "https://www.waziup.io/",
-			"wazigate":     map[string]interface{}{ "menu": nil },
+			"waziapp":     map[string]interface{}{ "icon": "img/waziup.svg", "menu": nil },
 		}
 
 	}else{	
@@ -289,7 +289,7 @@ func getAppInfo(appID string) map[string]interface{} {
 		"description": appPkg["description"],
 		"homepage":    appPkg["homepage"],
 		"state":       dockerState,
-		"package":     appPkg["wazigate"],
+		"waziapp":     appPkg["waziapp"],
 	}
 
 }
@@ -512,7 +512,7 @@ func handleAppProxyError(appID string) string {
 	}
 
 	errMsg := ""
-	if appInfo["package"] == nil {
+	if appInfo["waziapp"] == nil {
 
 		errMsg = "This app is not installed!"
 

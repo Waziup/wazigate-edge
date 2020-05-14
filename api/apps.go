@@ -3,13 +3,13 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"regexp"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -44,7 +44,7 @@ func GetApps(resp http.ResponseWriter, req *http.Request, params routing.Params)
 
 	if _, ok := qryParams["install_logs"]; ok {
 
-		getUpdateEdgeStatus(); // we call this because for Edge update the procedure is different
+		getUpdateEdgeStatus() // we call this because for Edge update the procedure is different
 		tools.SendJSON(resp, installingAppStatus)
 		return
 	}
@@ -65,7 +65,7 @@ func GetApps(resp http.ResponseWriter, req *http.Request, params routing.Params)
 
 	/*------------*/
 
-	if err != nil{
+	if err != nil {
 		resp.WriteHeader(500)
 		log.Printf("[ERR  ]: %s ", err.Error())
 	}
@@ -75,11 +75,11 @@ func GetApps(resp http.ResponseWriter, req *http.Request, params routing.Params)
 
 /*-----------------------------*/
 
-func getListOfAvailableApps() ( []map[string]interface{}, error) {
+func getListOfAvailableApps() ([]map[string]interface{}, error) {
 
 	// I keep it hard-coded because later we can update this via update the edge through the update mechanism ;)
 	url := "https://raw.githubusercontent.com/Waziup/WaziApps/master/available-apps.json"
-	var out []map[string]interface{}
+	var out, appsList []map[string]interface{}
 
 	resp, err := http.Get(url)
 	if err != nil {
@@ -92,16 +92,29 @@ func getListOfAvailableApps() ( []map[string]interface{}, error) {
 		return out, err
 	}
 
-	err = json.Unmarshal(body, &out)
+	err = json.Unmarshal(body, &appsList)
 
-	// for _, app := range appsList {
-	// 	out = append(out, map[string]interface{}{
-	// 		"id":    app["id"],
-	// 		"image": app["image"],
-	// 		// "status": ,
-	// 	})
-	// }
-	
+	/*---------*/
+
+	installedAppsIface, err := getListOfInstalledApps()
+	if err != nil {
+		// Do nothing for the moment
+	}
+
+	installedAppsList := make(map[string]interface{})
+	for _, app := range installedAppsIface {
+		installedAppsList[app["id"].(string)] = 1
+	}
+
+	/*---------*/
+
+	// Filter out the installed apps
+	for _, app := range appsList {
+		if _, ok := installedAppsList[app["id"].(string)]; !ok {
+			out = append(out, app)
+		}
+	}
+
 	return out, err
 }
 
@@ -110,10 +123,10 @@ func getListOfAvailableApps() ( []map[string]interface{}, error) {
 func getListOfInstalledApps() ([]map[string]interface{}, error) {
 
 	var out []map[string]interface{}
-	
+
 	// We need to add edge as an app to have a unify update interface in the ui
 	// However we treat it differently
-	out = append( out, getAppInfo( "wazigate-edge" ));
+	out = append(out, getAppInfo("wazigate-edge"))
 
 	repoList, err := ioutil.ReadDir(appsDirectoryMapped)
 	if err != nil {
@@ -216,9 +229,9 @@ func getAppInfo(appID string) map[string]interface{} {
 				Name string `json:"Name"`
 			} `json:"RestartPolicy"`
 		} `json:"HostConfig"`
-		Config struct{
+		Config struct {
 			Image string `json:"Image"`
-		} `json:"Config"`		
+		} `json:"Config"`
 	}
 
 	var dockerState map[string]interface{}
@@ -239,7 +252,7 @@ func getAppInfo(appID string) map[string]interface{} {
 				"finishedAt":    dockerJSON.State.FinishedAt,
 				"health":        dockerJSON.State.Health.Status,
 				"restartPolicy": dockerJSON.HostConfig.RestartPolicy.Name,
-				"image": 		 dockerJSON.Config.Image,
+				"image":         dockerJSON.Config.Image,
 			}
 		}
 	}
@@ -248,21 +261,21 @@ func getAppInfo(appID string) map[string]interface{} {
 
 	var appPkg map[string]interface{}
 
-	if( appID == "wazigate-edge"){
+	if appID == "wazigate-edge" {
 
 		//TODO: Find the edge version through an API
 		//TODO: we may do something nicer than this in future
 
 		appPkg = map[string]interface{}{
 			"name":        "Wazigate Edge Framework",
-			"author":      "Waziup",
-			"version":     "0.0.0",
+			"author":      map[string]interface{}{"name": "Waziup"},
+			"version":     "0.0.0", //TODO: we need to use some sort of API to get the latest version
 			"description": "",
 			"homepage":    "https://www.waziup.io/",
-			"waziapp":     map[string]interface{}{ "icon": "img/waziup.svg", "menu": nil },
+			"waziapp":     map[string]interface{}{"icon": "img/waziup.svg", "menu": nil},
 		}
 
-	}else{	
+	} else {
 
 		appPkgRaw, err := ioutil.ReadFile(appsDirectoryMapped + "/" + appPath + "/package.json")
 		if err != nil {
@@ -315,8 +328,8 @@ func PostApps(resp http.ResponseWriter, req *http.Request, params routing.Params
 		return
 	}
 
-	out, err := installApp( imageName);
-	if err != nil{
+	out, err := installApp(imageName)
+	if err != nil {
 		resp.WriteHeader(400)
 		log.Printf("[ERR  ] installing app [%v] error: %s ", imageName, err.Error())
 	}
@@ -418,16 +431,16 @@ func DeleteApp(resp http.ResponseWriter, req *http.Request, params routing.Param
 	}
 
 	/*------*/
-	
-	err := uninstallApp( appID, keepConfig);
+
+	err := uninstallApp(appID, keepConfig)
 
 	out := ""
 	if err != nil {
 
 		log.Printf("[ERR  ] %s ", err.Error())
 		out = err.Error()
-	
-	}else{
+
+	} else {
 
 		if keepConfig {
 			out = "Uninstallation done, but the config is not deleted"
@@ -470,7 +483,7 @@ func HandleAppProxyRequest(resp http.ResponseWriter, req *http.Request, params r
 	if err != nil {
 		log.Printf("[APP  ] Err %v", err)
 		resp.WriteHeader(http.StatusBadRequest)
-		resp.Write([]byte( handleAppProxyError(appID))) //Showing a nice user friendly error msg
+		resp.Write([]byte(handleAppProxyError(appID))) //Showing a nice user friendly error msg
 		resp.Write([]byte(err.Error()))
 		return
 	}
@@ -483,7 +496,7 @@ func HandleAppProxyRequest(resp http.ResponseWriter, req *http.Request, params r
 	if err != nil {
 		log.Printf("[APP  ] Err %v", err)
 		resp.WriteHeader(http.StatusBadGateway)
-		resp.Write([]byte( handleAppProxyError(appID)))
+		resp.Write([]byte(handleAppProxyError(appID)))
 		resp.Write([]byte(err.Error()))
 		return
 	}
@@ -546,9 +559,9 @@ func handleAppProxyError(appID string) string {
 func GetUpdateApp(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
 	appID := params.ByName("app_id")
-	newUpdate := false;
+	newUpdate := false
 
-	images, err := getAppImages( appID)
+	images, err := getAppImages(appID)
 	if err != nil {
 		log.Printf("[APP  ] Err %v", err)
 		resp.WriteHeader(http.StatusBadGateway)
@@ -556,71 +569,71 @@ func GetUpdateApp(resp http.ResponseWriter, req *http.Request, params routing.Pa
 		return
 	}
 
-	for _, image := range images{
+	for _, image := range images {
 
 		/*-------*/
 
-		remoteImageInfoRaw, _ := tools.SockGetReqest(dockerSocketAddress, "distribution/"+ image +"/json")
-		if err != nil{
+		remoteImageInfoRaw, _ := tools.SockGetReqest(dockerSocketAddress, "distribution/"+image+"/json")
+		if err != nil {
 			log.Printf("[APP  ] %v", err)
-			continue;
+			continue
 		}
 
 		var remoteImageInfo struct {
 			Descriptor struct {
-				Digest		string	`json:"Digest"`
-				Size		int64	`json:"Size"`
+				Digest string `json:"Digest"`
+				Size   int64  `json:"Size"`
 			} `json:"Descriptor"`
 		}
-	
+
 		if remoteImageInfoRaw == nil {
-			continue;
+			continue
 		}
 		if err := json.Unmarshal(remoteImageInfoRaw, &remoteImageInfo); err != nil {
 			log.Printf("[APP  ] Err %v", err)
-			continue;
+			continue
 		}
 
 		/*-------*/
 
-		localImageInfoRaw, _ := tools.SockGetReqest(dockerSocketAddress, "images/"+ image +"/json")
-		if err != nil{
+		localImageInfoRaw, _ := tools.SockGetReqest(dockerSocketAddress, "images/"+image+"/json")
+		if err != nil {
 			log.Printf("[APP  ] %v", err)
-			continue;
+			continue
 		}
 
 		var localImageInfo struct {
-			Digests		[]string	`json:"RepoDigests"`
+			Digests []string `json:"RepoDigests"`
 		}
-	
+
 		if localImageInfoRaw == nil {
-			continue;
+			continue
 		}
 		if err := json.Unmarshal(localImageInfoRaw, &localImageInfo); err != nil {
 			log.Printf("[APP  ] Err %v", err)
-			continue;
+			continue
 		}
 
 		/*-------*/
 
-		localImageDigest := "";
-		if len( localImageInfo.Digests) > 0{
+		localImageDigest := ""
+		if len(localImageInfo.Digests) > 0 {
 			re := regexp.MustCompile(`[^@]+@`)
 			localImageDigest = re.ReplaceAllString(localImageInfo.Digests[0], "")
 		}
 
 		// Even if the local digest does not exist (due to building it instead of pulling), we update the app
-		if( localImageDigest != remoteImageInfo.Descriptor.Digest){
+		if localImageDigest != remoteImageInfo.Descriptor.Digest {
 			// New update is available
-			newUpdate = true;
-			break;
+			newUpdate = true
+			break
 		}
 	}
 
 	/*------------*/
 
 	out := map[string]interface{}{
-		"newUpdate":  newUpdate,
+		"newUpdate": newUpdate,
 	}
 
 	tools.SendJSON(resp, out)
@@ -628,20 +641,20 @@ func GetUpdateApp(resp http.ResponseWriter, req *http.Request, params routing.Pa
 
 /*-----------------------------*/
 
-func getAppImages( appID string) ([]string, error){
+func getAppImages(appID string) ([]string, error) {
 
 	appFullPath := appsDirectoryMapped + "/" + strings.Replace(appID, ".", "/", 1)
-	var out []string;
+	var out []string
 
-	if( appID == "wazigate-edge"){
+	if appID == "wazigate-edge" {
 		cmd := "cd ../; CNTS=$(sudo docker-compose ps -q); for cId in $CNTS; do cImage=$(sudo docker ps --format '{{.Image}}' -f id=${cId}); echo $cImage; done;"
 		stdout, err := tools.ExecOnHostWithLogs(cmd, true)
 		out = strings.Split(strings.TrimSpace(stdout), "\n")
 		return out, err
 	}
 
-	yamlFile, err := ioutil.ReadFile( appFullPath + "/docker-compose.yml")
-    if err != nil {
+	yamlFile, err := ioutil.ReadFile(appFullPath + "/docker-compose.yml")
+	if err != nil {
 		log.Printf("[APP  ] docker-compose.yml : %v ", err)
 		return out, err
 	}
@@ -650,17 +663,17 @@ func getAppImages( appID string) ([]string, error){
 
 	re := regexp.MustCompile(`image[\s]*:[\s]*([a-zA-Z0-9/\:\-]+)`)
 
-	submatchall := re.FindAllStringSubmatch( string( yamlFile), -1)
+	submatchall := re.FindAllStringSubmatch(string(yamlFile), -1)
 	for _, element := range submatchall {
-		out = append( out, element[1])
-	}		
+		out = append(out, element[1])
+	}
 
 	return out, nil
 }
 
 /*-----------------------------*/
 
-func dockerHubAccessible() bool{
+func dockerHubAccessible() bool {
 
 	cmd := "timeout 3 curl -Is https://hub.docker.com/ | head -n 1 | awk '{print $2}'"
 	rCode, err := tools.ExecOnHostWithLogs(cmd, true)
@@ -684,74 +697,72 @@ func PostUpdateApp(resp http.ResponseWriter, req *http.Request, params routing.P
 
 	//<!-- Checking the connectivity
 
-		if ! dockerHubAccessible(){
-			err := "Update failed. Please check your connectivity!"
-			tools.SendJSON(resp, err)
-			log.Printf("[ERR  ] updating app [%v] error: %s ", appID, err)
-			return
-		}
+	if !dockerHubAccessible() {
+		err := "Update failed. Please check your connectivity!"
+		tools.SendJSON(resp, err)
+		log.Printf("[ERR  ] updating app [%v] error: %s ", appID, err)
+		return
+	}
 
 	//-->
 
-
-	//<!-- Updating the Edge, it is an exeption because I have to stop myself, 
+	//<!-- Updating the Edge, it is an exeption because I have to stop myself,
 	//	then download the latest version of myself, remove my older version and then start myself ;)
 
-		if( appID == "wazigate-edge"){
-			
-			err := updateEdge()
-			if err != nil{
-				tools.SendJSON(resp, err.Error())
-				log.Printf("[ERR  ] updating the Edge error: %s ", err.Error())
-				return
-			}
-			tools.SendJSON(resp, "Update Done.")
+	if appID == "wazigate-edge" {
+
+		err := updateEdge()
+		if err != nil {
+			tools.SendJSON(resp, err.Error())
+			log.Printf("[ERR  ] updating the Edge error: %s ", err.Error())
 			return
 		}
-			
+		tools.SendJSON(resp, "Update Done.")
+		return
+	}
+
 	//-->
 
 	//<!-- Finding the image name of the app
 
-		appInfo := getAppInfo( appID)	
-		if appInfo == nil {
-			resp.WriteHeader(400)
-			err := "App image name cannot be found!"
-			tools.SendJSON(resp, err)
-			log.Printf("[ERR  ] updating app [%v] error: %s ", appID, err)
-			return
-		}
+	appInfo := getAppInfo(appID)
+	if appInfo == nil {
+		resp.WriteHeader(400)
+		err := "App image name cannot be found!"
+		tools.SendJSON(resp, err)
+		log.Printf("[ERR  ] updating app [%v] error: %s ", appID, err)
+		return
+	}
 
-		imageName := ""
-		if state, ok := appInfo["state"]; ok{
-			if image, ok := state.(map[string]interface{})["image"].(string); ok{
-				imageName = image
-			}
+	imageName := ""
+	if state, ok := appInfo["state"]; ok {
+		if image, ok := state.(map[string]interface{})["image"].(string); ok {
+			imageName = image
 		}
+	}
 
-		if( imageName == ""){
+	if imageName == "" {
 
-			resp.WriteHeader(400)
-			err := "App Image Name cannot be found in the inspection!"
-			tools.SendJSON(resp, err)
-			log.Printf("[ERR  ] updating app [%v] error: %s ", appID, err)
-			return
-		}
+		resp.WriteHeader(400)
+		err := "App Image Name cannot be found in the inspection!"
+		tools.SendJSON(resp, err)
+		log.Printf("[ERR  ] updating app [%v] error: %s ", appID, err)
+		return
+	}
 
 	//-->
 
 	// Update begins here:
 
-	err := uninstallApp( appID, true);
-	if err != nil{
+	err := uninstallApp(appID, true)
+	if err != nil {
 		msg := "Removing the old version failed!"
 		tools.SendJSON(resp, msg)
 		log.Printf("[ERR  ] updating app [%v] error: %s ", appID, msg)
 	}
 
-	
-	_, err = installApp( imageName);
-	if err != nil{
+	_, err = installApp(imageName)
+	if err != nil {
 		resp.WriteHeader(400)
 		log.Printf("[ERR  ] installing app [%v] error: %s ", imageName, err.Error())
 		tools.SendJSON(resp, err.Error())
@@ -763,16 +774,17 @@ func PostUpdateApp(resp http.ResponseWriter, req *http.Request, params routing.P
 
 /*-----------------------------*/
 var updateEdgeInProgress = false
-func updateEdge() error{
 
-	updateEdgeInProgress = true;
-	
+func updateEdge() error {
+
+	updateEdgeInProgress = true
+
 	cmd := "sudo bash update.sh | sudo tee update.logs &" // Run it and unlock the thing
 	stdout, err := tools.ExecOnHostWithLogs(cmd, true)
-	
-	log.Printf( "[INFO ] Updating the edge: %s", stdout)
 
-	updateEdgeInProgress = false;
+	log.Printf("[INFO ] Updating the edge: %s", stdout)
+
+	updateEdgeInProgress = false
 	return err
 
 	// out = strings.Split(strings.TrimSpace(stdout), "\n")
@@ -783,7 +795,7 @@ func updateEdge() error{
 
 func getUpdateEdgeStatus() {
 
-	if( ! updateEdgeInProgress){
+	if !updateEdgeInProgress {
 		return
 	}
 
@@ -801,9 +813,9 @@ func getUpdateEdgeStatus() {
 
 	/*-----------*/
 
-	cmd := "cat update.logs";
+	cmd := "cat update.logs"
 	stdout, err := tools.ExecOnHostWithLogs(cmd, false)
-	if( err != nil) {
+	if err != nil {
 		stdout = ""
 	}
 
@@ -814,7 +826,7 @@ func getUpdateEdgeStatus() {
 
 /*-----------------------------*/
 
-func installApp( imageName string) (string, error){
+func installApp(imageName string) (string, error) {
 
 	var msg string
 	var err error
@@ -941,7 +953,7 @@ func installApp( imageName string) (string, error){
 	if err != nil {
 		installingAppStatus[appStatusIndex].log += out
 		installingAppStatus[appStatusIndex].done = true
-		
+
 		msg = "Could not unzip `index.zip`!"
 		return msg, err
 	}
@@ -966,24 +978,24 @@ func installApp( imageName string) (string, error){
 
 /*-----------------------------*/
 
-func uninstallApp( appID string, keepConfig bool) error{
+func uninstallApp(appID string, keepConfig bool) error {
 
 	appFullPath := appsDirectoryOnHost + strings.Replace(appID, ".", "/", 1)
 
-	cmd := "cd \""+ appFullPath +"\"; IMG=$(docker-compose images -q); docker-compose rm -fs; docker rmi -f $IMG; "
+	cmd := "cd \"" + appFullPath + "\"; IMG=$(docker-compose images -q); docker-compose rm -fs; docker rmi -f $IMG; "
 	if keepConfig {
 
 		cmd += "rm ./package.json;"
 
 	} else {
-			
+
 		cmd += "docker system prune -f; rm -r ./;"
 	}
 
 	out, err := tools.ExecOnHostWithLogs(cmd, true)
 
 	log.Printf("[APP  ] DELETE App: %s\n\t%v\n", appID, out)
-	
+
 	return err
 }
 

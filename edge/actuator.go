@@ -124,7 +124,8 @@ func SetActuatorName(deviceID string, actuatorID string, name string) (Meta, err
 		"actuators.id": actuatorID,
 	}).Select(
 		bson.M{
-			"actuators.id": actuatorID,
+			"actuators.id":   1,
+			"actuators.meta": 1,
 		},
 	).Apply(mgo.Change{
 		Update: bson.M{
@@ -146,7 +147,13 @@ func SetActuatorName(deviceID string, actuatorID string, name string) (Meta, err
 		return nil, mgo.ErrNotFound
 	}
 
-	return device.Actuators[0].Meta, nil
+	for _, actuator := range device.Actuators {
+		if actuator.ID == actuatorID {
+			return actuator.Meta, nil
+		}
+	}
+
+	return nil, nil
 }
 
 // SetActuatorMeta changes this actuators metadata.

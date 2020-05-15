@@ -193,7 +193,7 @@ func postDeviceSensorMeta(resp http.ResponseWriter, req *http.Request, deviceID 
 		return
 	}
 
-	log.Printf("[DB   ] Sensor %s/%s meta changed: %q", deviceID, sensorID, meta)
+	log.Printf("[DB   ] Sensor \"%s/%s\" meta changed: %v", deviceID, sensorID, meta)
 	clouds.FlagSensor(deviceID, sensorID, clouds.ActionModify, noTime, meta)
 }
 

@@ -255,12 +255,13 @@ func (cloud *Cloud) flag(ent Entity, action Action, remote time.Time, meta edge.
 					if status.Action == 0 {
 						if !now.Before(status.Wakeup) {
 							delete(cloud.Status, ent)
+							status = nil
 						}
 					}
 				} else {
 					if action == ActionModify {
 						sleep := meta.SyncInterval()
-						status.Wakeup = status.Wakeup.Add(status.Sleep - sleep)
+						status.Wakeup = status.Wakeup.Add(sleep - status.Sleep)
 						status.Sleep = sleep
 					}
 					status.Action = status.Action | action
@@ -279,11 +280,13 @@ func (cloud *Cloud) flag(ent Entity, action Action, remote time.Time, meta edge.
 	}
 	cloud.StatusMutex.Unlock()
 
-	if status != nil {
-		log.Printf("[UP   ] Status %s: %s", ent, status.Action)
-		if statusCallback != nil {
-			statusCallback(cloud, ent, status)
-		}
+	if status == nil {
+		log.Printf("[UP   ] Status %q: released", ent)
+	} else {
+		log.Printf("[UP   ] Status %q: %s", ent, status.Action)
+	}
+	if statusCallback != nil {
+		statusCallback(cloud, ent, status)
 	}
 }
 

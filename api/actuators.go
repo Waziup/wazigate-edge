@@ -198,7 +198,7 @@ func postDeviceActuatorMeta(resp http.ResponseWriter, req *http.Request, deviceI
 		return
 	}
 
-	log.Printf("[DB   ] Actuator %s/%s meta changed: %q", deviceID, actuatorID, meta)
+	log.Printf("[DB   ] Actuator \"%s/%s\" meta changed: %v", deviceID, actuatorID, meta)
 	clouds.FlagActuator(deviceID, actuatorID, clouds.ActionModify, noTime, meta)
 }
 

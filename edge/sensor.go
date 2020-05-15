@@ -296,7 +296,8 @@ func PostSensorValue(deviceID string, sensorID string, val Value) (Meta, error) 
 		"sensors.id": sensorID,
 	}).Select(
 		bson.M{
-			"sensors.id": sensorID,
+			"sensors.id":   1,
+			"sensors.meta": 1,
 		},
 	).Apply(mgo.Change{
 		Update: bson.M{
@@ -324,7 +325,13 @@ func PostSensorValue(deviceID string, sensorID string, val Value) (Meta, error) 
 		return nil, CodeError{500, "database error: " + err.Error()}
 	}
 
-	return device.Sensors[0].Meta, nil
+	for _, sensor := range device.Sensors {
+		if sensor.ID == sensorID {
+			return sensor.Meta, nil
+		}
+	}
+
+	return nil, nil
 }
 
 // PostSensorValues can be used to post multiple data point for this sensor.

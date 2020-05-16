@@ -61,7 +61,7 @@ func GetApps(resp http.ResponseWriter, req *http.Request, params routing.Params)
 
 	} else {
 
-		out, err = getListOfInstalledApps()
+		out, err = getListOfInstalledApps(true /*withDockerStatus*/)
 	}
 
 	/*------------*/
@@ -71,11 +71,17 @@ func GetApps(resp http.ResponseWriter, req *http.Request, params routing.Params)
 		log.Printf("[ERR  ]: %s ", err.Error())
 	}
 
+	if out == nil {
+		tools.SendJSON(resp, []map[string]interface{}{})
+		return
+	}
+
 	tools.SendJSON(resp, out)
 }
 
 /*-----------------------------*/
 
+// Shows the apps from Market Place
 func getListOfAvailableApps() ([]map[string]interface{}, error) {
 
 	// I keep it hard-coded because later we can update this via update the edge through the update mechanism ;)
@@ -97,7 +103,7 @@ func getListOfAvailableApps() ([]map[string]interface{}, error) {
 
 	/*---------*/
 
-	installedAppsIface, err := getListOfInstalledApps()
+	installedAppsIface, err := getListOfInstalledApps(false /*No need to get the status of containers*/)
 	if err != nil {
 		// Do nothing for the moment
 	}
@@ -121,13 +127,13 @@ func getListOfAvailableApps() ([]map[string]interface{}, error) {
 
 /*-----------------------------*/
 
-func getListOfInstalledApps() ([]map[string]interface{}, error) {
+func getListOfInstalledApps(withDockerStatus bool) ([]map[string]interface{}, error) {
 
 	var out []map[string]interface{}
 
 	// We need to add edge as an app to have a unify update interface in the ui
 	// However we treat it differently
-	out = append(out, getAppInfo("wazigate-edge"))
+	out = append(out, getAppInfo("wazigate-edge", withDockerStatus))
 
 	repoList, err := ioutil.ReadDir(appsDirectoryMapped)
 	if err != nil {
@@ -143,7 +149,7 @@ func getListOfInstalledApps() ([]map[string]interface{}, error) {
 		for _, app := range appsList {
 
 			appID := repo.Name() + "." + app.Name()
-			appInfo := getAppInfo(appID)
+			appInfo := getAppInfo(appID, withDockerStatus)
 
 			if appInfo != nil {
 				out = append(out, appInfo)
@@ -195,7 +201,7 @@ func GetApp(resp http.ResponseWriter, req *http.Request, params routing.Params) 
 
 	/*----------*/
 
-	out := getAppInfo(appID)
+	out := getAppInfo(appID, true /* withDockerStatus */)
 
 	if out == nil {
 		resp.Write([]byte("{}"))
@@ -210,56 +216,58 @@ func GetApp(resp http.ResponseWriter, req *http.Request, params routing.Params) 
 
 /*-----------------------------*/
 
-func getAppInfo(appID string) map[string]interface{} {
+func getAppInfo(appID string, withDockerStatus bool) map[string]interface{} {
 
 	appPath := strings.Replace(appID, ".", "/", 1)
 
-	// cmd := "docker inspect " + appID
-	// dockerJSONRaw, _ := tools.ExecOnHostWithLogs(cmd, true)
-
-	dockerJSONRaw, _ := tools.SockGetReqest(dockerSocketAddress, "containers/"+appID+"/json")
-
-	var dockerJSON struct {
-		State struct {
-			Status     string `json:"Status"`
-			Running    bool   `json:"Running"`
-			Paused     bool   `json:"Paused"`
-			Error      string `json:"Error"`
-			StartedAt  string `json:"StartedAt"`
-			FinishedAt string `json:"FinishedAt"`
-			Health     struct {
-				Status string `json:"Status"`
-			} `json:"Health"`
-		} `json:"State"`
-		HostConfig struct {
-			RestartPolicy struct {
-				Name string `json:"Name"`
-			} `json:"RestartPolicy"`
-		} `json:"HostConfig"`
-		Config struct {
-			Image string `json:"Image"`
-		} `json:"Config"`
-	}
-
 	var dockerState map[string]interface{}
+	if withDockerStatus {
 
-	if dockerJSONRaw != nil {
-		if err := json.Unmarshal(dockerJSONRaw, &dockerJSON); err != nil {
+		// cmd := "docker inspect " + appID
+		// dockerJSONRaw, _ := tools.ExecOnHostWithLogs(cmd, true)
 
-			log.Printf("[ERR  ] docker_inspect: %s", err.Error())
+		dockerJSONRaw, _ := tools.SockGetReqest(dockerSocketAddress, "containers/"+appID+"/json")
 
-		} else {
+		var dockerJSON struct {
+			State struct {
+				Status     string `json:"Status"`
+				Running    bool   `json:"Running"`
+				Paused     bool   `json:"Paused"`
+				Error      string `json:"Error"`
+				StartedAt  string `json:"StartedAt"`
+				FinishedAt string `json:"FinishedAt"`
+				Health     struct {
+					Status string `json:"Status"`
+				} `json:"Health"`
+			} `json:"State"`
+			HostConfig struct {
+				RestartPolicy struct {
+					Name string `json:"Name"`
+				} `json:"RestartPolicy"`
+			} `json:"HostConfig"`
+			Config struct {
+				Image string `json:"Image"`
+			} `json:"Config"`
+		}
 
-			dockerState = map[string]interface{}{
-				"status":        dockerJSON.State.Status,
-				"running":       dockerJSON.State.Running,
-				"paused":        dockerJSON.State.Paused,
-				"error":         dockerJSON.State.Error,
-				"startedAt":     dockerJSON.State.StartedAt,
-				"finishedAt":    dockerJSON.State.FinishedAt,
-				"health":        dockerJSON.State.Health.Status,
-				"restartPolicy": dockerJSON.HostConfig.RestartPolicy.Name,
-				"image":         dockerJSON.Config.Image,
+		if dockerJSONRaw != nil {
+			if err := json.Unmarshal(dockerJSONRaw, &dockerJSON); err != nil {
+
+				log.Printf("[ERR  ] docker_inspect: %s", err.Error())
+
+			} else {
+
+				dockerState = map[string]interface{}{
+					"status":        dockerJSON.State.Status,
+					"running":       dockerJSON.State.Running,
+					"paused":        dockerJSON.State.Paused,
+					"error":         dockerJSON.State.Error,
+					"startedAt":     dockerJSON.State.StartedAt,
+					"finishedAt":    dockerJSON.State.FinishedAt,
+					"health":        dockerJSON.State.Health.Status,
+					"restartPolicy": dockerJSON.HostConfig.RestartPolicy.Name,
+					"image":         dockerJSON.Config.Image,
+				}
 			}
 		}
 	}
@@ -524,7 +532,7 @@ func HandleAppProxyRequest(resp http.ResponseWriter, req *http.Request, params r
 
 func handleAppProxyError(appID string) string {
 
-	appInfo := getAppInfo(appID)
+	appInfo := getAppInfo(appID, true /* withDockerStatus */)
 
 	appName := appID
 	if appInfo["name"] != nil {
@@ -731,9 +739,9 @@ func PostUpdateApp(resp http.ResponseWriter, req *http.Request, params routing.P
 
 	//-->
 
-	//<!-- Finding the image name of the app
+	//<!-- Finding the main image name of the app
 
-	appInfo := getAppInfo(appID)
+	appInfo := getAppInfo(appID, true /* withDockerStatus */)
 	if appInfo == nil {
 		resp.WriteHeader(400)
 		err := "App image name cannot be found!"
@@ -762,7 +770,7 @@ func PostUpdateApp(resp http.ResponseWriter, req *http.Request, params routing.P
 
 	// Update begins here:
 
-	err := uninstallApp(appID, true)
+	err := uninstallApp(appID, true /* Keep config and data */)
 	if err != nil {
 		msg := "Removing the old version failed!"
 		tools.SendJSON(resp, msg)

@@ -629,10 +629,6 @@ func GetUpdateApp(resp http.ResponseWriter, req *http.Request, params routing.Pa
 			localImageDigest = re.ReplaceAllString(localImageInfo.Digests[0], "")
 		}
 
-		log.Println("------------- Digests: -------")
-		log.Println(localImageDigest)
-		log.Println(remoteImageInfo.Descriptor.Digest)
-
 		// Even if the local digest does not exist (due to building it instead of pulling), we update the app
 		if localImageDigest != remoteImageInfo.Descriptor.Digest {
 			// New update is available
@@ -640,8 +636,6 @@ func GetUpdateApp(resp http.ResponseWriter, req *http.Request, params routing.Pa
 			break
 		}
 
-		log.Println("newUpdate", newUpdate)
-		log.Println("------------------------------")
 	}
 
 	/*------------*/

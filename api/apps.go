@@ -46,6 +46,7 @@ func GetApps(resp http.ResponseWriter, req *http.Request, params routing.Params)
 
 		getUpdateEdgeStatus() // we call this because for Edge update the procedure is different
 		tools.SendJSON(resp, installingAppStatus)
+
 		return
 	}
 
@@ -163,6 +164,12 @@ func getListOfInstalledApps() ([]map[string]interface{}, error) {
 func GetApp(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
 	appID := params.ByName("app_id")
+
+	/*----------*/
+
+	if appID == "wazigate-edge" {
+		getUpdateEdgeStatus()
+	}
 
 	/*----------*/
 
@@ -372,9 +379,9 @@ func PostApp(resp http.ResponseWriter, req *http.Request, params routing.Params)
 
 		cmd := "cd \"" + appFullPath + "\"; docker-compose " + appConfig.Action
 
-		if appConfig.Action == "first-start" {
-			cmd = "cd \"" + appFullPath + "\"; docker-compose pull ; docker-compose up -d --no-build"
-		}
+		// if appConfig.Action == "first-start" {
+		// 	cmd = "cd \"" + appFullPath + "\"; docker-compose pull ; docker-compose up -d --no-build"
+		// }
 
 		out, err := tools.ExecOnHostWithLogs(cmd, true)
 		if err != nil {
@@ -622,12 +629,19 @@ func GetUpdateApp(resp http.ResponseWriter, req *http.Request, params routing.Pa
 			localImageDigest = re.ReplaceAllString(localImageInfo.Digests[0], "")
 		}
 
+		log.Println("------------- Digests: -------")
+		log.Println(localImageDigest)
+		log.Println(remoteImageInfo.Descriptor.Digest)
+
 		// Even if the local digest does not exist (due to building it instead of pulling), we update the app
 		if localImageDigest != remoteImageInfo.Descriptor.Digest {
 			// New update is available
 			newUpdate = true
 			break
 		}
+
+		log.Println("newUpdate", newUpdate)
+		log.Println("------------------------------")
 	}
 
 	/*------------*/
@@ -661,7 +675,7 @@ func getAppImages(appID string) ([]string, error) {
 
 	// err = yaml.Unmarshal( yamlFile, &dockerCompose) // it did not work without giving the service name
 
-	re := regexp.MustCompile(`image[\s]*:[\s]*([a-zA-Z0-9/\:\-]+)`)
+	re := regexp.MustCompile(`image[\s]*:[\s]*([a-zA-Z0-9/\:\_\.\-]+)`)
 
 	submatchall := re.FindAllStringSubmatch(string(yamlFile), -1)
 	for _, element := range submatchall {
@@ -853,6 +867,7 @@ func installApp(imageName string) (string, error) {
 	//-->
 
 	/*-----------*/
+
 	appID := repoName + "." + appName
 	appStatusIndex := -1
 	for i := range installingAppStatus {
@@ -873,7 +888,6 @@ func installApp(imageName string) (string, error) {
 
 	// out, err := tools.SockPostReqest( dockerSocketAddress, "containers/create", imageName)
 	cmd := "docker pull " + imageName
-
 	out, err := tools.ExecOnHostWithLogs(cmd, true)
 
 	installingAppStatus[appStatusIndex].log += out
@@ -887,7 +901,6 @@ func installApp(imageName string) (string, error) {
 	/*-----------*/
 
 	// out, err = tools.SockPostReqest( dockerSocketAddress, "images/create", "{\"Image\": \""+ imageName +"\"}")
-
 	cmd = "docker create " + imageName
 	containerID, err := tools.ExecOnHostWithLogs(cmd, true)
 
@@ -962,6 +975,22 @@ func installApp(imageName string) (string, error) {
 
 	cmd = "rm -f " + appFullPath + "/index.zip"
 	out, _ = tools.ExecOnHostWithLogs(cmd, true)
+
+	/*-----------*/
+
+	// Pulling the dependencies
+	cmd = "cd \"" + appFullPath + "\"; docker-compose pull ; docker-compose up -d --no-build"
+	out, err = tools.ExecOnHostWithLogs(cmd, true)
+
+	installingAppStatus[appStatusIndex].log += "\nDownloading the dependencies...\n"
+	installingAppStatus[appStatusIndex].log += out
+
+	if err != nil {
+		installingAppStatus[appStatusIndex].done = true
+
+		msg = "Failed to download the dependencies!"
+		return msg, err
+	}
 
 	/*-----------*/
 

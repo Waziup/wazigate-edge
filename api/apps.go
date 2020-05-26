@@ -84,11 +84,16 @@ func GetApps(resp http.ResponseWriter, req *http.Request, params routing.Params)
 // Shows the apps from Market Place
 func getListOfAvailableApps() ([]map[string]interface{}, error) {
 
-	// I keep it hard-coded because later we can update this via update the edge through the update mechanism ;)
-	url := "https://raw.githubusercontent.com/Waziup/WaziApps/master/available-apps.json"
 	var out, appsList []map[string]interface{}
 
+	// I keep it hard-coded because later we can update this via update the edge through the update mechanism ;)
+	url := "https://raw.githack.com/Waziup/WaziApps/master/available-apps.json"
 	resp, err := http.Get(url)
+	if err != nil { // IF it fails we will use the backup URL
+		url = "https://raw.githubusercontent.com/Waziup/WaziApps/master/available-apps.json"
+		resp, err = http.Get(url)
+	}
+
 	if err != nil {
 		return out, err
 	}
@@ -679,8 +684,8 @@ func getAppImages(appID string) ([]string, error) {
 
 	re := regexp.MustCompile(`image[\s]*:[\s]*([a-zA-Z0-9/\:\_\.\-]+)`)
 
-	submatchall := re.FindAllStringSubmatch(string(yamlFile), -1)
-	for _, element := range submatchall {
+	subMatchAll := re.FindAllStringSubmatch(string(yamlFile), -1)
+	for _, element := range subMatchAll {
 		out = append(out, element[1])
 	}
 

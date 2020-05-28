@@ -289,8 +289,8 @@ func getAppInfo(appID string, withDockerStatus bool) map[string]interface{} {
 		appPkg = map[string]interface{}{
 			"name":        "Wazigate Edge Framework",
 			"author":      map[string]interface{}{"name": "Waziup"},
-			"version":     "0.0.0", //TODO: we need to use some sort of API to get the latest version
-			"description": "",
+			"version":     "2.0.0", //TODO: we need to use some sort of API to get the latest version
+			"description": "Waziup framework for Edge computing",
 			"homepage":    "https://www.waziup.io/",
 			"waziapp":     map[string]interface{}{"icon": "img/waziup.svg", "menu": nil},
 		}
@@ -392,9 +392,9 @@ func PostApp(resp http.ResponseWriter, req *http.Request, params routing.Params)
 
 		cmd := "cd \"" + appFullPath + "\"; docker-compose " + appConfig.Action
 
-		// if appConfig.Action == "first-start" {
-		// 	cmd = "cd \"" + appFullPath + "\"; docker-compose pull ; docker-compose up -d --no-build"
-		// }
+		if appConfig.Action == "first-start" {
+			cmd = "cd \"" + appFullPath + "\"; docker-compose pull ; docker-compose up -d --no-build"
+		}
 
 		out, err := tools.ExecOnHostWithLogs(cmd, true)
 		if err != nil {

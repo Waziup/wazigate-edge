@@ -208,7 +208,7 @@ func postDeviceName(resp http.ResponseWriter, req *http.Request, deviceID string
 	}
 	var name string
 	contentType := req.Header.Get("Content-Type")
-	if strings.HasSuffix(contentType, "application/json") {
+	if strings.HasPrefix(contentType, "application/json") {
 		err = json.Unmarshal(body, &name)
 		if err != nil {
 			http.Error(resp, "bad request: "+err.Error(), http.StatusBadRequest)

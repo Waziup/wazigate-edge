@@ -81,6 +81,7 @@ type Event struct {
 // Cloud represents a configuration to access a Waziup Cloud.
 type Cloud struct {
 	ID          string `json:"id"`
+	Name        string `json:"name"`
 	Paused      bool   `json:"paused"`
 	Pausing     bool   `json:"pausing"`
 	PausingMQTT bool   `json:"pausing_mqtt"`

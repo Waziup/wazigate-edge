@@ -6,8 +6,10 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 
 	"github.com/Waziup/wazigate-edge/clouds"
+	"github.com/Waziup/wazigate-edge/tools"
 	"github.com/globalsign/mgo/bson"
 
 	routing "github.com/julienschmidt/httprouter"
@@ -120,6 +122,38 @@ func PostCloudRESTAddr(resp http.ResponseWriter, req *http.Request, params routi
 
 	cloud.REST = addr
 	log.Printf("[CLOUD] Changed REST addr %q", cloud.REST)
+	writeCloudFile()
+}
+
+// PostCloudMQTTAddr implements POST /clouds/{cloudID}/name
+func PostCloudName(resp http.ResponseWriter, req *http.Request, params routing.Params) {
+
+	cloudID := params.ByName("cloud_id")
+	cloud := clouds.GetCloud(cloudID)
+	if cloud == nil {
+		http.Error(resp, "not found: no cloud with that id", http.StatusNotFound)
+		return
+	}
+
+	body, err := tools.ReadAll(req.Body)
+	if err != nil {
+		http.Error(resp, "bad request: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	var name string
+	contentType := req.Header.Get("Content-Type")
+	if strings.HasPrefix(contentType, "application/json") {
+		err = json.Unmarshal(body, &name)
+		if err != nil {
+			http.Error(resp, "bad request: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+	} else {
+		name = string(body)
+	}
+
+	cloud.Name = name
+	log.Printf("[CLOUD] Changed name %q", name)
 	writeCloudFile()
 }
 

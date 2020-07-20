@@ -121,6 +121,7 @@ func init() {
 	router.POST("/clouds", api.PostClouds)
 	router.GET("/clouds/:cloud_id", api.GetCloud)
 	router.DELETE("/clouds/:cloud_id", api.DeleteCloud)
+	router.POST("/clouds/:cloud_id/name", api.PostCloudName)
 	router.POST("/clouds/:cloud_id/paused", api.PostCloudPaused)
 	router.POST("/clouds/:cloud_id/username", api.PostCloudUsername)
 	router.POST("/clouds/:cloud_id/token", api.PostCloudToken)

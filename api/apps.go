@@ -509,8 +509,11 @@ func HandleAppProxyRequest(resp http.ResponseWriter, req *http.Request, params r
 	}
 
 	log.Printf("[APP  ] >> %q %s %s", appID, req.Method, proxyURI)
-
+	
+	// We need to pass these values in order to let the Apps work properly (I had issues with a Python based service)
 	proxyReq.Header = req.Header
+	proxyReq.TransferEncoding = []string{"identity"}
+	proxyReq.ContentLength = req.ContentLength
 
 	proxyResp, err := proxy.Do(proxyReq)
 	if err != nil {

@@ -19,6 +19,8 @@ import (
 
 /*-----------------------------*/
 
+const edgeVersion = "2.0.1"
+
 // We may use env vars in future, this path is relative to wazigate-host
 const appsDirectoryOnHost = "../apps/"
 
@@ -289,8 +291,8 @@ func getAppInfo(appID string, withDockerStatus bool) map[string]interface{} {
 		appPkg = map[string]interface{}{
 			"name":        "Wazigate Edge Framework",
 			"author":      map[string]interface{}{"name": "Waziup"},
-			"version":     "2.0.0", //TODO: we need to use some sort of API to get the latest version
-			"description": "Waziup framework for Edge computing",
+			"version":     edgeVersion, //TODO: we need to use some sort of API to get the latest version
+			"description": "Waziup firmware for Edge computing",
 			"homepage":    "https://www.waziup.io/",
 			"waziapp":     map[string]interface{}{"icon": "img/waziup.svg", "menu": nil},
 		}

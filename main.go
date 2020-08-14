@@ -25,6 +25,7 @@ var version string // set by compiler
 var static http.Handler
 
 func main() {
+
 	// Remove date and time from logs
 	log.SetFlags(log.Flags() &^ (log.Ldate | log.Ltime))
 
@@ -109,6 +110,17 @@ func main() {
 	}
 
 	////////////////////
+
+	/*----------------------------*/
+
+	// Creating the default user in db if there is no user.
+	edge.MakeDefaultUser()
+
+	// user, _ := edge.FindUserByUsername( "admin")
+	// log.Printf("User %q.\n", user)
+	// edge.DeleteUser( user.ID)
+
+	/*------------------------*/
 
 	log.Printf("[     ] Local device ID is %q.\n", edge.LocalID())
 

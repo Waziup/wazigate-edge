@@ -12,8 +12,11 @@ var dbSensorValues *mgo.Collection
 // dbActuatorValues is the database holding actuator values.
 var dbActuatorValues *mgo.Collection
 
-// dbDevices is the database holding device informations
+// dbDevices is the database holding devices' information
 var dbDevices *mgo.Collection
+
+// dbUsers is the database holding users' information
+var dbUsers *mgo.Collection
 
 // Connect initializes the edge core by connecting to the database.
 func Connect(addr string) error {
@@ -34,6 +37,7 @@ func Connect(addr string) error {
 		dbSensorValues = db.DB("waziup").C("sensor_values")
 		dbActuatorValues = db.DB("waziup").C("actuator_values")
 		dbDevices = db.DB("waziup").C("devices")
+		dbUsers = db.DB("waziup").C("users")
 		return nil
 	}
 	return nil // unreachable

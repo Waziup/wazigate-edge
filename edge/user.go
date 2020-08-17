@@ -17,6 +17,7 @@ type User struct {
 	Name string `json:"name" bson:"name"`
 	Username string `json:"username" bson:"username"`
 	Password string `json:"password" bson:"password"`
+	NewPassword string `json:"newPassword"`
 
 	// LastLogin time.Time `json:"lastlogin" bson:"lastlogin"`
 }
@@ -39,7 +40,7 @@ func MakeDefaultUser() error {
 		return nil
 	}
 
-	err = PostUser(&User{
+	err = AddUser(&User{
 		Name:   	"Wazigate User",
 		Username:	"admin",
 		Password:	"loragateway",
@@ -83,8 +84,57 @@ func FindUserByUsername( username string) (User, error) {
 
 /*--------------------------------*/
 
-// PostActuator creates a new actuator for this device.
-func PostUser(user *User) error {
+func UpdateUser( userID string, newProfileData *User) error{
+	
+	user, err := GetUser( userID)
+	if err != nil {
+		return CodeError{500, "error: " + err.Error()}
+	}
+
+	hashedPassword := []byte( user.Password) // default value
+
+	//If user does not want to change the password, leave her/him alone ;)
+	if len( newProfileData.NewPassword) > 0 {
+
+		err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(newProfileData.Password))
+		if err != nil { 
+			// if err == bcrypt.ErrMismatchedHashAndPassword //Password does not match!
+			log.Printf("[Err   ] UpdatePassword: %s", err.Error())
+			return CodeError{403, "Wrong password!"}
+		}
+
+		hashedPassword, err = bcrypt.GenerateFromPassword([]byte(newProfileData.NewPassword), bcrypt.DefaultCost)
+		if err != nil {
+			log.Printf("[Err   ] Password Generate: %s", err.Error())
+			return CodeError{500, "Internal Error!"}
+		}
+	}
+	
+	_, err = dbUsers.Find(bson.M{
+		"_id": userID,
+
+	}).Apply(mgo.Change{
+
+		Update: bson.M{
+			"$set": bson.M{
+				"password":	string( hashedPassword),
+				"name":		newProfileData.Name,
+			},
+		},
+	}, &user)
+
+	if err != nil {
+		log.Printf("[Err   ] Password Generate: %s", err.Error())
+		return CodeError{500, "Database error"}
+	}
+
+	return nil
+}
+
+/*--------------------------------*/
+
+// AddUser creates a new user.
+func AddUser(user *User) error {
 		
 	// Check if the user already exist:
 	_, err := FindUserByUsername(  user.Username)
@@ -116,23 +166,23 @@ func PostUser(user *User) error {
 
 /*--------------------------------*/
 
-func CheckUserCredentials( username string, password string) (bool, error){
+func CheckUserCredentials( username string, password string) (User, error){
 
 	user, err := FindUserByUsername(  username)
 	if err != nil {
 		log.Printf("[Err   ] login error: %s", err.Error())
-		return false, CodeError{403, "Invalid login credentials!"}
+		return user, CodeError{403, "Invalid login credentials!"}
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
 	if err != nil { 
 		// if err == bcrypt.ErrMismatchedHashAndPassword //Password does not match!
 		log.Printf("[Err   ] login error: %s", err.Error())
-		return false, CodeError{403, "Invalid login credentials!"}
+		return user, CodeError{403, "Invalid login credentials!"}
 	}
 
 	// Success
-	return true, nil
+	return user, nil
 }
 
 /*--------------------------------*/

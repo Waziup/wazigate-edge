@@ -18,6 +18,9 @@ func init() {
 	router.GET("/auth/logout", api.Logout)
 	router.POST("/auth/logout", api.Logout)
 	router.GET("/auth/permissions", api.GetPermissions)
+	
+	router.GET("/auth/profile", api.IsAuthorized( api.GetUserProfile))
+	router.POST("/auth/profile", api.IsAuthorized( api.PostUserProfile))
 
 	//Apps
 

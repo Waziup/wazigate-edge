@@ -5,6 +5,8 @@ import(
     "fmt"
     "log"
     "encoding/json"
+    "math/rand"
+	"encoding/base64"
     "time"
     // "strings"
     
@@ -16,7 +18,7 @@ import(
 )
 
 const tokenExpTimeMinutes = 10 // in minutes
-var tokenSecret = []byte("Goooz") // Later we need to implement it to use some system vars + a random value
+
 
 /*---------------------*/
 
@@ -168,7 +170,7 @@ func getAuthorizedUserID( req *http.Request) (string, error){
         if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
             return nil, fmt.Errorf( "There was an error" )
         }
-        return tokenSecret, nil
+        return getSecret(), nil
     })
 
     if err != nil {
@@ -198,13 +200,34 @@ func generateToken( userID string) (string, error){
     claims["client"] = userID
     claims["exp"] = time.Now().Add(time.Minute * tokenExpTimeMinutes).Unix()
 
-    tokenString, err := token.SignedString(tokenSecret)
+    tokenString, err := token.SignedString(getSecret())
 
     if err != nil {
         return "", err
     }
 
     return tokenString, nil
+}
+
+/*---------------------*/
+
+var tokenSecret []byte
+func getSecret() []byte{
+
+    if tokenSecret != nil{
+        return tokenSecret;
+    }
+
+    secretMinSize := 40
+	someBytes := make([]byte, secretMinSize)
+	rand.Seed(time.Now().UTC().UnixNano())
+
+    for i := 0; i < secretMinSize; i++ {
+        someBytes[i] = byte(rand.Intn(255))
+    }	
+
+	tokenSecret = []byte( base64.StdEncoding.EncodeToString(someBytes))
+    return tokenSecret
 }
 
 /*---------------------*/
@@ -327,7 +350,7 @@ func IsAuthorized(endpoint routing.Handle) routing.Handle {
                 if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
                     return nil, fmt.Errorf( "There was an error" )
                 }
-                return tokenSecret, nil
+                return getSecret(), nil
             })
 
             if err != nil {

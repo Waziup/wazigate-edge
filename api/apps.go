@@ -19,7 +19,7 @@ import (
 
 /*-----------------------------*/
 
-const edgeVersion = "2.1.0"
+const edgeVersion = "2.1.1"
 
 // We may use env vars in future, this path is relative to wazigate-host
 const appsDirectoryOnHost = "../apps/"

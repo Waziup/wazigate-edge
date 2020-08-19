@@ -15,6 +15,10 @@
   },
   "tags": [
     {
+      "name": "Auth",
+      "description": "Authentication & Authorization"
+    },
+    {
       "name": "Your Gateway",
       "description": "Local Device Management"
     },
@@ -40,6 +44,91 @@
     }
   ],
   "paths": {
+    "/auth/token": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Authentication",
+        "description": "Login and get a token.",
+        "requestBody": {
+          "description": "Credentials",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Token"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/retoken": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Referesh the authorized token",
+        "description": "Pass the current valid token and get a fresh token",
+        "requestBody": {
+          "description": "Current valid token",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Token"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Token"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/profile": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Authorized user profile",
+        "description": "Retrieves the user data via a given valid token",
+        "responses": {
+          "200": {
+            "description": "Successful Operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserProfile"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/device/id": {
       "get": {
         "tags": [
@@ -2865,6 +2954,48 @@
       "ID": {
         "type": "string",
         "example": "201c85cdbda3"
+      },
+      "Token": {
+        "format": "binary",
+        "type": "string"
+      },
+      "AuthBody": {
+        "required": [
+          "username",
+          "password"
+        ],
+        "properties": {
+          "username": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        },
+        "example": {
+          "username": "admin",
+          "password": "password"
+        },
+        "type": "object"
+      },
+      "UserProfile": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "example": {
+          "id": "0123456789xxxx",
+          "name": "Wazigate User",
+          "username": "admin"
+        },
+        "type": "object"
       },
       "Sensor": {
         "type": "object",

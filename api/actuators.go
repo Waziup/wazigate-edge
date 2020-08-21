@@ -38,14 +38,16 @@ func GetActuator(resp http.ResponseWriter, req *http.Request, params routing.Par
 
 // GetDeviceActuators implements GET /devices/{deviceID}/actuators
 func GetDeviceActuators(resp http.ResponseWriter, req *http.Request, params routing.Params) {
-
-	getDeviceActuators(resp, params.ByName("device_id"))
+	var query edge.Query
+	query.Parse(req.URL.Query())
+	getDeviceActuators(resp, params.ByName("device_id"), &query)
 }
 
 // GetActuators implements GET /actuators
 func GetActuators(resp http.ResponseWriter, req *http.Request, params routing.Params) {
-
-	getDeviceActuators(resp, edge.LocalID())
+	var query edge.Query
+	query.Parse(req.URL.Query())
+	getDeviceActuators(resp, edge.LocalID(), &query)
 }
 
 // PostDeviceActuator implements POST /devices/{deviceID}/actuators
@@ -111,12 +113,17 @@ func getDeviceActuator(resp http.ResponseWriter, deviceID string, actuatorID str
 	resp.Write(data)
 }
 
-func getDeviceActuators(resp http.ResponseWriter, deviceID string) {
+func getDeviceActuators(resp http.ResponseWriter, deviceID string, query *edge.Query) {
 
 	device, err := edge.GetDevice(deviceID)
 	if err != nil {
 		serveError(resp, err)
 		return
+	}
+	if query != nil {
+		for _, actuator := range device.Actuators {
+			actuator.SetJSONSelect(query.Select)
+		}
 	}
 
 	resp.Header().Set("Content-Type", "application/json")

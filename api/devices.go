@@ -30,9 +30,9 @@ type Device struct {
 // GetDevices implements GET /devices
 func GetDevices(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
-	var devicesQuery edge.DevicesQuery
-	devicesQuery.Parse(req.URL.Query())
-	devices := edge.GetDevices(&devicesQuery)
+	var query edge.Query
+	query.Parse(req.URL.Query())
+	devices := edge.GetDevices(&query)
 	encoder := json.NewEncoder(resp)
 
 	device, err := devices.Next()
@@ -40,6 +40,7 @@ func GetDevices(resp http.ResponseWriter, req *http.Request, params routing.Para
 		serveError(resp, err)
 		return
 	}
+
 	resp.Header().Set("Content-Type", "application/json")
 	resp.Write([]byte{'['})
 	for device != nil {

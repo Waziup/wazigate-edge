@@ -1,7 +1,10 @@
 package edge
 
 import (
+	"encoding/json"
 	"io"
+	"reflect"
+	"strings"
 	"time"
 
 	"github.com/Waziup/wazigate-edge/edge/ontology"
@@ -25,6 +28,40 @@ type Sensor struct {
 	Value interface{} `json:"value" bson:"value"`
 
 	Meta Meta `json:"meta" bson:"meta"`
+
+	jsonSelect []string
+}
+
+func (sensor *Sensor) SetJSONSelect(s []string) {
+	sensor.jsonSelect = s
+}
+
+func (sensor *Sensor) MarshalJSON() ([]byte, error) {
+	clone := map[string]interface{}{}
+	t := reflect.ValueOf(sensor).Elem()
+	for i := 0; i < t.NumField(); i++ {
+		f := t.Field(i)
+		if f.CanSet() {
+			key := t.Type().Field(i).Tag.Get("json")
+			if key != "id" {
+				if sensor.jsonSelect != nil {
+					selected := false
+					for _, field := range sensor.jsonSelect {
+						if field == key || strings.HasPrefix(field, key+".") {
+							selected = true
+							break
+						}
+					}
+					if !selected {
+						continue
+					}
+				}
+			}
+			val := f.Interface()
+			clone[key] = val
+		}
+	}
+	return json.Marshal(clone)
 }
 
 // GetSensor returns the Waziup sensor.

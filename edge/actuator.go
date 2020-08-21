@@ -1,7 +1,10 @@
 package edge
 
 import (
+	"encoding/json"
 	"io"
+	"reflect"
+	"strings"
 	"time"
 
 	"github.com/globalsign/mgo"
@@ -20,6 +23,40 @@ type Actuator struct {
 	Value interface{} `json:"value" bson:"value"`
 
 	Meta Meta `json:"meta" bson:"meta"`
+
+	jsonSelect []string
+}
+
+func (actuator *Actuator) SetJSONSelect(s []string) {
+	actuator.jsonSelect = s
+}
+
+func (actuator *Actuator) MarshalJSON() ([]byte, error) {
+	clone := map[string]interface{}{}
+	t := reflect.ValueOf(actuator).Elem()
+	for i := 0; i < t.NumField(); i++ {
+		f := t.Field(i)
+		if f.CanSet() {
+			key := t.Type().Field(i).Tag.Get("json")
+			if key != "id" {
+				if actuator.jsonSelect != nil {
+					selected := false
+					for _, field := range actuator.jsonSelect {
+						if field == key || strings.HasPrefix(field, key+".") {
+							selected = true
+							break
+						}
+					}
+					if !selected {
+						continue
+					}
+				}
+			}
+			val := f.Interface()
+			clone[key] = val
+		}
+	}
+	return json.Marshal(clone)
 }
 
 // GetActuator returns the Waziup actuator.

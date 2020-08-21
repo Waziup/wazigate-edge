@@ -1,11 +1,13 @@
 package edge
 
 import (
+	"encoding/json"
 	"errors"
 	"io"
 	"net"
 	"net/url"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -23,13 +25,72 @@ type Device struct {
 	Modified  time.Time   `json:"modified" bson:"modified"`
 	Created   time.Time   `json:"created" bson:"created"`
 	Meta      Meta        `json:"meta" bson:"meta"`
+
+	jsonSelect []string
+}
+
+func (device *Device) SetJSONSelect(s []string) {
+	device.jsonSelect = s
 }
 
 // DevicesQuery is used to range or limit query results.
-type DevicesQuery struct {
-	Limit int64
-	Size  int64
-	Meta  []string
+type Query struct {
+	Limit  int64
+	Size   int64
+	Meta   []string
+	Select []string
+}
+
+func (device *Device) MarshalJSON() ([]byte, error) {
+	clone := map[string]interface{}{}
+	t := reflect.ValueOf(device).Elem()
+	for i := 0; i < t.NumField(); i++ {
+		f := t.Field(i)
+		if f.CanSet() {
+			key := t.Type().Field(i).Tag.Get("json")
+			if key != "id" {
+				if device.jsonSelect != nil {
+					selected := false
+					for _, field := range device.jsonSelect {
+						if field == key || strings.HasPrefix(field, key+".") {
+							selected = true
+							break
+						}
+					}
+					if !selected {
+						continue
+					}
+					if key == "sensors" {
+						var jsonSelect []string
+						for _, field := range device.jsonSelect {
+							if strings.HasPrefix(field, "sensors.") {
+								jsonSelect = append(jsonSelect, field[8:])
+							}
+						}
+						sensors := f.Interface().([]*Sensor)
+						for _, sensor := range sensors {
+							sensor.jsonSelect = jsonSelect
+						}
+					}
+					if key == "actuators" {
+						var jsonSelect []string
+						for _, field := range device.jsonSelect {
+							if strings.HasPrefix(field, "actuators.") {
+								jsonSelect = append(jsonSelect, field[8:])
+							}
+						}
+						actuators := f.Interface().([]*Actuator)
+						for _, actuator := range actuators {
+							actuator.jsonSelect = jsonSelect
+						}
+					}
+				}
+			}
+			val := f.Interface()
+			clone[key] = val
+		}
+	}
+	return json.Marshal(clone)
 }
 
 // Parse parses the HTTP Request into the Query parameters.
@@ -37,7 +98,7 @@ var errBadLimitParam = errors.New("query ?limit=.. is mal formatted")
 var errBadSizeParam = errors.New("query ?size=.. is mal formatted")
 
 // Parse reads url.Values into the DevicesQuery.
-func (query *DevicesQuery) Parse(values url.Values) error {
+func (query *Query) Parse(values url.Values) error {
 	var param string
 	var err error
 	if param = values.Get("limit"); param != "" {
@@ -56,6 +117,12 @@ func (query *DevicesQuery) Parse(values url.Values) error {
 		query.Meta = strings.Split(param, ",")
 		for i, str := range query.Meta {
 			query.Meta[i] = strings.TrimSpace(str)
+		}
+	}
+	if param = values.Get("select"); param != "" {
+		query.Select = strings.Split(param, ",")
+		for i, str := range query.Select {
+			query.Select[i] = strings.TrimSpace(str)
 		}
 	}
 	return nil
@@ -96,8 +163,9 @@ type DeviceIterator struct {
 
 // Next returns the next device or nil.
 func (iter *DeviceIterator) Next() (*Device, error) {
-
+	jsonSelect := iter.device.jsonSelect
 	if iter.dbIter.Next(&iter.device) {
+		iter.device.jsonSelect = jsonSelect
 		return &iter.device, iter.dbIter.Err()
 	}
 	return nil, io.EOF
@@ -109,7 +177,7 @@ func (iter *DeviceIterator) Close() error {
 }
 
 // GetDevices returns an iterator over all devices.
-func GetDevices(query *DevicesQuery) *DeviceIterator {
+func GetDevices(query *Query) *DeviceIterator {
 
 	sel := bson.M{}
 	if query != nil {
@@ -120,7 +188,24 @@ func GetDevices(query *DevicesQuery) *DeviceIterator {
 		}
 	}
 	q := dbDevices.Find(sel)
+	var jsonSelect []string
 	if query != nil {
+		if query.Select != nil {
+			jsonSelect = query.Select
+			s := bson.M{"_id": 1}
+			for _, field := range query.Select {
+				s[field] = 1
+				if strings.HasPrefix(field, "sensors.") {
+					s["sensors"] = 1
+					s["sensors.id"] = 1
+				}
+				if strings.HasPrefix(field, "actuators.") {
+					s["actuators"] = 1
+					s["actuators.id"] = 1
+				}
+			}
+			q.Select(s)
+		}
 		if query.Limit != 0 {
 			q.Limit(int(query.Limit))
 		}
@@ -128,6 +213,9 @@ func GetDevices(query *DevicesQuery) *DeviceIterator {
 
 	return &DeviceIterator{
 		dbIter: q.Iter(),
+		device: Device{
+			jsonSelect: jsonSelect,
+		},
 	}
 }
 

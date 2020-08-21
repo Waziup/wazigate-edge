@@ -37,14 +37,16 @@ func GetSensor(resp http.ResponseWriter, req *http.Request, params routing.Param
 
 // GetDeviceSensors implements GET /devices/{deviceID}/sensors
 func GetDeviceSensors(resp http.ResponseWriter, req *http.Request, params routing.Params) {
-
-	getDeviceSensors(resp, params.ByName("device_id"))
+	var query edge.Query
+	query.Parse(req.URL.Query())
+	getDeviceSensors(resp, params.ByName("device_id"), &query)
 }
 
 // GetSensors implements GET /sensors
 func GetSensors(resp http.ResponseWriter, req *http.Request, params routing.Params) {
-
-	getDeviceSensors(resp, edge.LocalID())
+	var query edge.Query
+	query.Parse(req.URL.Query())
+	getDeviceSensors(resp, edge.LocalID(), &query)
 }
 
 // PostDeviceSensor implements POST /devices/{deviceID}/sensors
@@ -110,14 +112,18 @@ func getDeviceSensor(resp http.ResponseWriter, deviceID string, sensorID string)
 	resp.Write(data)
 }
 
-func getDeviceSensors(resp http.ResponseWriter, deviceID string) {
+func getDeviceSensors(resp http.ResponseWriter, deviceID string, query *edge.Query) {
 
 	device, err := edge.GetDevice(deviceID)
 	if err != nil {
 		serveError(resp, err)
 		return
 	}
-
+	if query != nil {
+		for _, sensor := range device.Sensors {
+			sensor.SetJSONSelect(query.Select)
+		}
+	}
 	resp.Header().Set("Content-Type", "application/json")
 	data, _ := json.Marshal(device.Sensors)
 	resp.Write(data)

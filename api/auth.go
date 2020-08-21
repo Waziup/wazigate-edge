@@ -1,32 +1,32 @@
 package api
 
-import(
-	"net/http"
-    "fmt"
-    "log"
-    "encoding/json"
-    "math/rand"
+import (
 	"encoding/base64"
-    "time"
-    // "strings"
-    
-    "github.com/Waziup/wazigate-edge/edge"
-    "github.com/Waziup/wazigate-edge/tools"
+	"encoding/json"
+	"fmt"
+	"log"
+	"math/rand"
+	"net/http"
+	"time"
 
-	routing "github.com/julienschmidt/httprouter"
+	// "strings"
+
+	"github.com/Waziup/wazigate-edge/edge"
+	"github.com/Waziup/wazigate-edge/tools"
+
 	jwt "github.com/dgrijalva/jwt-go"
+	routing "github.com/julienschmidt/httprouter"
 )
 
 const tokenExpTimeMinutes = 10 // in minutes
 
-
 /*---------------------*/
 
 const (
-    SameSiteDefaultMode http.SameSite = iota + 1
-    SameSiteLaxMode
-    SameSiteStrictMode
-    SameSiteNoneMode
+	SameSiteDefaultMode http.SameSite = iota + 1
+	SameSiteLaxMode
+	SameSiteStrictMode
+	SameSiteNoneMode
 )
 
 /*---------------------*/
@@ -34,64 +34,64 @@ const (
 // GetToken implements POST /auth/token
 func GetToken(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
-    body, err := tools.ReadAll(req.Body)
+	body, err := tools.ReadAll(req.Body)
 	if err != nil {
-        log.Printf("[Err   ] GetToken: %s", err.Error())
-        http.Error(resp, "bad request", http.StatusBadRequest)
+		log.Printf("[ERR  ] GetToken: %s", err.Error())
+		http.Error(resp, "bad request", http.StatusBadRequest)
 		return
-    }
-    
-    var inputUser edge.User
+	}
+
+	var inputUser edge.User
 
 	err = json.Unmarshal(body, &inputUser)
 	if err != nil {
-        log.Printf("[Err   ] GetToken: %s", err.Error())
+		log.Printf("[ERR  ] GetToken: %s", err.Error())
 		http.Error(resp, "bad request", http.StatusBadRequest)
 		return
-    }
-    
-    // log.Printf("Input User: %q", inputUser)
-    
-    validUser, err := edge.CheckUserCredentials( inputUser.Username, inputUser.Password);
+	}
 
-    if err != nil{
-        log.Printf("[Err   ] GetToken: %s", err.Error())
-        http.Error(resp, "Invalid credentials", http.StatusUnauthorized)
+	// log.Printf("Input User: %q", inputUser)
+
+	validUser, err := edge.CheckUserCredentials(inputUser.Username, inputUser.Password)
+
+	if err != nil {
+		log.Printf("[ERR  ] GetToken: %s", err.Error())
+		http.Error(resp, "Invalid credentials", http.StatusUnauthorized)
 		return
-    }
+	}
 
-    //Login success.
+	//Login success.
 
-    tokenString, err := generateToken( validUser.ID);
+	tokenString, err := generateToken(validUser.ID)
 
-    if err != nil {
-        // resp.WriteHeader(http.StatusForbidden)
-        // fmt.Fprint(resp, "Something went wrong!")
-        log.Printf("[Err   ] GetToken: %s", err.Error())
-        http.Error(resp, "Something went wrong", http.StatusForbidden)
-        return
-    }
+	if err != nil {
+		// resp.WriteHeader(http.StatusForbidden)
+		// fmt.Fprint(resp, "Something went wrong!")
+		log.Printf("[ERR  ] GetToken: %s", err.Error())
+		http.Error(resp, "Something went wrong", http.StatusForbidden)
+		return
+	}
 
-    /*---------*/
+	/*---------*/
 
-    // Set Cookie, it is just an extra feature that makes the life easier on the UI part
-    expiration  :=  time.Now().Add(time.Minute * tokenExpTimeMinutes)
-    cookie      :=  http.Cookie{ 
-            Name:       "Token",
-            Value:      string( tokenString) ,
-            Path:       "/",
-            Expires:    expiration, 
-            HttpOnly:   true,
-            MaxAge:     60 * tokenExpTimeMinutes,
-            // Secure:     true,
-            SameSite:   SameSiteStrictMode,
-        }
-    http.SetCookie( resp, &cookie)
+	// Set Cookie, it is just an extra feature that makes the life easier on the UI part
+	expiration := time.Now().Add(time.Minute * tokenExpTimeMinutes)
+	cookie := http.Cookie{
+		Name:     "Token",
+		Value:    string(tokenString),
+		Path:     "/",
+		Expires:  expiration,
+		HttpOnly: true,
+		MaxAge:   60 * tokenExpTimeMinutes,
+		// Secure:     true,
+		SameSite: SameSiteStrictMode,
+	}
+	http.SetCookie(resp, &cookie)
 
-    /*---------*/
+	/*---------*/
 
-    // fmt.Fprint(resp, tokenString)
-    tools.SendJSON(resp, tokenString)
+	// fmt.Fprint(resp, tokenString)
+	tools.SendJSON(resp, tokenString)
 }
 
 /*---------------------*/
@@ -101,274 +101,273 @@ func GetToken(resp http.ResponseWriter, req *http.Request, params routing.Params
 // it is used to keep the user logged in without asking for credentials every time the token gets expired
 func GetRefereshToken(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
-    userID, err := getAuthorizedUserID( req);
+	userID, err := getAuthorizedUserID(req)
 
-    if err != nil{
-        log.Printf("[Err   ] GetRefereshToken: %s", err.Error())
-        http.Error(resp, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-        return
-    }
+	if err != nil {
+		log.Printf("[ERR  ] GetRefereshToken: %s", err.Error())
+		http.Error(resp, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
 
-    tokenString, err := generateToken( userID);
+	tokenString, err := generateToken(userID)
 
-    if err != nil {
-        log.Printf("[Err   ] GetRefereshToken: %s", err.Error())
-        http.Error(resp, "Something went wrong", http.StatusForbidden)
-        return
-    }
+	if err != nil {
+		log.Printf("[ERR  ] GetRefereshToken: %s", err.Error())
+		http.Error(resp, "Something went wrong", http.StatusForbidden)
+		return
+	}
 
-    /*---------*/
+	/*---------*/
 
-    // Set Cookie, it is just an extra feature that makes the life easier on the UI part
-    expiration  :=  time.Now().Add(time.Minute * tokenExpTimeMinutes)
-    cookie      :=  http.Cookie{ 
-            Name:       "Token",
-            Value:      string( tokenString) ,
-            Path:       "/",
-            Expires:    expiration, 
-            HttpOnly:   true,
-            MaxAge:     60 * tokenExpTimeMinutes,
-            // Secure:     true,
-            SameSite:   SameSiteStrictMode,
-        }
-    http.SetCookie( resp, &cookie)
+	// Set Cookie, it is just an extra feature that makes the life easier on the UI part
+	expiration := time.Now().Add(time.Minute * tokenExpTimeMinutes)
+	cookie := http.Cookie{
+		Name:     "Token",
+		Value:    string(tokenString),
+		Path:     "/",
+		Expires:  expiration,
+		HttpOnly: true,
+		MaxAge:   60 * tokenExpTimeMinutes,
+		// Secure:     true,
+		SameSite: SameSiteStrictMode,
+	}
+	http.SetCookie(resp, &cookie)
 
-    /*---------*/
+	/*---------*/
 
-    // fmt.Fprint(resp, tokenString)
-    tools.SendJSON(resp, tokenString)
+	// fmt.Fprint(resp, tokenString)
+	tools.SendJSON(resp, tokenString)
 }
 
 /*---------------------*/
 
-func getAuthorizedUserID( req *http.Request) (string, error){
-    
-    reqToken := ""
+func getAuthorizedUserID(req *http.Request) (string, error) {
 
-    if req.Header["Token"] != nil && len( req.Header["Token"][0]) > 0  {
-        
-        reqToken = req.Header["Token"][0]
-    
-    }else{
+	reqToken := ""
 
-        c, err := req.Cookie("Token")
-        if err != nil {
-            log.Printf("[Err   ] Auth reading cookie: %s", err.Error())
-        } else {
-            reqToken = c.Value
-        }
-    }
-    
-    /*---------*/
+	if req.Header["Token"] != nil && len(req.Header["Token"][0]) > 0 {
 
-    if len( reqToken) == 0 {
-        
-        return "", fmt.Errorf( "Not Authorized" )
-    }
+		reqToken = req.Header["Token"][0]
 
-    token, err := jwt.Parse(reqToken, func(token *jwt.Token) (interface{}, error) {
-        if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-            return nil, fmt.Errorf( "There was an error" )
-        }
-        return getSecret(), nil
-    })
+	} else {
 
-    if err != nil {
-        return "", err
-    }
+		c, err := req.Cookie("Token")
+		if err != nil {
+			log.Printf("[ERR  ] Auth reading cookie: %s", err.Error())
+		} else {
+			reqToken = c.Value
+		}
+	}
 
-    if !token.Valid {
-        return "", fmt.Errorf( "Invalid Token" )
-    }
+	/*---------*/
 
-    /*---------*/
+	if len(reqToken) == 0 {
 
-    claims := token.Claims.(jwt.MapClaims)
+		return "", fmt.Errorf("Not Authorized")
+	}
 
-    return claims["client"].(string), nil
+	token, err := jwt.Parse(reqToken, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("There was an error")
+		}
+		return getSecret(), nil
+	})
+
+	if err != nil {
+		return "", err
+	}
+
+	if !token.Valid {
+		return "", fmt.Errorf("Invalid Token")
+	}
+
+	/*---------*/
+
+	claims := token.Claims.(jwt.MapClaims)
+
+	return claims["client"].(string), nil
 }
 
 /*---------------------*/
 
-func generateToken( userID string) (string, error){
+func generateToken(userID string) (string, error) {
 
-    token := jwt.New(jwt.SigningMethodHS256)
+	token := jwt.New(jwt.SigningMethodHS256)
 
-    claims := token.Claims.(jwt.MapClaims)
+	claims := token.Claims.(jwt.MapClaims)
 
-    claims["authorized"] = true
-    claims["client"] = userID
-    claims["exp"] = time.Now().Add(time.Minute * tokenExpTimeMinutes).Unix()
+	claims["authorized"] = true
+	claims["client"] = userID
+	claims["exp"] = time.Now().Add(time.Minute * tokenExpTimeMinutes).Unix()
 
-    tokenString, err := token.SignedString(getSecret())
+	tokenString, err := token.SignedString(getSecret())
 
-    if err != nil {
-        return "", err
-    }
+	if err != nil {
+		return "", err
+	}
 
-    return tokenString, nil
+	return tokenString, nil
 }
 
 /*---------------------*/
 
 var tokenSecret []byte
-func getSecret() []byte{
 
-    if tokenSecret != nil{
-        return tokenSecret;
-    }
+func getSecret() []byte {
 
-    secretMinSize := 40
+	if tokenSecret != nil {
+		return tokenSecret
+	}
+
+	secretMinSize := 40
 	someBytes := make([]byte, secretMinSize)
 	rand.Seed(time.Now().UTC().UnixNano())
 
-    for i := 0; i < secretMinSize; i++ {
-        someBytes[i] = byte(rand.Intn(255))
-    }	
+	for i := 0; i < secretMinSize; i++ {
+		someBytes[i] = byte(rand.Intn(255))
+	}
 
-	tokenSecret = []byte( base64.StdEncoding.EncodeToString(someBytes))
-    return tokenSecret
+	tokenSecret = []byte(base64.StdEncoding.EncodeToString(someBytes))
+	return tokenSecret
 }
 
 /*---------------------*/
 
 // PostUserProfile implements POST /auth/profile
 func PostUserProfile(resp http.ResponseWriter, req *http.Request, params routing.Params) {
-	
-    body, err := tools.ReadAll(req.Body)
-	if err != nil {
-        log.Printf("[Err   ] PostUserProfile: %s", err.Error())
-        http.Error(resp, "bad request", http.StatusBadRequest)
-		return
-    }
 
-    var inputProfile edge.User
+	body, err := tools.ReadAll(req.Body)
+	if err != nil {
+		log.Printf("[ERR  ] PostUserProfile: %s", err.Error())
+		http.Error(resp, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	var inputProfile edge.User
 
 	err = json.Unmarshal(body, &inputProfile)
 	if err != nil {
-        log.Printf("[Err   ] PostUserProfile: %s", err.Error())
+		log.Printf("[ERR  ] PostUserProfile: %s", err.Error())
 		http.Error(resp, "bad request", http.StatusBadRequest)
 		return
-    }
+	}
 
-    userID, err := getAuthorizedUserID( req);
+	userID, err := getAuthorizedUserID(req)
 
-    if err != nil{
-        log.Printf("[Err   ] PostUserProfile: %s", err.Error())
-        http.Error(resp, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-        return
-    }
-    
-    err = edge.UpdateUser( userID, &inputProfile)
+	if err != nil {
+		log.Printf("[ERR  ] PostUserProfile: %s", err.Error())
+		http.Error(resp, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
 
-    if err != nil{
-        log.Printf("[Err   ] PostUserProfile: %s", err.Error())
-        http.Error(resp, err.Error(), http.StatusUnauthorized)
-        return
-    }
+	err = edge.UpdateUser(userID, &inputProfile)
 
-   
-    tools.SendJSON(resp, "Profile changes saved successfully.")
+	if err != nil {
+		log.Printf("[ERR  ] PostUserProfile: %s", err.Error())
+		http.Error(resp, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	tools.SendJSON(resp, "Profile changes saved successfully.")
 }
 
 /*---------------------*/
 
 func GetUserProfile(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
-    userID, err := getAuthorizedUserID( req);
+	userID, err := getAuthorizedUserID(req)
 
-    if err != nil{
-        log.Printf("[Err   ] GetUserProfile: %s", err.Error())
-        http.Error(resp, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-        return
-    }
-
-    user, err := edge.GetUser( userID)
 	if err != nil {
-        log.Printf("[Err   ] GetUserProfile: %s", err.Error())
-        http.Error(resp, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		log.Printf("[ERR  ] GetUserProfile: %s", err.Error())
+		http.Error(resp, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
-    }
+	}
 
-    user.Password = ""
-    
-    tools.SendJSON(resp, user);
+	user, err := edge.GetUser(userID)
+	if err != nil {
+		log.Printf("[ERR  ] GetUserProfile: %s", err.Error())
+		http.Error(resp, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+
+	user.Password = ""
+
+	tools.SendJSON(resp, user)
 
 }
-
 
 /*---------------------*/
 
 // GetPermissions implements GET /auth/permissions
 func GetPermissions(resp http.ResponseWriter, req *http.Request, params routing.Params) {
-	
+
 	// TODO: implement
-    tools.SendJSON(resp, "GetPermissions()")
+	tools.SendJSON(resp, "GetPermissions()")
 }
 
 /*---------------------*/
 
 // Logout implements GET /auth/logout
 func Logout(resp http.ResponseWriter, req *http.Request, params routing.Params) {
-    c := http.Cookie{
-            Name:   "Token",
-            Path:       "/",
-            HttpOnly:   true,
-            // Secure:     true,
-            SameSite:   SameSiteStrictMode,            
-            MaxAge: -1}
-    http.SetCookie(resp, &c)
+	c := http.Cookie{
+		Name:     "Token",
+		Path:     "/",
+		HttpOnly: true,
+		// Secure:     true,
+		SameSite: SameSiteStrictMode,
+		MaxAge:   -1}
+	http.SetCookie(resp, &c)
 
-    //TODO: Other actions that we may need to do
-    tools.SendJSON(resp, "Logged out.")
+	//TODO: Other actions that we may need to do
+	tools.SendJSON(resp, "Logged out.")
 }
 
 /*---------------------*/
 
 func IsAuthorized(endpoint routing.Handle) routing.Handle {
-    return func(resp http.ResponseWriter, req *http.Request, params routing.Params) {
+	return func(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
-        reqToken := ""
+		reqToken := ""
 
-        if req.Header["Token"] != nil && len( req.Header["Token"][0]) > 0  {
-            reqToken = req.Header["Token"][0]
-        
-        }else{
+		if req.Header["Token"] != nil && len(req.Header["Token"][0]) > 0 {
+			reqToken = req.Header["Token"][0]
 
-            c, err := req.Cookie("Token")
-            if err != nil {
-                log.Printf("[Err   ] Auth reading cookie: %s", err.Error())
-            } else {
-                reqToken = c.Value
-                log.Printf("Auth reading cookie: %q", reqToken)
-            }
-        }
+		} else {
 
-        if len( reqToken) > 0 {
+			c, err := req.Cookie("Token")
+			if err != nil {
+				log.Printf("[ERR  ] Auth reading cookie: %s", err.Error())
+			} else {
+				reqToken = c.Value
+				log.Printf("Auth reading cookie: %q", reqToken)
+			}
+		}
 
-            token, err := jwt.Parse(reqToken, func(token *jwt.Token) (interface{}, error) {
-                if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-                    return nil, fmt.Errorf( "There was an error" )
-                }
-                return getSecret(), nil
-            })
+		if len(reqToken) > 0 {
 
-            if err != nil {
-                log.Printf("[Err   ] Auth error: %s", err.Error())
-                http.Error(resp, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-                return
-            }
+			token, err := jwt.Parse(reqToken, func(token *jwt.Token) (interface{}, error) {
+				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+					return nil, fmt.Errorf("There was an error")
+				}
+				return getSecret(), nil
+			})
 
-            if token.Valid {
-                endpoint(resp, req, params)
-            }
+			if err != nil {
+				log.Printf("[ERR  ] Auth error: %s", err.Error())
+				http.Error(resp, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+				return
+			}
 
-        } else {
-            log.Printf("[Err   ] Auth: the token is empty")
-            // resp.Header().Set("WWW-Authenticate", "Basic realm=Restricted")
-            http.Error(resp, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-        }
-    }
+			if token.Valid {
+				endpoint(resp, req, params)
+			}
+
+		} else {
+			log.Printf("[ERR  ] Auth: the token is empty")
+			// resp.Header().Set("WWW-Authenticate", "Basic realm=Restricted")
+			http.Error(resp, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		}
+	}
 }
 
 /*---------------------*/

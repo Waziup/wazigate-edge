@@ -1,17 +1,22 @@
 package edge
 
 import (
+	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"io"
-	"net"
+	"log"
+	"math/rand"
 	"net/url"
 	"os"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/Waziup/wazigate-edge/tools"
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 )
@@ -128,6 +133,8 @@ func (query *Query) Parse(values url.Values) error {
 	return nil
 }
 
+/*--------------------------*/
+
 var localID string
 
 // LocalID returns the ID of this device
@@ -141,19 +148,69 @@ func LocalID() string {
 		return localID
 	}
 
-	interfs, err := net.Interfaces()
+	localID, err := GetConfig("gatewayID")
 	if err != nil {
-		return ""
-	}
-	for _, interf := range interfs {
-		addr := interf.HardwareAddr.String()
-		if addr != "" {
-			localID = strings.ReplaceAll(addr, ":", "")
-			return localID
+		log.Printf("[WARNING] LocalID: %s", err.Error())
+		if err == mgo.ErrNotFound {
+			log.Printf("[INFO  ] Creating a new gateway ID...")
+			localID = GenerateNewGatewayID()
+			err := SetConfig("gatewayID", localID)
+			if err != nil {
+				log.Printf("[Err  ] Store New LocalID: %s", err.Error())
+			}
 		}
 	}
-	return ""
+
+	return localID
 }
+
+/*--------------------------*/
+
+// GenerateNewGatewayID generated a new ID for the gateway that will be Unique and Random
+func GenerateNewGatewayID() string {
+
+	localIDPrefix := make([]byte, 12)
+
+	//Get the mac address from the host
+	macStr, err := tools.ExecOnHostWithLogs("cat /sys/class/net/eth0/address", true)
+
+	if err != nil {
+		log.Printf("[ERR  ] Get new GWID: %s", err.Error())
+	} else {
+
+		localIDPrefix, err = hex.DecodeString(strings.Replace(macStr, ":", "", -1))
+		if err != nil {
+			log.Printf("[ERR  ] Get new GWID: %s", err.Error())
+		}
+	}
+
+	const localIDLength = 40
+	someBytes := make([]byte, localIDLength)
+
+	for i := 0; i < len(localIDPrefix); i++ {
+		someBytes[i] = localIDPrefix[i]
+	}
+
+	rand.Seed(time.Now().UTC().UnixNano())
+	for i := len(localIDPrefix); i < localIDLength; i++ {
+		someBytes[i] = byte(rand.Intn(255))
+	}
+
+	newID := base64.StdEncoding.EncodeToString(someBytes)
+
+	// Cleaning the ID from all unwanted chars
+
+	reg, err := regexp.Compile("[^a-zA-Z0-9]+")
+	if err != nil {
+		log.Printf("[ERR  ] Get new GWID: %s", err.Error())
+		return ""
+	}
+	newID = reg.ReplaceAllString(newID, "")
+
+	return newID[:16] /* Let's keep it 16 bytes */
+}
+
+/*--------------------------*/
 
 // DeviceIterator iterates over devices. Call .Next() to get the next device.
 type DeviceIterator struct {
@@ -381,6 +438,38 @@ func SetDeviceName(deviceID string, name string) (Meta, error) {
 	}
 	return device.Meta, nil
 }
+
+/*----------------------*/
+
+// SetDeviceID changes the gateway ID.
+func SetDeviceID(newID string) error {
+
+	currentGateway, err := GetDevice(LocalID())
+	if err != nil {
+		return err
+	}
+
+	if currentGateway.ID == newID {
+		return nil // Nothing to change
+	}
+
+	currentGateway.ID = newID
+	currentGateway.Name = "(NEW) " + currentGateway.Name
+
+	err = SetConfig("gatewayID", newID)
+	if err != nil {
+		return err
+	}
+
+	// Add the gateway as a new device and keep the old one as it has link to the old data.
+	err = PostDevice(currentGateway)
+
+	//...
+
+	return err
+}
+
+/*------------------------------*/
 
 // SetDeviceMeta changes a device metadata.
 func SetDeviceMeta(deviceID string, meta Meta) error {

@@ -19,7 +19,7 @@ import (
 
 /*-----------------------------*/
 
-const edgeVersion = "2.1.1"
+const edgeVersion = "2.1.2"
 
 // We may use env vars in future, this path is relative to wazigate-host
 const appsDirectoryOnHost = "../apps/"
@@ -69,6 +69,7 @@ func GetApps(resp http.ResponseWriter, req *http.Request, params routing.Params)
 	/*------------*/
 
 	if err != nil {
+		resp.Header().Set("Content-Type", "application/json")
 		resp.WriteHeader(500)
 		log.Printf("[ERR  ]: %s ", err.Error())
 	}
@@ -335,6 +336,8 @@ func getAppInfo(appID string, withDockerStatus bool) map[string]interface{} {
 // It installs a new app
 func PostApps(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
+	resp.Header().Set("Content-Type", "application/json")
+
 	// imageName := "waziup/wazi-on-sensors:beta"
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
@@ -352,8 +355,11 @@ func PostApps(resp http.ResponseWriter, req *http.Request, params routing.Params
 
 	out, err := installApp(imageName)
 	if err != nil {
-		resp.WriteHeader(400)
 		log.Printf("[ERR  ] installing app [%v] error: %s ", imageName, err.Error())
+		resp.WriteHeader(400)
+		// tools.SendJSON(resp, out)
+		// http.Error(resp, err.Error(), http.StatusBadRequest)
+		// return
 	}
 
 	tools.SendJSON(resp, out)
@@ -368,10 +374,13 @@ func PostApp(resp http.ResponseWriter, req *http.Request, params routing.Params)
 	appID := params.ByName("app_id")
 	appFullPath := appsDirectoryOnHost + strings.Replace(appID, ".", "/", 1)
 
+	resp.Header().Set("Content-Type", "application/json")
+
 	/*------*/
 
 	body, err := tools.ReadAll(req.Body)
 	if err != nil {
+		log.Printf("[Err  ] PostApp: %s", err.Error())
 		http.Error(resp, "bad request: "+err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -384,6 +393,7 @@ func PostApp(resp http.ResponseWriter, req *http.Request, params routing.Params)
 	var appConfig _appConfig
 	err = json.Unmarshal(body, &appConfig)
 	if err != nil {
+		log.Printf("[Err  ] PostApp: %s", err.Error())
 		http.Error(resp, "bad request: "+err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -395,12 +405,12 @@ func PostApp(resp http.ResponseWriter, req *http.Request, params routing.Params)
 		cmd := "cd \"" + appFullPath + "\"; docker-compose " + appConfig.Action
 
 		if appConfig.Action == "first-start" {
-			cmd = "cd \"" + appFullPath + "\"; docker-compose pull ; docker-compose up -d --no-build"
+			cmd = "cd \"" + appFullPath + "\" && docker-compose pull && docker-compose up -d --no-build"
 		}
 
 		out, err := tools.ExecOnHostWithLogs(cmd, true)
 		if err != nil {
-			log.Printf("[ERR  ] %s ", err.Error())
+			log.Printf("[Err  ] PostApp: %s", err.Error())
 			out = err.Error()
 		}
 		if out == "" {
@@ -423,7 +433,7 @@ func PostApp(resp http.ResponseWriter, req *http.Request, params routing.Params)
 		out, err := tools.SockPostReqest(dockerSocketAddress, "containers/"+appID+"/update", updateStr)
 
 		if err != nil {
-			log.Printf("[ERR  ] %s ", err.Error())
+			log.Printf("[Err  ] PostApp: %s", err.Error())
 			out = []byte(err.Error())
 		}
 
@@ -505,13 +515,12 @@ func HandleAppProxyRequest(resp http.ResponseWriter, req *http.Request, params r
 	if err != nil {
 		log.Printf("[APP  ] Err %v", err)
 		resp.WriteHeader(http.StatusBadRequest)
-		resp.Write([]byte(handleAppProxyError(appID))) //Showing a nice user friendly error msg
-		resp.Write([]byte(err.Error()))
+		resp.Write([]byte(handleAppProxyError(appID, err.Error()))) //Showing a nice user friendly error msg
 		return
 	}
 
 	log.Printf("[APP  ] >> %q %s %s", appID, req.Method, proxyURI)
-	
+
 	// We need to pass these values in order to let the Apps work properly (I had issues with a Python based service)
 	proxyReq.Header = req.Header
 	proxyReq.TransferEncoding = []string{"identity"}
@@ -521,8 +530,7 @@ func HandleAppProxyRequest(resp http.ResponseWriter, req *http.Request, params r
 	if err != nil {
 		log.Printf("[APP  ] Err %v", err)
 		resp.WriteHeader(http.StatusBadGateway)
-		resp.Write([]byte(handleAppProxyError(appID)))
-		resp.Write([]byte(err.Error()))
+		resp.Write([]byte(handleAppProxyError(appID, err.Error())))
 		return
 	}
 
@@ -540,7 +548,7 @@ func HandleAppProxyRequest(resp http.ResponseWriter, req *http.Request, params r
 
 /*-----------------------------*/
 
-func handleAppProxyError(appID string) string {
+func handleAppProxyError(appID string, moreInfo string) string {
 
 	appInfo := getAppInfo(appID, true /* withDockerStatus */)
 
@@ -566,15 +574,28 @@ func handleAppProxyError(appID string) string {
 	return fmt.Sprintf(`<!DOCTYPE html>
 	<html>
 		<head>
-			<link rel="stylesheet" href="/dist/main.css">
+			<style type="text/css">
+				.error{padding: 24px;margin-top: 50px;z-index: 1;position: relative;background-color: #ffb294;
+					border-radius: 5px;font-family: "Roboto", "Helvetica", "Arial", sans-serif;}
+				.error p{border: 1px solid #ca4e1d;padding: 10px;border-radius: 3px;}
+				.error h2{font-size: 3.75rem;font-weight: 300;line-height: 1.2;}
+				.error svg{top: 82px;color: #c7917c;right: 18px;width: 90px;
+					height: 90px;z-index: -1;position: absolute;fill: currentColor;
+					display: inline-block;font-size: 1.5rem;flex-shrink: 0;user-select: none;
+					transition: fill 200ms cubic-bezier(0.4, 0, 0.2, 1) 0ms;}
+			</style>
 		</head>
 		<body>
 			<div class="error">
 				<h2>%s</h2>
-				<h4>Error on loading the app [ %s ]<h4>
+				<h4>Error on loading the app [ %s ]</h4>
+				<svg focusable="false" viewBox="0 0 24 24" aria-hidden="true">
+					<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"></path>
+				</svg>
+				<p>%s</p>
 			</div>
 		</body>
-	</html>`, errMsg, appName)
+	</html>`, errMsg, appName, moreInfo)
 
 }
 
@@ -585,6 +606,8 @@ func GetUpdateApp(resp http.ResponseWriter, req *http.Request, params routing.Pa
 
 	appID := params.ByName("app_id")
 	newUpdate := false
+
+	resp.Header().Set("Content-Type", "application/json")
 
 	images, err := getAppImages(appID)
 	if err != nil {
@@ -673,7 +696,7 @@ func getAppImages(appID string) ([]string, error) {
 	var out []string
 
 	if appID == "wazigate-edge" {
-		cmd := "cd ../; CNTS=$(sudo docker-compose ps -q); for cId in $CNTS; do cImage=$(sudo docker ps --format '{{.Image}}' -f id=${cId}); echo $cImage; done;"
+		cmd := "cd ../ && CNTS=$(sudo docker-compose ps -q) && for cId in $CNTS; do cImage=$(sudo docker ps --format '{{.Image}}' -f id=${cId}); echo $cImage; done;"
 		stdout, err := tools.ExecOnHostWithLogs(cmd, true)
 		out = strings.Split(strings.TrimSpace(stdout), "\n")
 		return out, err
@@ -787,11 +810,12 @@ func PostUpdateApp(resp http.ResponseWriter, req *http.Request, params routing.P
 		log.Printf("[ERR  ] updating app [%v] error: %s ", appID, msg)
 	}
 
-	_, err = installApp(imageName)
+	out, err := installApp(imageName)
 	if err != nil {
+		log.Printf("[ERR  ] installing App update [%v] error: %s ", imageName, err.Error())
+		// http.Error(resp, err.Error(), http.StatusBadRequest)
 		resp.WriteHeader(400)
-		log.Printf("[ERR  ] installing app [%v] error: %s ", imageName, err.Error())
-		tools.SendJSON(resp, err.Error())
+		tools.SendJSON(resp, out)
 		return
 	}
 
@@ -942,7 +966,7 @@ func installApp(imageName string) (string, error) {
 	/*-----------*/
 
 	cmd = "mkdir -p \"" + appsDirectoryOnHost + repoName + "\" ;"
-	cmd = "mkdir -p \"" + appFullPath + "\""
+	cmd += "mkdir -p \"" + appFullPath + "\""
 	out, err = tools.ExecOnHostWithLogs(cmd, true)
 	if err != nil {
 		installingAppStatus[appStatusIndex].done = true
@@ -991,7 +1015,7 @@ func installApp(imageName string) (string, error) {
 	/*-----------*/
 
 	// Pulling the dependencies
-	cmd = "cd \"" + appFullPath + "\"; docker-compose pull ; docker-compose up -d --no-build"
+	cmd = "cd \"" + appFullPath + "\" && docker-compose pull && docker-compose up -d --no-build"
 	out, err = tools.ExecOnHostWithLogs(cmd, true)
 
 	installingAppStatus[appStatusIndex].log += "\nDownloading the dependencies...\n"
@@ -1023,14 +1047,15 @@ func uninstallApp(appID string, keepConfig bool) error {
 
 	appFullPath := appsDirectoryOnHost + strings.Replace(appID, ".", "/", 1)
 
-	cmd := "cd \"" + appFullPath + "\"; IMG=$(docker-compose images -q); docker-compose rm -fs; docker rmi -f $IMG; "
+	cmd := "cd \"" + appFullPath + "\" && IMG=$(docker-compose images -q) && docker-compose rm -fs && docker rmi -f $IMG; "
 	if keepConfig {
 
 		cmd += "rm ./package.json;"
 
 	} else {
 
-		cmd += "docker system prune -f; rm -r ./;"
+		cmd += "docker system prune -f && rm -r ../../" + strings.Replace(appID, ".", "/", 1)
+		//We use this path to make sure to delete the app folder if it really exist and not to delete the entire app folder or something else
 	}
 
 	out, err := tools.ExecOnHostWithLogs(cmd, true)

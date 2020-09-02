@@ -78,8 +78,10 @@ func GetCurrentDevice(resp http.ResponseWriter, req *http.Request, params routin
 // GetCurrentDeviceID implements GET /device/id
 func GetCurrentDeviceID(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
-	resp.Header().Set("Content-Type", "text/plain")
-	resp.Write([]byte(edge.LocalID()))
+	// resp.Header().Set("Content-Type", "text/plain")
+	// resp.Write([]byte(edge.LocalID()))
+
+	tools.SendJSON(resp, edge.LocalID())
 }
 
 // GetCurrentDeviceName implements GET /device/name
@@ -129,6 +131,39 @@ func PostCurrentDeviceName(resp http.ResponseWriter, req *http.Request, params r
 
 	postDeviceName(resp, req, edge.LocalID())
 }
+
+/*---------------------------------*/
+
+// PostCurrentDeviceID implements POST /device/id
+func PostCurrentDeviceID(resp http.ResponseWriter, req *http.Request, params routing.Params) {
+
+	body, err := tools.ReadAll(req.Body)
+	if err != nil {
+		http.Error(resp, "bad request: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var newID string
+	contentType := req.Header.Get("Content-Type")
+	if strings.HasPrefix(contentType, "application/json") {
+		err = json.Unmarshal(body, &newID)
+		if err != nil {
+			http.Error(resp, "bad request: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+	} else {
+		newID = string(body)
+	}
+
+	err = edge.SetDeviceID(newID)
+	if err != nil {
+		log.Printf("[Err  ] SetDeviceID: %s", err.Error())
+		serveError(resp, err)
+		return
+	}
+}
+
+/*---------------------------------*/
 
 // PostDeviceMeta implements POST /devices/{deviceID}/meta
 func PostDeviceMeta(resp http.ResponseWriter, req *http.Request, params routing.Params) {
@@ -198,6 +233,7 @@ func getDeviceName(resp http.ResponseWriter, req *http.Request, deviceID string)
 		return
 	}
 	resp.Header().Set("Content-Type", "text/plain")
+	// resp.Header().Set("Content-Type", "application/json")
 	resp.Write([]byte(name))
 }
 

@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"net"
 	"net/http"
+	"regexp"
 	"time"
 
 	// "strings"
@@ -273,6 +275,7 @@ func PostUserProfile(resp http.ResponseWriter, req *http.Request, params routing
 
 /*---------------------*/
 
+// GetUserProfile implements GET /auth/profile
 func GetUserProfile(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
 	userID, err := getAuthorizedUserID(req)
@@ -324,8 +327,39 @@ func Logout(resp http.ResponseWriter, req *http.Request, params routing.Params) 
 
 /*---------------------*/
 
-func IsAuthorized(endpoint routing.Handle) routing.Handle {
+// IsAuthorized checks if the given request is valid for the API call
+func IsAuthorized(endpoint routing.Handle, checkIPWhiteList bool) routing.Handle {
 	return func(resp http.ResponseWriter, req *http.Request, params routing.Params) {
+
+		if checkIPWhiteList {
+
+			ip, _, err := net.SplitHostPort(req.RemoteAddr)
+
+			// log.Printf("\n\n\tINFO: %q", req.RemoteAddr)
+			// log.Printf("\n\n\tINFO: %q, %q, %q", ip, port, err)
+
+			if err != nil {
+
+				log.Printf("[ERR  ] White list check: %s", err.Error())
+
+			} else {
+
+				ok, err := IsIPAddrInCurrentDockerNetwork(string(ip))
+
+				// log.Printf("\n\n\tINFO OK: %q, %q", ok, err)
+
+				// The IP is authorized
+				if ok {
+					endpoint(resp, req, params)
+					return
+				}
+				if err != nil {
+					log.Printf("[ERR  ] White list check: %s", err.Error())
+				}
+			}
+		}
+
+		/*-------------*/
 
 		reqToken := ""
 
@@ -368,6 +402,53 @@ func IsAuthorized(endpoint routing.Handle) routing.Handle {
 			http.Error(resp, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		}
 	}
+}
+
+/*---------------------*/
+
+var listOfWhiteIPs map[string]interface{} = map[string]interface{}{}
+
+// IsIPAddrInCurrentDockerNetwork the name is selfdescribe ;)
+func IsIPAddrInCurrentDockerNetwork(inputIP string) (bool, error) {
+
+	// BUG: there might be some issues when a call is received bu not all containers are loaded
+	// So their IP will be out of the white list!!!
+
+	if len(listOfWhiteIPs) == 0 {
+
+		//Get all container's IP list
+		dockerJSONRaw, err := tools.SockGetReqest(dockerSocketAddress, "networks/wazigate")
+
+		if err != nil {
+			// log.Printf("[ERR  ] Check IP White list: %s", err.Error())
+			return false, err
+		}
+
+		var dockerJSON struct {
+			Containers map[string]interface{} `json:"Containers"`
+		}
+
+		if err := json.Unmarshal(dockerJSONRaw, &dockerJSON); err != nil {
+			return false, err
+		}
+
+		for _, value := range dockerJSON.Containers {
+
+			ipStr := value.(map[string]interface{})["IPv4Address"].(string)
+			re := regexp.MustCompile(`([0-9]+\.){3}([0-9]+)`)
+			match := re.FindStringSubmatch(ipStr)
+			listOfWhiteIPs[match[0]] = true
+
+			// log.Println(match[0])
+		}
+	}
+
+	// log.Printf("\n\nWhite LIST: %q", listOfWhiteIPs)
+
+	// Check if the given IP address is in the list of "wazigate" docker network
+	// which we consider it a white list
+	_, ok := listOfWhiteIPs[inputIP]
+	return ok, nil
 }
 
 /*---------------------*/

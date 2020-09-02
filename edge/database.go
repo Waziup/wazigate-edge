@@ -18,6 +18,9 @@ var dbDevices *mgo.Collection
 // dbUsers is the database holding users' information
 var dbUsers *mgo.Collection
 
+// dbConfig is the database holding the configurations in a key-value form
+var dbConfig *mgo.Collection
+
 // Connect initializes the edge core by connecting to the database.
 func Connect(addr string) error {
 
@@ -38,6 +41,7 @@ func Connect(addr string) error {
 		dbActuatorValues = db.DB("waziup").C("actuator_values")
 		dbDevices = db.DB("waziup").C("devices")
 		dbUsers = db.DB("waziup").C("users")
+		dbConfig = db.DB("waziup").C("config")
 		return nil
 	}
 	return nil // unreachable

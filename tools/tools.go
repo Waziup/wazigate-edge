@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -46,9 +47,9 @@ func SendJSON(resp http.ResponseWriter, obj interface{}) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-// from https://gist.github.com/rucuriousyet/ab2ab3dc1a339de612e162512be39283
-// getMacAddr gets the MAC hardware
+// GetMACAddr gets the MAC hardware
 // address of the host machine
+// from https://gist.github.com/rucuriousyet/ab2ab3dc1a339de612e162512be39283
 func GetMACAddr() (addr string) {
 	interfaces, err := net.Interfaces()
 	if err == nil {
@@ -61,6 +62,25 @@ func GetMACAddr() (addr string) {
 		}
 	}
 	return
+}
+
+/*-----------------------------*/
+
+// GetIPAddr returns the non loopback local IP of the container
+func GetIPAddr() string {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return ""
+	}
+	for _, address := range addrs {
+		// check the address type and if it is not a loopback the display it
+		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				return ipnet.IP.String()
+			}
+		}
+	}
+	return ""
 }
 
 /*-----------------------------*/
@@ -206,7 +226,11 @@ func SocketReqest(socketAddr string, url string, method string, contentType stri
 		return nil, err
 	}
 
-	return response, nil
+	if response.StatusCode != 200 {
+		err = fmt.Errorf("Err: " + response.Status)
+	}
+
+	return response, err
 }
 
 /*-----------------------------*/

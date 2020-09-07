@@ -1,17 +1,16 @@
 package edge
 
 import (
-	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"math/rand"
 	"net/url"
 	"os"
 	"reflect"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -38,7 +37,7 @@ func (device *Device) SetJSONSelect(s []string) {
 	device.jsonSelect = s
 }
 
-// DevicesQuery is used to range or limit query results.
+// Query is used to range or limit query results.
 type Query struct {
 	Limit  int64
 	Size   int64
@@ -184,7 +183,7 @@ func GenerateNewGatewayID() string {
 		}
 	}
 
-	const localIDLength = 40
+	const localIDLength = 8 // larger would have been better, but Chirpstack accepts exactly 8 byte in Hex format
 	someBytes := make([]byte, localIDLength)
 
 	for i := 0; i < len(localIDPrefix); i++ {
@@ -196,7 +195,9 @@ func GenerateNewGatewayID() string {
 		someBytes[i] = byte(rand.Intn(255))
 	}
 
-	newID := base64.StdEncoding.EncodeToString(someBytes)
+	return hex.EncodeToString(someBytes)
+
+	/*newID := base64.StdEncoding.EncodeToString(someBytes)
 
 	// Cleaning the ID from all unwanted chars
 
@@ -449,8 +450,19 @@ func SetDeviceID(newID string) error {
 		return err
 	}
 
+	newID = strings.ToLower(newID)
+
 	if currentGateway.ID == newID {
 		return nil // Nothing to change
+	}
+
+	if len(newID) != 16 { // 8 bytes accepted
+		return fmt.Errorf("The length of the ID must be exactly 16 characters ( 8 bytes)")
+	}
+
+	_, err = hex.DecodeString(newID)
+	if err != nil {
+		return err
 	}
 
 	currentGateway.ID = newID

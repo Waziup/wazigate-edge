@@ -1,19 +1,26 @@
 FROM golang:1.13-alpine AS development
 
+# Please change this when a new image is going to be released
+ENV EDGE_VERSION=2.1.4
+
+
 ENV CGO_ENABLED=0
 ENV GO111MODULE=on
 
-RUN apk add --no-cache ca-certificates tzdata git curl
+RUN apk add --no-cache ca-certificates tzdata git curl \
+    && echo $EDGE_VERSION > /ver.txt
 
 COPY . /wazigate-edge
 WORKDIR /wazigate-edge
 
 RUN go build -ldflags "-s -w" -o build/wazigate-edge .
 
+# just to make development a bit easier
+WORKDIR /go/src/github.com/Waziup/wazigate-edge/
 ENTRYPOINT ["tail", "-f", "/dev/null"]
 
+#---------------------------------------#
 
-################################################################################
 # Uncomment the follwoing lines for production:
 
 FROM alpine:latest AS production
@@ -35,4 +42,12 @@ COPY wazigate-dashboard/docs wazigate-dashboard/docs
 
 COPY --from=development /wazigate-edge/build/wazigate-edge .
 
-ENTRYPOINT ["./wazigate-edge", "-www", "wazigate-dashboard"]
+
+COPY --from=development /ver.txt /
+RUN echo "export EDGE_VERSION=$(cat /ver.txt);" > start.sh \
+    && echo "./wazigate-edge -www wazigate-dashboard" >> start.sh \
+    && chmod +x start.sh
+
+ENTRYPOINT ["sh", "start.sh"]
+
+# ENTRYPOINT ["./wazigate-edge", "-www", "wazigate-dashboard"]

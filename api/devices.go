@@ -137,9 +137,13 @@ func PostCurrentDeviceName(resp http.ResponseWriter, req *http.Request, params r
 // PostCurrentDeviceID implements POST /device/id
 func PostCurrentDeviceID(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
+	resp.Header().Set("Content-Type", "application/json")
+
 	body, err := tools.ReadAll(req.Body)
 	if err != nil {
-		http.Error(resp, "bad request: "+err.Error(), http.StatusBadRequest)
+		resp.WriteHeader(http.StatusBadRequest)
+		tools.SendJSON(resp, "bad request: "+err.Error())
+		// http.Error(resp, "bad request: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -148,7 +152,9 @@ func PostCurrentDeviceID(resp http.ResponseWriter, req *http.Request, params rou
 	if strings.HasPrefix(contentType, "application/json") {
 		err = json.Unmarshal(body, &newID)
 		if err != nil {
-			http.Error(resp, "bad request: "+err.Error(), http.StatusBadRequest)
+			// http.Error(resp, "bad request: "+err.Error(), http.StatusBadRequest)
+			resp.WriteHeader(http.StatusBadRequest)
+			tools.SendJSON(resp, "bad request: "+err.Error())
 			return
 		}
 	} else {
@@ -158,9 +164,11 @@ func PostCurrentDeviceID(resp http.ResponseWriter, req *http.Request, params rou
 	err = edge.SetDeviceID(newID)
 	if err != nil {
 		log.Printf("[Err  ] SetDeviceID: %s", err.Error())
-		serveError(resp, err)
+		resp.WriteHeader(http.StatusBadRequest)
+		tools.SendJSON(resp, "Wrong Gateway ID format \n "+err.Error())
 		return
 	}
+	tools.SendJSON(resp, newID)
 }
 
 /*---------------------------------*/

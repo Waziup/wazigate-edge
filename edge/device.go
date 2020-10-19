@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"net/url"
@@ -15,7 +16,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Waziup/wazigate-edge/tools"
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 )
@@ -149,9 +149,9 @@ func LocalID() string {
 
 	localID, err := GetConfig("gatewayID")
 	if err != nil {
-		log.Printf("[WARNING] LocalID: %s", err.Error())
+		log.Printf("[WARN ] LocalID: %s", err.Error())
 		if err == mgo.ErrNotFound {
-			log.Printf("[INFO  ] Creating a new gateway ID...")
+			log.Printf("[INFO ] Creating a new gateway ID...")
 			localID = GenerateNewGatewayID()
 			err := SetConfig("gatewayID", localID)
 			if err != nil {
@@ -171,13 +171,13 @@ func GenerateNewGatewayID() string {
 	localIDPrefix := make([]byte, 12)
 
 	//Get the mac address from the host
-	macStr, err := tools.ExecOnHostWithLogs("cat /sys/class/net/eth0/address", true)
+	mac, err := ioutil.ReadFile("/sys/class/net/eth0/address")
 
 	if err != nil {
 		log.Printf("[ERR  ] Get new GWID: %s", err.Error())
 	} else {
 
-		localIDPrefix, err = hex.DecodeString(strings.Replace(macStr, ":", "", -1))
+		localIDPrefix, err = hex.DecodeString(strings.Replace(string(mac), ":", "", -1))
 		if err != nil {
 			log.Printf("[ERR  ] Get new GWID: %s", err.Error())
 		}

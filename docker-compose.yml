@@ -11,6 +11,7 @@ services:
       dockerfile: Dockerfile
     volumes:
       - ./:/go/src/wazigate-edge
+      - /sys/class/net/eth0/address:/sys/class/net/eth0/address
 
     environment:
       - WAZIUP_HTTP_ADDR=:80

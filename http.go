@@ -10,8 +10,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Waziup/wazigate-edge/api"
 	"github.com/Waziup/wazigate-edge/mqtt"
 	"github.com/gorilla/websocket"
+	"github.com/julienschmidt/httprouter"
 )
 
 var upgrader = websocket.Upgrader{
@@ -28,6 +30,7 @@ func ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 
 	req.Header.Set("X-Secure", "false")
 	req.Header.Set("X-Tag", "HTTP ")
+	req.Header.Set("X-Proto", "http")
 	serveHTTP(resp, req)
 }
 
@@ -35,6 +38,7 @@ func ServeHTTPS(resp http.ResponseWriter, req *http.Request) {
 
 	req.Header.Set("X-Secure", "true")
 	req.Header.Set("X-Tag", "HTTPS")
+	req.Header.Set("X-Proto", "https")
 	serveHTTP(resp, req)
 }
 
@@ -158,6 +162,27 @@ func (w *wsWrapper) Write(data []byte) (int, error) {
 
 ////////////////////
 
+func serveHTTPUpgrade(resp http.ResponseWriter, req *http.Request, params httprouter.Params) {
+
+	proto := req.Header.Get("Sec-WebSocket-Protocol")
+	if proto != "mqttv3.1" && proto != "mqtt" {
+		http.Error(resp, "Requires WebSocket Protocol Header 'mqttv3.1' or 'mqtt'.", http.StatusBadRequest)
+		return
+	}
+
+	responseHeader := make(http.Header)
+	responseHeader.Set("Sec-WebSocket-Protocol", proto)
+
+	conn, err := upgrader.Upgrade(resp, req, responseHeader)
+	if err != nil {
+		log.Printf("[%s] (%s) WebSocket Upgrade Failed\n %v", req.Header.Get("X-Tag"), req.RemoteAddr, err)
+		return
+	}
+
+	wrapper := &wsWrapper{conn: conn}
+	mqttServer.Serve(wrapper)
+}
+
 func serveHTTP(resp http.ResponseWriter, req *http.Request) {
 
 	if req.Header.Get("Upgrade") != "websocket" {
@@ -166,23 +191,7 @@ func serveHTTP(resp http.ResponseWriter, req *http.Request) {
 		Serve(resp, req) // see main.go
 	} else {
 
-		proto := req.Header.Get("Sec-WebSocket-Protocol")
-		if proto != "mqttv3.1" && proto != "mqtt" {
-			http.Error(resp, "Requires WebSocket Protocol Header 'mqttv3.1' or 'mqtt'.", http.StatusBadRequest)
-			return
-		}
-
-		responseHeader := make(http.Header)
-		responseHeader.Set("Sec-WebSocket-Protocol", proto)
-
-		conn, err := upgrader.Upgrade(resp, req, responseHeader)
-		if err != nil {
-			log.Printf("[%s] (%s) WebSocket Upgrade Failed\n %v", req.Header.Get("X-Tag"), req.RemoteAddr, err)
-			return
-		}
-
-		wrapper := &wsWrapper{conn: conn}
-		mqttServer.Serve(wrapper)
+		api.IsAuthorized(serveHTTPUpgrade, true)(resp, req, nil)
 	}
 }
 

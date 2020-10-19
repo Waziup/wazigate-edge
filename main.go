@@ -331,12 +331,10 @@ func initSync() {
 		return
 	}
 
-	ids := make([]string, 0, 8)
-	for _, cloud := range clouds.GetClouds() {
-		ids = append(ids, cloud.ID)
+	log.Printf("[Up   ] Read %d from %q:", len(clouds.GetClouds()), cloudsFile)
+	for id, cloud := range clouds.GetClouds() {
+		log.Printf("[Up   ] Cloud %q: %s@%s", id, cloud.Username, cloud.REST)
 	}
-	numClouds := len(clouds.GetClouds())
-	log.Printf("[Up   ] Read %d from %q: %s", numClouds, cloudsFile, strings.Join(ids, ", "))
 
 	////////////
 

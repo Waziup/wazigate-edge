@@ -22,16 +22,32 @@ var MethodPublish = "PUBLISH"
 
 func mqttAuth(client *mqtt.Client, auth *mqtt.ConnectAuth) mqtt.ConnectCode {
 	client.Server = mqttServer
+
+	// if auth == nil {
+	// 	return mqtt.CodeNotAuthorized
+	// }
+
+	// var err error
+	// if auth.Username == "" {
+	// 	_, err = api.CheckToken(auth.Password)
+	// } else {
+	// 	_, err = edge.CheckUserCredentials(auth.Username, auth.Password)
+	// }
+	// if err != nil {
+	// 	log.Printf("[MQTT ] Login failed: %v", err)
+	// 	return mqtt.CodeBatUserOrPassword
+	// }
+
 	return mqtt.CodeAccepted
 }
 
 func isUnsupervised(path string) bool {
-	return path != "device" && !strings.HasSuffix(path, "device/") &&
-		path != "sensors" && !strings.HasSuffix(path, "sensors/") &&
-		path != "actuators" && !strings.HasSuffix(path, "actuators/") &&
-		path != "devices" && !strings.HasSuffix(path, "devices/") &&
-		path != "clouds" && !strings.HasSuffix(path, "clouds/") &&
-		path != "sys" && !strings.HasSuffix(path, "sys/")
+	return path != "device" && !strings.HasPrefix(path, "device/") &&
+		path != "sensors" && !strings.HasPrefix(path, "sensors/") &&
+		path != "actuators" && !strings.HasPrefix(path, "actuators/") &&
+		path != "devices" && !strings.HasPrefix(path, "devices/") &&
+		path != "clouds" && !strings.HasPrefix(path, "clouds/") &&
+		path != "sys" && !strings.HasPrefix(path, "sys/")
 }
 
 func (server *MQTTServer) Publish(sender mqtt.Sender, msg *mqtt.Message) int {
@@ -52,7 +68,8 @@ func (server *MQTTServer) Publish(sender mqtt.Sender, msg *mqtt.Message) int {
 		Method: MethodPublish,
 		URL:    rurl,
 		Header: http.Header{
-			"X-Tag": []string{"MQTT "},
+			"X-Tag":   []string{"MQTT "},
+			"X-Proto": []string{"mqtt"},
 		},
 		Body:          &body,
 		ContentLength: int64(len(msg.Data)),
@@ -63,8 +80,8 @@ func (server *MQTTServer) Publish(sender mqtt.Sender, msg *mqtt.Message) int {
 		status: 200,
 		header: make(http.Header),
 	}
-
-	return Serve(&resp, &req)
+	hit := Serve(&resp, &req)
+	return hit
 }
 
 /*

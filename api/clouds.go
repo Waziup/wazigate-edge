@@ -344,7 +344,9 @@ func writeCloudFile() {
 	file, err := os.Create(cloudsFile)
 	if err != nil {
 		log.Printf("[Err  ] Can not read %q: %s", cloudsFile, err.Error())
+		return
 	}
+	defer file.Close()
 	err = clouds.WriteCloudConfig(file)
 	if err != nil {
 		log.Printf("[Err  ] Can not read %q: %s", cloudsFile, err.Error())

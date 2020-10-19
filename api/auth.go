@@ -168,19 +168,9 @@ func getAuthorizedUserID(req *http.Request) (string, error) {
 		return "", fmt.Errorf("Not Authorized")
 	}
 
-	token, err := jwt.Parse(reqToken, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("There was an error")
-		}
-		return getSecret(), nil
-	})
-
+	token, err := CheckToken(reqToken)
 	if err != nil {
 		return "", err
-	}
-
-	if !token.Valid {
-		return "", fmt.Errorf("Invalid Token")
 	}
 
 	/*---------*/
@@ -188,6 +178,22 @@ func getAuthorizedUserID(req *http.Request) (string, error) {
 	claims := token.Claims.(jwt.MapClaims)
 
 	return claims["client"].(string), nil
+}
+
+func CheckToken(t string) (*jwt.Token, error) {
+	token, err := jwt.Parse(t, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("There was an error")
+		}
+		return getSecret(), nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if !token.Valid {
+		return nil, fmt.Errorf("Invalid Token")
+	}
+	return nil, nil
 }
 
 /*---------------------*/
@@ -329,7 +335,15 @@ func Logout(resp http.ResponseWriter, req *http.Request, params routing.Params) 
 
 // IsAuthorized checks if the given request is valid for the API call
 func IsAuthorized(endpoint routing.Handle, checkIPWhiteList bool) routing.Handle {
+
 	return func(resp http.ResponseWriter, req *http.Request, params routing.Params) {
+
+		// mqtt connections are already logged in & authorized
+		// the header is set by the edge and not by the request!
+		if req.Header.Get("X-Proto") == "mqtt" {
+			endpoint(resp, req, params)
+			return
+		}
 
 		if checkIPWhiteList {
 
@@ -361,23 +375,19 @@ func IsAuthorized(endpoint routing.Handle, checkIPWhiteList bool) routing.Handle
 
 		/*-------------*/
 
-		reqToken := ""
+		reqToken := req.Header.Get("Token")
 
-		if req.Header["Token"] != nil && len(req.Header["Token"][0]) > 0 {
-			reqToken = req.Header["Token"][0]
-
-		} else {
-
+		if reqToken == "" {
 			c, err := req.Cookie("Token")
 			if err != nil {
 				log.Printf("[ERR  ] Auth reading cookie: %s", err.Error())
 			} else {
 				reqToken = c.Value
-				log.Printf("Auth reading cookie: %q", reqToken)
+				// log.Printf("Auth reading cookie: %q", reqToken)
 			}
 		}
 
-		if len(reqToken) > 0 {
+		if reqToken != "" {
 
 			token, err := jwt.Parse(reqToken, func(token *jwt.Token) (interface{}, error) {
 				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {

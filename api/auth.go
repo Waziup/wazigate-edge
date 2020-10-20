@@ -193,7 +193,7 @@ func CheckToken(t string) (*jwt.Token, error) {
 	if !token.Valid {
 		return nil, fmt.Errorf("Invalid Token")
 	}
-	return nil, nil
+	return token, nil
 }
 
 /*---------------------*/

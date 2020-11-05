@@ -8,7 +8,6 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
-	"regexp"
 	"time"
 
 	// "strings"
@@ -347,29 +346,24 @@ func IsAuthorized(endpoint routing.Handle, checkIPWhiteList bool) routing.Handle
 
 		if checkIPWhiteList {
 
-			ip, _, err := net.SplitHostPort(req.RemoteAddr)
-
-			// log.Printf("\n\n\tINFO: %q", req.RemoteAddr)
-			// log.Printf("\n\n\tINFO: %q, %q, %q", ip, port, err)
-
+			reqIPStr, _, err := net.SplitHostPort(req.RemoteAddr)
 			if err != nil {
-
-				log.Printf("[ERR  ] White list check: %s", err.Error())
-
-			} else {
-
-				ok, err := IsIPAddrInCurrentDockerNetwork(string(ip))
-
-				// log.Printf("\n\n\tINFO OK: %q, %q", ok, err)
-
-				// The IP is authorized
-				if ok {
-					endpoint(resp, req, params)
-					return
-				}
-				if err != nil {
-					log.Printf("[ERR  ] White list check: %s", err.Error())
-				}
+				log.Printf("[ERR  ] Whitelist check failed: Invalid req.RemoteAddr: %q", req.RemoteAddr)
+				return
+			}
+			reqIP := net.ParseIP(reqIPStr)
+			if reqIP == nil {
+				log.Printf("[ERR  ] Whitelist check failed: Invalid req.RemoteAddr: %q", req.RemoteAddr)
+				return
+			}
+			ok, err := IsWazigateIP(reqIP)
+			if err != nil {
+				log.Printf("[ERR  ] Whitelist check failed for %q", req.RemoteAddr)
+				return
+			}
+			if ok {
+				endpoint(resp, req, params)
+				return
 			}
 		}
 
@@ -418,47 +412,53 @@ func IsAuthorized(endpoint routing.Handle, checkIPWhiteList bool) routing.Handle
 
 var listOfWhiteIPs map[string]interface{} = map[string]interface{}{}
 
-// IsIPAddrInCurrentDockerNetwork the name is selfdescribe ;)
-func IsIPAddrInCurrentDockerNetwork(inputIP string) (bool, error) {
+var wazigateSubnet *net.IPNet
 
-	// BUG: there might be some issues when a call is received bu not all containers are loaded
-	// So their IP will be out of the white list!!!
+// IsWazigateIP calls `docker network inspect wazigate` to get the wazigate subnet from docker.
+// It checks if the ip is in the subnet, because all containers from docker are whitelisted for the API.
+func IsWazigateIP(ip net.IP) (bool, error) {
 
-	if len(listOfWhiteIPs) == 0 {
+	if wazigateSubnet == nil {
 
 		//Get all container's IP list
 		dockerJSONRaw, err := tools.SockGetReqest(dockerSocketAddress, "networks/wazigate")
 
 		if err != nil {
-			// log.Printf("[ERR  ] Check IP White list: %s", err.Error())
+			log.Printf("[ERR  ] Can not \"docker network inspect wazigate\": %v", err.Error())
 			return false, err
 		}
 
-		var dockerJSON struct {
-			Containers map[string]interface{} `json:"Containers"`
+		var dockerNetwork struct {
+			IPAM struct {
+				Config []struct {
+					Subnet  string `json:"Subnet"`
+					Gateway string `json:"Gateway"`
+				} `json:"Config"`
+			} `json:"IPAM"`
 		}
 
-		if err := json.Unmarshal(dockerJSONRaw, &dockerJSON); err != nil {
+		err = json.Unmarshal(dockerJSONRaw, &dockerNetwork)
+		if err != nil {
+			log.Printf("[ERR  ] Can not unmarshal \"docker network inspect\" response (see below): %s", err.Error())
+			log.Printf("$ docker network inspect\n%s", dockerJSONRaw)
 			return false, err
 		}
 
-		for _, value := range dockerJSON.Containers {
+		if len(dockerNetwork.IPAM.Config) < 1 {
+			log.Printf("[ERR  ] \"docker network inspect\" response (see below) has not .IPAM.Config: %s", err.Error())
+			log.Printf("$ docker network inspect\n%s", dockerJSONRaw)
+			return false, err
+		}
 
-			ipStr := value.(map[string]interface{})["IPv4Address"].(string)
-			re := regexp.MustCompile(`([0-9]+\.){3}([0-9]+)`)
-			match := re.FindStringSubmatch(ipStr)
-			listOfWhiteIPs[match[0]] = true
-
-			// log.Println(match[0])
+		_, wazigateSubnet, err = net.ParseCIDR(dockerNetwork.IPAM.Config[0].Subnet)
+		if err != nil {
+			log.Printf("[ERR  ] Can not parse wazigate subnet from \"docker network inspect\" response (see below): %s", err.Error())
+			log.Printf("$ docker network inspect\n%s", dockerJSONRaw)
+			return false, err
 		}
 	}
 
-	// log.Printf("\n\nWhite LIST: %q", listOfWhiteIPs)
-
-	// Check if the given IP address is in the list of "wazigate" docker network
-	// which we consider it a white list
-	_, ok := listOfWhiteIPs[inputIP]
-	return ok, nil
+	return wazigateSubnet.Contains(ip), nil
 }
 
 /*---------------------*/

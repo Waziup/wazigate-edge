@@ -39,6 +39,7 @@ COPY wazigate-dashboard/index.html \
     wazigate-dashboard/
 COPY wazigate-dashboard/dist wazigate-dashboard/dist
 COPY wazigate-dashboard/docs wazigate-dashboard/docs
+COPY wazigate-dashboard/admin wazigate-dashboard/admin
 
 COPY --from=development /wazigate-edge/build/wazigate-edge .
 

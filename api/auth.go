@@ -359,7 +359,6 @@ func IsAuthorized(endpoint routing.Handle, checkIPWhiteList bool) routing.Handle
 			ok, err := IsWazigateIP(reqIP)
 			if err != nil {
 				log.Printf("[ERR  ] Whitelist check failed for %q", req.RemoteAddr)
-				return
 			}
 			if ok {
 				endpoint(resp, req, params)

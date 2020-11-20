@@ -186,7 +186,7 @@ func GenerateNewGatewayID() string {
 	const localIDLength = 8 // larger would have been better, but Chirpstack accepts exactly 8 byte in Hex format
 	someBytes := make([]byte, localIDLength)
 
-	for i := 0; i < len(localIDPrefix); i++ {
+	for i := 0; i < len(localIDPrefix) && i < localIDLength; i++ {
 		someBytes[i] = localIDPrefix[i]
 	}
 

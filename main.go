@@ -193,6 +193,8 @@ func Serve(resp http.ResponseWriter, req *http.Request) int {
 				strings.HasSuffix(req.RequestURI, ".css") ||
 				strings.HasSuffix(req.RequestURI, ".map") ||
 				strings.HasSuffix(req.RequestURI, ".png") ||
+				strings.HasSuffix(req.RequestURI, ".ico") ||
+				strings.HasSuffix(req.RequestURI, ".jpg") ||
 				strings.HasSuffix(req.RequestURI, ".svg") ||
 				strings.HasSuffix(req.RequestURI, ".woff") ||
 				strings.HasSuffix(req.RequestURI, ".woff2") ||

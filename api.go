@@ -14,36 +14,36 @@ func init() {
 	// Auth
 
 	router.POST("/auth/token", api.GetToken)
-	router.POST("/auth/retoken", api.IsAuthorized(api.GetRefereshToken, false /* true: check for IP based white list*/))
+	router.POST("/auth/retoken", api.IsAuthorized(api.GetRefereshToken, true /* true: check for IP based white list*/))
 	router.GET("/auth/logout", api.Logout)
 	router.POST("/auth/logout", api.Logout)
 	router.GET("/auth/permissions", api.GetPermissions)
 
-	router.GET("/auth/profile", api.IsAuthorized(api.GetUserProfile, false /* true: check for IP based white list*/))
-	router.POST("/auth/profile", api.IsAuthorized(api.PostUserProfile, false /* true: check for IP based white list*/))
+	router.GET("/auth/profile", api.IsAuthorized(api.GetUserProfile, true /* true: check for IP based white list*/))
+	router.POST("/auth/profile", api.IsAuthorized(api.PostUserProfile, true /* true: check for IP based white list*/))
 
 	//Apps
 
-	router.GET("/apps", api.IsAuthorized(api.GetApps, false /* true: check for IP based white list*/))
-	router.GET("/apps/:app_id", api.IsAuthorized(api.GetApp, false /* true: check for IP based white list*/))
+	router.GET("/apps", api.IsAuthorized(api.GetApps, true /* true: check for IP based white list*/))
+	router.GET("/apps/:app_id", api.IsAuthorized(api.GetApp, true /* true: check for IP based white list*/))
 
-	router.POST("/apps/:app_id", api.IsAuthorized(api.PostApp, false /* true: check for IP based white list*/))
-	router.DELETE("/apps/:app_id", api.IsAuthorized(api.DeleteApp, false /* true: check for IP based white list*/))
+	router.POST("/apps/:app_id", api.IsAuthorized(api.PostApp, true /* true: check for IP based white list*/))
+	router.DELETE("/apps/:app_id", api.IsAuthorized(api.DeleteApp, true /* true: check for IP based white list*/))
 
-	router.POST("/apps", api.IsAuthorized(api.PostApps, false /* true: check for IP based white list*/)) // install a new app
+	router.POST("/apps", api.IsAuthorized(api.PostApps, true /* true: check for IP based white list*/)) // install a new app
 
-	router.GET("/apps/:app_id/*file_path", api.IsAuthorized(api.HandleAppProxyRequest, false /* true: check for IP based white list*/))
-	router.POST("/apps/:app_id/*file_path", api.IsAuthorized(api.HandleAppProxyRequest, false /* true: check for IP based white list*/))
-	router.PUT("/apps/:app_id/*file_path", api.IsAuthorized(api.HandleAppProxyRequest, false /* true: check for IP based white list*/))
-	router.DELETE("/apps/:app_id/*file_path", api.IsAuthorized(api.HandleAppProxyRequest, false /* true: check for IP based white list*/))
+	router.GET("/apps/:app_id/*file_path", api.IsAuthorized(api.HandleAppProxyRequest, true /* true: check for IP based white list*/))
+	router.POST("/apps/:app_id/*file_path", api.IsAuthorized(api.HandleAppProxyRequest, true /* true: check for IP based white list*/))
+	router.PUT("/apps/:app_id/*file_path", api.IsAuthorized(api.HandleAppProxyRequest, true /* true: check for IP based white list*/))
+	router.DELETE("/apps/:app_id/*file_path", api.IsAuthorized(api.HandleAppProxyRequest, true /* true: check for IP based white list*/))
 
 	//Update Appps
 
 	// router.GET("/update", api.GetUpdateApps, false /* true: check for IP based white list*/))
-	router.GET("/update/:app_id", api.IsAuthorized(api.GetUpdateApp, false /* true: check for IP based white list*/))
+	router.GET("/update/:app_id", api.IsAuthorized(api.GetUpdateApp, true /* true: check for IP based white list*/))
 
 	// router.POST("/update", api.PostUpdateApps, false /* true: check for IP based white list*/))
-	router.POST("/update/:app_id", api.IsAuthorized(api.PostUpdateApp, false /* true: check for IP based white list*/))
+	router.POST("/update/:app_id", api.IsAuthorized(api.PostUpdateApp, true /* true: check for IP based white list*/))
 
 	// Device Endpoints
 

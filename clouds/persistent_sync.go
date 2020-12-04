@@ -15,6 +15,7 @@ import (
 
 // if A is less prioritized then B to sync
 // returns false if they are equal
+// returns false if they are equal
 func less(entA *Entity, statusA *Status, entB *Entity, statusB *Status) bool {
 
 	if entB.Sensor == "" && entB.Actuator == "" {
@@ -221,6 +222,7 @@ func (cloud *Cloud) processEntity(ent Entity, status *Status) (int, error) {
 				}
 				// cloud.statusMutex.Unlock()
 			}
+			cloud.IncludeDevice(ent.Device)
 			return code, err
 		}
 

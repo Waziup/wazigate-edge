@@ -166,6 +166,17 @@ func FlagDevice(deviceID string, action Action, meta edge.Meta) {
 	cloudsMutex.RUnlock()
 }
 
+func IncludeDevice(deviceID string) {
+	if len(clouds) == 0 {
+		return
+	}
+	cloudsMutex.RLock()
+	for _, cloud := range clouds {
+		cloud.IncludeDevice(deviceID)
+	}
+	cloudsMutex.RUnlock()
+}
+
 // FlagSensor marks the sensor as dirty so that it will be synced wih the clouds.
 func FlagSensor(deviceID string, sensorID string, action Action, time time.Time, meta edge.Meta) {
 	if len(clouds) == 0 {

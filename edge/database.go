@@ -15,6 +15,9 @@ var dbActuatorValues *mgo.Collection
 // dbDevices is the database holding devices' information
 var dbDevices *mgo.Collection
 
+// dbMessages is the database holding wazigate messages
+var dbMessages *mgo.Collection
+
 // dbUsers is the database holding users' information
 var dbUsers *mgo.Collection
 
@@ -40,6 +43,7 @@ func Connect(addr string) error {
 		dbSensorValues = db.DB("waziup").C("sensor_values")
 		dbActuatorValues = db.DB("waziup").C("actuator_values")
 		dbDevices = db.DB("waziup").C("devices")
+		dbMessages = db.DB("waziup").C("messages")
 		dbUsers = db.DB("waziup").C("users")
 		dbConfig = db.DB("waziup").C("config")
 		return nil

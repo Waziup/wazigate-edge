@@ -215,7 +215,7 @@ func getDevice(resp http.ResponseWriter, deviceID string) {
 func postDevice(resp http.ResponseWriter, req *http.Request) {
 
 	var device edge.Device
-	if err := getReqDevice(req, &device); err != nil {
+	if err := unmarshalRequestBody(req, &device); err != nil {
 		http.Error(resp, "bad request: "+err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -317,18 +317,4 @@ func deleteDevice(resp http.ResponseWriter, deviceID string) {
 
 	log.Printf("[DB   ] Removed device %s (%d sensor values, %d actuator values).\n", deviceID, numS, numA)
 	clouds.FlagDevice(deviceID, clouds.ActionDelete, nil)
-}
-
-////////////////////
-
-func getReqDevice(req *http.Request, device *edge.Device) error {
-	body, err := tools.ReadAll(req.Body)
-	if err != nil {
-		return err
-	}
-	err = json.Unmarshal(body, &device)
-	if err != nil {
-		return err
-	}
-	return nil
 }

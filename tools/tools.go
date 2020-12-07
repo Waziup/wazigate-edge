@@ -234,3 +234,14 @@ func SocketReqest(socketAddr string, url string, method string, contentType stri
 }
 
 /*-----------------------------*/
+
+type RequestBodyContextKey struct{}
+
+func SetRequestBody(req *http.Request, body interface{}) {
+	i := req.Context().Value(RequestBodyContextKey{})
+	if i != nil {
+		if b, ok := i.(*interface{}); ok {
+			*b = body
+		}
+	}
+}

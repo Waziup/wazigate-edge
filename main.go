@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"flag"
@@ -175,15 +176,28 @@ func (resp *ResponseWriter) WriteHeader(statusCode int) {
 	resp.ResponseWriter.WriteHeader(statusCode)
 }
 
+// type Request struct {
+// 	*http.Request
+// 	body interface{}
+// }
+
+// func (req *Request) Context() context.Context {
+// 	return context.WithValue(req.Request.Context(), edge.RequestBodyContextKey{}, &req.body)
+// }
+
 ////////////////////
 
-func Serve(resp http.ResponseWriter, req *http.Request) int {
+func Serve(_resp http.ResponseWriter, _req *http.Request) int {
+	var err error
 
 	// if strings.HasSuffix(req.RequestURI, "/") {
 	// 	req.RequestURI += "index.html"
 	// }
 
-	wrapper := ResponseWriter{resp, 200}
+	resp := ResponseWriter{_resp, 200}
+	var replacedBody interface{}
+	ctx := context.WithValue(_req.Context(), tools.RequestBodyContextKey{}, &replacedBody)
+	req := _req.WithContext(ctx)
 
 	if static != nil {
 
@@ -203,11 +217,11 @@ func Serve(resp http.ResponseWriter, req *http.Request) int {
 				strings.HasSuffix(req.RequestURI, ".webmanifest") ||
 				strings.HasSuffix(req.RequestURI, "/")) {
 
-			static.ServeHTTP(&wrapper, req)
+			static.ServeHTTP(&resp, req)
 
 			log.Printf("[WWW  ] (%s) %d %s \"%s\"\n",
 				req.RemoteAddr,
-				wrapper.status,
+				resp.status,
 				req.Method,
 				req.RequestURI)
 			return 0
@@ -215,54 +229,71 @@ func Serve(resp http.ResponseWriter, req *http.Request) int {
 	}
 
 	size := 0
+	var body []byte
 
 	if req.Method == http.MethodPut || req.Method == http.MethodPost {
 
-		body, err := ioutil.ReadAll(req.Body)
+		body, err = ioutil.ReadAll(req.Body)
 		size = len(body)
-
 		req.Body.Close()
 		if err != nil {
-			http.Error(resp, "400 Bad Request", http.StatusBadRequest)
+			http.Error(_resp, "400 Bad Request", http.StatusBadRequest)
 			return 0
 		}
 		req.Body = &tools.ClosingBuffer{
 			Buffer: bytes.NewBuffer(body),
 		}
+
+		router.ServeHTTP(&resp, req)
+
 	} else if req.Method == MethodPublish {
 		if cbuf, ok := req.Body.(*tools.ClosingBuffer); ok {
 			size = cbuf.Len()
+			body = cbuf.Bytes()
+		} else {
+			body, err = ioutil.ReadAll(req.Body)
+			if err != nil {
+				http.Error(_resp, "400 Bad Request", http.StatusBadRequest)
+				return 0
+			}
+			req.Body = &tools.ClosingBuffer{
+				Buffer: bytes.NewBuffer(body),
+			}
 		}
-	}
-
-	if req.Method == MethodPublish {
 		req.Method = http.MethodPost
-		router.ServeHTTP(&wrapper, req)
+		router.ServeHTTP(&resp, req)
 		req.Method = MethodPublish
 	} else {
-		router.ServeHTTP(&wrapper, req)
+
+		router.ServeHTTP(&resp, req)
 	}
+
+	req.Context()
 
 	log.Printf("[%s] %s %d %s %q s:%d\n",
 		req.Header.Get("X-Tag"),
 		req.RemoteAddr,
-		wrapper.status,
+		resp.status,
 		req.Method,
 		req.RequestURI,
 		size)
 
 	if req.Method == MethodPublish || req.Method == http.MethodPut || req.Method == http.MethodPost {
-
-		if wrapper.status >= 200 && wrapper.status < 300 {
-			if cbuf, ok := req.Body.(*tools.ClosingBuffer); ok {
-				// log.Printf("[DEBUG] Body: %s\n", cbuf.Bytes())
-				msg := &mqtt.Message{
-					QoS:   0,
-					Topic: req.RequestURI[1:],
-					Data:  cbuf.Bytes(),
-				}
-				return mqttServer.Server.Publish(nil, msg)
+		if resp.status >= 200 && resp.status < 300 {
+			msg := mqtt.Message{
+				QoS:   0,
+				Topic: req.RequestURI[1:],
+				Data:  body,
 			}
+			if replacedBody != nil {
+				data, err := json.Marshal(replacedBody)
+				if err != nil {
+					log.Printf("[ERR  ] Can not marshal replacedBody: %v", err)
+					return 0
+				}
+				msg.Data = data
+			}
+			return mqttServer.Server.Publish(nil, &msg)
 		}
 	}
 	return 0

@@ -498,10 +498,15 @@ func SetDeviceMeta(deviceID string, meta Meta) error {
 		}
 	}
 
-	err := dbDevices.UpdateId(deviceID, bson.M{
-		"$set":   set,
-		"$unset": unset,
-	})
+	m := bson.M{
+		"$set": set,
+	}
+
+	if len(unset) != 0 {
+		m["$unset"] = unset
+	}
+
+	err := dbDevices.UpdateId(deviceID, m)
 
 	if err != nil {
 		if err == mgo.ErrNotFound {

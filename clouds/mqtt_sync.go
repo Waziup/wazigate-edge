@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -144,6 +145,24 @@ func (cloud *Cloud) mqttPersistentSync() {
 	cloud.mqttMutex.Unlock()
 }
 
+var tunnelError []byte
+
+func init() {
+	var body = []byte(
+		"The Gateway produced an internal error while processing the request.\r\n" +
+			"See the Gateway logs for more details.\r\n" +
+			"This message was produced by the Gateway.\r\n")
+	var buf bytes.Buffer
+	writeInt(&buf, http.StatusInternalServerError)
+	headers, _ := json.Marshal(http.Header{
+		"Content-Type":   []string{"text/plain; charset=utf-8"},
+		"Content-Length": []string{strconv.Itoa(len(body))},
+	})
+	writeBytes(&buf, headers)
+	writeBytes(&buf, body)
+	tunnelError = buf.Bytes()
+}
+
 func tunnel(data []byte) []byte {
 
 	// method string
@@ -153,21 +172,21 @@ func tunnel(data []byte) []byte {
 	l, method := readString(data)
 	if l == 0 {
 		log.Printf("[TUNL ] Error Invalid data.")
-		return nil
+		return tunnelError
 	}
 	data = data[l:]
 
 	l, uri := readString(data)
 	if l == 0 {
 		log.Printf("[TUNL ] Error Invalid data.")
-		return nil
+		return tunnelError
 	}
 	data = data[l:]
 
 	l, j := readBytes(data)
 	if l == 0 {
 		log.Printf("[TUNL ] Error Invalid data.")
-		return nil
+		return tunnelError
 	}
 	header := make(http.Header)
 	json.Unmarshal(j, &header)
@@ -176,19 +195,19 @@ func tunnel(data []byte) []byte {
 	l, body := readBytes(data)
 	if l != len(data) {
 		log.Printf("[TUNL ] Error Invalid data.")
-		return nil
+		return tunnelError
 	}
 
 	req, err := http.NewRequest(method, "http://wazigate-edge"+uri, bytes.NewReader(body))
 	if err != nil {
 		log.Printf("[TUNL ] Error %v", err)
-		return nil
+		return tunnelError
 	}
 	req.Header = header
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		log.Printf("[TUNL ] Error %v", err)
-		return nil
+		return tunnelError
 	}
 
 	var buf bytes.Buffer
@@ -198,7 +217,7 @@ func tunnel(data []byte) []byte {
 	body, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Printf("[TUNL ] Error %v", err)
-		return nil
+		return tunnelError
 	}
 	writeBytes(&buf, body)
 	log.Printf("[TUNL ] %d %s s:%d", resp.StatusCode, uri, len(body))

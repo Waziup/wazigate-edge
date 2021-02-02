@@ -85,6 +85,12 @@ func PostDeviceSensorMeta(resp http.ResponseWriter, req *http.Request, params ro
 	postDeviceSensorMeta(resp, req, params.ByName("device_id"), params.ByName("sensor_id"))
 }
 
+// PostDeviceSensorMetaField implements POST /devices/{deviceID}/sensors/{sensorID}/meta/{meta}
+func PostDeviceSensorMetaField(resp http.ResponseWriter, req *http.Request, params routing.Params) {
+
+	postDeviceSensorMetaField(resp, req, params.ByName("device_id"), params.ByName("sensor_id"), params.ByName("meta"))
+}
+
 // PostSensorName implements POST /sensors/{sensorID}/name
 func PostSensorName(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
@@ -201,6 +207,30 @@ func postDeviceSensorMeta(resp http.ResponseWriter, req *http.Request, deviceID 
 
 	log.Printf("[DB   ] Sensor \"%s/%s\" meta changed: %v", deviceID, sensorID, meta)
 	clouds.FlagSensor(deviceID, sensorID, clouds.ActionModify, noTime, meta)
+}
+
+func postDeviceSensorMetaField(resp http.ResponseWriter, req *http.Request, deviceID string, sensorID string, field string) {
+
+	body, err := tools.ReadAll(req.Body)
+	if err != nil {
+		http.Error(resp, "bad request: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	var value interface{}
+	err = json.Unmarshal(body, &value)
+	if err != nil {
+		http.Error(resp, "bad request: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	err = edge.SetSensorMetaField(deviceID, sensorID, field, value)
+	if err != nil {
+		serveError(resp, err)
+		return
+	}
+
+	log.Printf("[DB   ] Sensor \"%s/%s\" meta %q changed: %v", deviceID, sensorID, field, value)
+	// clouds.FlagSensor(deviceID, sensorID, clouds.ActionModify, noTime, meta)
 }
 
 func deleteDeviceSensor(resp http.ResponseWriter, deviceID string, sensorID string) {

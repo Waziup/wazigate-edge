@@ -65,6 +65,7 @@ func init() {
 	router.DELETE("/devices/:device_id/sensors/:sensor_id", api.IsAuthorized(api.DeleteDeviceSensor, true /* true: check for IP based white list*/))
 	router.POST("/devices/:device_id/sensors/:sensor_id/name", api.IsAuthorized(api.PostDeviceSensorName, true /* true: check for IP based white list*/))
 	router.POST("/devices/:device_id/sensors/:sensor_id/meta", api.IsAuthorized(api.PostDeviceSensorMeta, true /* true: check for IP based white list*/))
+	router.POST("/devices/:device_id/sensors/:sensor_id/meta/:meta", api.IsAuthorized(api.PostDeviceSensorMeta, true /* true: check for IP based white list*/))
 
 	router.GET("/devices/:device_id/sensors/:sensor_id/value", api.IsAuthorized(api.GetDeviceSensorValue, true /* true: check for IP based white list*/))
 	router.GET("/devices/:device_id/sensors/:sensor_id/values", api.IsAuthorized(api.GetDeviceSensorValues, true /* true: check for IP based white list*/))

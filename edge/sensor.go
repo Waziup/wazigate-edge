@@ -227,6 +227,40 @@ func SetSensorMeta(deviceID string, sensorID string, meta Meta) error {
 	return nil
 }
 
+func SetSensorMetaField(deviceID string, sensorID string, field string, value interface{}) error {
+
+	var unset = bson.M{}
+	var set = bson.M{
+		"sensors.$.modified": time.Now(),
+	}
+
+	if value == nil {
+		unset["sensors.$.meta."+field] = 1
+	} else {
+		set["sensors.$.meta."+field] = value
+	}
+
+	var update = bson.M{
+		"$set": set,
+	}
+	if len(unset) != 0 {
+		update["$unset"] = unset
+	}
+	err := dbDevices.Update(bson.M{
+		"_id":        deviceID,
+		"sensors.id": sensorID,
+	}, update)
+
+	if err != nil {
+		if err == mgo.ErrNotFound {
+			return ErrNotFound
+		}
+		return CodeError{500, "database error: " + err.Error()}
+	}
+
+	return nil
+}
+
 // DeleteSensor removes this sensor from the device and deletes all data points.
 // This returns the number of data points deleted.
 func DeleteSensor(deviceID string, sensorID string) (int, error) {

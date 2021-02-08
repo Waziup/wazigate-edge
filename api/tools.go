@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"io"
 	"net"
+	"net/http"
 	"strings"
 
+	"github.com/Waziup/wazigate-edge/tools"
 	"github.com/globalsign/mgo"
 )
 
@@ -37,4 +39,16 @@ func serveIter(w io.Writer, iter *mgo.Iter, interf interface{}) {
 	}
 	w.Write([]byte{']'})
 	iter.Close()
+}
+
+func unmarshalRequestBody(req *http.Request, i interface{}) error {
+	body, err := tools.ReadAll(req.Body)
+	if err != nil {
+		return err
+	}
+	err = json.Unmarshal(body, i)
+	if err != nil {
+		return err
+	}
+	return nil
 }

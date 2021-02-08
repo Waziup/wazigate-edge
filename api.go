@@ -123,6 +123,11 @@ func init() {
 	router.POST("/actuators/:actuator_id/value", api.IsAuthorized(api.PostSensorValue, true /* true: check for IP based white list*/))
 	router.POST("/actuators/:actuator_id/values", api.IsAuthorized(api.PostSensorValues, true /* true: check for IP based white list*/))
 
+	// Messages
+
+	router.POST("/messages", api.IsAuthorized(api.PostMessage, true /* true: check for IP based white list*/))
+	router.GET("/messages", api.IsAuthorized(api.GetMessages, true /* true: check for IP based white list*/))
+
 	// Clouds configuration
 
 	router.GET("/clouds", api.IsAuthorized(api.GetClouds, true /* true: check for IP based white list*/))

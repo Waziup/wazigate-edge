@@ -47,7 +47,8 @@ func isUnsupervised(path string) bool {
 		path != "actuators" && !strings.HasPrefix(path, "actuators/") &&
 		path != "devices" && !strings.HasPrefix(path, "devices/") &&
 		path != "clouds" && !strings.HasPrefix(path, "clouds/") &&
-		path != "sys" && !strings.HasPrefix(path, "sys/")
+		path != "sys" && !strings.HasPrefix(path, "sys/") &&
+		path != "messages" && !strings.HasPrefix(path, "messages/")
 }
 
 func (server *MQTTServer) Publish(sender mqtt.Sender, msg *mqtt.Message) int {

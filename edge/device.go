@@ -439,7 +439,7 @@ func PostDevice(deviceID string, headers http.Header, r io.Reader) error {
 		}
 	}
 
-	codec, ok := codecs[codecName]
+	codec, ok := Codecs[codecName]
 	if !ok {
 		return fmt.Errorf("Err No codec with name '%s'", codecName)
 	}

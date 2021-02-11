@@ -15,6 +15,7 @@ import (
 
 	"github.com/Waziup/wazigate-edge/clouds"
 	"github.com/Waziup/wazigate-edge/edge"
+	_ "github.com/Waziup/wazigate-edge/edge/codecs/xlpp"
 	"github.com/Waziup/wazigate-edge/mqtt"
 	"github.com/Waziup/wazigate-edge/tools"
 	"github.com/globalsign/mgo/bson"

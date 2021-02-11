@@ -48,8 +48,9 @@ func init() {
 	// Device Endpoints
 
 	router.GET("/devices", api.IsAuthorized(api.GetDevices, true /* true: check for IP based white list*/))
+	router.POST("/devices", api.IsAuthorized(api.PostDevices, true /* true: check for IP based white list*/))
 	router.GET("/devices/:device_id", api.IsAuthorized(api.GetDevice, true /* true: check for IP based white list*/))
-	router.POST("/devices", api.IsAuthorized(api.PostDevice, true /* true: check for IP based white list*/))
+	router.POST("/devices/:device_id", api.IsAuthorized(api.PostDevice, true /* true: check for IP based white list*/))
 	router.DELETE("/devices/:device_id", api.IsAuthorized(api.DeleteDevice, true /* true: check for IP based white list*/))
 	router.GET("/devices/:device_id/name", api.IsAuthorized(api.GetDeviceName, true /* true: check for IP based white list*/))
 	router.POST("/devices/:device_id/name", api.IsAuthorized(api.PostDeviceName, true /* true: check for IP based white list*/))

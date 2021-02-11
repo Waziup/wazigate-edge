@@ -331,7 +331,7 @@ func (w *mqttPrefixWriter) Write(data []byte) (n int, err error) {
 func initDevice() {
 	local, err := edge.GetDevice(edge.LocalID())
 	if local == nil {
-		err = edge.PostDevice(&edge.Device{
+		err = edge.PostDevices(&edge.Device{
 			ID:   edge.LocalID(),
 			Name: "Gateway " + edge.LocalID(),
 		})

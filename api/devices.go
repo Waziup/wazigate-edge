@@ -69,6 +69,12 @@ func GetDevice(resp http.ResponseWriter, req *http.Request, params routing.Param
 	getDevice(resp, params.ByName("device_id"))
 }
 
+// PostDevice implements POST /devices/{deviceID}
+func PostDevice(resp http.ResponseWriter, req *http.Request, params routing.Params) {
+
+	postDevice(resp, req, params.ByName("device_id"))
+}
+
 // GetCurrentDevice implements GET /device
 func GetCurrentDevice(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
@@ -96,10 +102,10 @@ func GetCurrentDeviceMeta(resp http.ResponseWriter, req *http.Request, params ro
 	getDeviceMeta(resp, req, edge.LocalID())
 }
 
-// PostDevice implements POST /devices
-func PostDevice(resp http.ResponseWriter, req *http.Request, params routing.Params) {
+// PostDevices implements POST /devices
+func PostDevices(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
-	postDevice(resp, req)
+	postDevices(resp, req)
 }
 
 // DeleteDevice implements DELETE /devices/{deviceID}
@@ -212,7 +218,7 @@ func getDevice(resp http.ResponseWriter, deviceID string) {
 
 ////////////////////
 
-func postDevice(resp http.ResponseWriter, req *http.Request) {
+func postDevices(resp http.ResponseWriter, req *http.Request) {
 
 	var device edge.Device
 	if err := unmarshalRequestBody(req, &device); err != nil {
@@ -220,7 +226,7 @@ func postDevice(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err := edge.PostDevice(&device); err != nil {
+	if err := edge.PostDevices(&device); err != nil {
 		serveError(resp, err)
 		return
 	}
@@ -230,6 +236,18 @@ func postDevice(resp http.ResponseWriter, req *http.Request) {
 	clouds.FlagDevice(device.ID, clouds.ActionCreate, device.Meta)
 
 	resp.Write([]byte(device.ID))
+}
+
+////////////////////
+
+func postDevice(resp http.ResponseWriter, req *http.Request, deviceID string) {
+
+	if err := edge.PostDevice(deviceID, req.Header, req.Body); err != nil {
+		serveError(resp, err)
+		return
+	}
+
+	log.Printf("[DB   ] Post device %s.", deviceID)
 }
 
 ////////////////////

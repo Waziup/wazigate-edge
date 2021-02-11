@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"log"
 	"math/rand"
+	"net/http"
 	"net/url"
 	"os"
 	"reflect"
@@ -333,8 +334,8 @@ func GetDeviceMeta(deviceID string) (map[string]interface{}, error) {
 
 var noTime = time.Time{}
 
-// PostDevice creates a new device a the database.
-func PostDevice(device *Device) error {
+// PostDevices creates a new device a the database.
+func PostDevices(device *Device) error {
 	var err error
 
 	if device.ID == "" {
@@ -412,6 +413,42 @@ func PostDevice(device *Device) error {
 	return nil
 }
 
+////////////////////////////////////////////////////////////////////////////////
+
+var errNoCodec = errors.New("Err Device has no codec set. Can not process 'application/octet-stream'.")
+var errBadCodec = errors.New("Err Device meta 'codec' is not a string. Can not process 'application/octet-stream'.")
+
+// PostDevice writes complex data to the device.
+// This might be JSON data, LoRaWAN XLPP payload or something else.
+func PostDevice(deviceID string, headers http.Header, r io.Reader) error {
+	var ok bool
+
+	codecName := headers.Get("Cotent-Type")
+	if codecName == "application/octet-stream" {
+		meta, err := GetDeviceMeta(deviceID)
+		if err != nil {
+			return fmt.Errorf("Err Can not get device meta: %w", err)
+		}
+		defaultCodecName := meta["codec"]
+		if defaultCodecName == nil {
+			return errNoCodec
+		}
+		codecName, ok = defaultCodecName.(string)
+		if !ok {
+			return errBadCodec
+		}
+	}
+
+	codec, ok := codecs[codecName]
+	if !ok {
+		return fmt.Errorf("Err No codec with name '%s'", codecName)
+	}
+
+	return codec.WriteDevice(deviceID, headers, r)
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 // SetDeviceName changes a device name.
 func SetDeviceName(deviceID string, name string) (Meta, error) {
 
@@ -440,7 +477,7 @@ func SetDeviceName(deviceID string, name string) (Meta, error) {
 	return device.Meta, nil
 }
 
-/*----------------------*/
+////////////////////////////////////////////////////////////////////////////////
 
 // SetDeviceID changes the gateway ID.
 func SetDeviceID(newID string) error {
@@ -474,7 +511,7 @@ func SetDeviceID(newID string) error {
 	}
 
 	// Add the gateway as a new device and keep the old one as it has link to the old data.
-	err = PostDevice(currentGateway)
+	err = PostDevices(currentGateway)
 
 	//...
 

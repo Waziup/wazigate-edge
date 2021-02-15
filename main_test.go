@@ -22,13 +22,13 @@ var time2, _ = time.Parse(api.TimeFormat, "2019-05-13T11:36:24.002Z")
 var device1 = &api.Device{
 	ID: "5cd92df34b9f6126f840f0b1",
 	Sensors: []*api.Sensor{
-		&api.Sensor{
+		{
 			ID:    "df34b9f612",
 			Name:  "tempsensor1",
 			Time:  time1,
 			Value: 7,
 		},
-		&api.Sensor{
+		{
 			ID:    "6f840f0b1",
 			Name:  "tempsensor2",
 			Time:  time2,

@@ -36,6 +36,14 @@
       ],
       "icon": "meter"
     },
+    "Altitude": {
+      "label": "Altitude",
+      "quantities": [
+        "Metre",
+		"Kilometre
+      ],
+      "icon": "meter"
+    },
     "AtmosphericPressureSensor": {
       "label": "Atmospheric pressure sensor",
       "quantities": [
@@ -875,6 +883,10 @@
         "Percent"
       ]
     },
+    "AnalogeValue": {
+      "label": "Analog value",
+      "units": []
+    },
     "AngularSpeed": {
       "label": "Angular speed",
       "units": [
@@ -899,6 +911,10 @@
         "Millivolt",
         "Microvolt"
       ]
+    },
+    "Binary": {
+      "label": "Raw binary data",
+      "units": []
     },
     "BloodGlucose": {
       "label": "Blood glucose",
@@ -933,6 +949,14 @@
         "DegreeCelsius",
         "DegreeFahrenheit"
       ]
+    },
+    "Boolean": {
+      "label": "Boolean",
+      "units": [
+		"YesNo",
+		"TrueFalse",
+		"10"
+	  ]
     },
     "Capacitance": {
       "label": "Capacitance",
@@ -1092,6 +1116,10 @@
         "Percent"
       ]
     },
+    "Color": {
+      "label": "Color",
+      "units": []
+    },
     "Conductivity": {
       "label": "Conductivity",
       "units": [
@@ -1100,27 +1128,19 @@
     },
     "Count": {
       "label": "Count",
-      "units": [
-        "Dimensionless"
-      ]
+      "units": []
     },
     "CountAvailableVehicles": {
       "label": "Count available vehicles",
-      "units": [
-        "Dimensionless"
-      ]
+      "units": []
     },
     "CountEmptyDockingPoints": {
       "label": "Count empty docking points",
-      "units": [
-        "Dimensionless"
-      ]
+      "units": []
     },
     "CountPeople": {
       "label": "Count people",
-      "units": [
-        "Dimensionless"
-      ]
+      "units": []
     },
     "DeltaDewPoint": {
       "label": "Delta dew point",
@@ -1152,6 +1172,10 @@
         "DegreeFahrenheit"
       ]
     },
+    "DigitalValue": {
+      "label": "Digital value",
+      "units": []
+    },
     "DirectionOfArrival": {
       "label": "Direction of arrival",
       "units": [
@@ -1179,9 +1203,7 @@
     },
     "DoorStatus": {
       "label": "Door status",
-      "units": [
-        "Dimensionless"
-      ]
+      "units": []
     },
     "ElectricalResistance": {
       "label": "Electrical resistance",
@@ -1361,21 +1383,19 @@
     },
     "Motion": {
       "label": "Motion",
-      "units": [
-        "Dimensionless"
-      ]
+      "units": []
     },
     "MotionState": {
       "label": "Motion state",
-      "units": [
-        "Dimensionless"
-      ]
+      "units": []
     },
     "MotionStateVehicle": {
       "label": "Motion state vehicle",
-      "units": [
-        "Dimensionless"
-      ]
+      "units": []
+    },
+    "Object": {
+      "label": "Object",
+      "units": []
     },
     "Orientation": {
       "label": "Orientation",
@@ -1392,9 +1412,7 @@
     },
     "PH": {
       "label": "PH",
-      "units": [
-        "Dimensionless"
-      ]
+      "units": []
     },
     "Position": {
       "label": "Position",
@@ -1417,21 +1435,15 @@
     },
     "Presence": {
       "label": "Presence",
-      "units": [
-        "Dimensionless"
-      ]
+      "units": []
     },
     "PresenceStateParking": {
       "label": "Presence state parking",
-      "units": [
-        "Dimensionless"
-      ]
+      "units": []
     },
     "PresenceStatePeople": {
       "label": "Presence state people",
-      "units": [
-        "Dimensionless"
-      ]
+      "units": []
     },
     "Pressure": {
       "label": "Pressure",
@@ -1446,8 +1458,7 @@
     "Proximity": {
       "label": "Proximity",
       "units": [
-        "Metre",
-        "Dimensionless"
+        "Metre"
       ]
     },
     "Rainfall": {
@@ -1577,6 +1588,10 @@
         "Percent"
       ]
     },
+    "String": {
+      "label": "String",
+      "units": []
+    },
     "SunPositionDirection": {
       "label": "Sun position direction",
       "units": [
@@ -1650,9 +1665,7 @@
     },
     "VoiceCommand": {
       "label": "Voice command",
-      "units": [
-        "Dimensionless"
-      ]
+      "units": []
     },
     "Voltage": {
       "label": "Voltage",
@@ -1716,12 +1729,13 @@
     },
     "WorkingState": {
       "label": "Working state",
-      "units": [
-        "Dimensionless"
-      ]
+      "units": []
     }
   },
   "units": {
+    "10": {
+      "label": "1 / 0"
+    },
     "Ampere": {
       "label": "A"
     },
@@ -1766,9 +1780,6 @@
     },
     "DegreeFahrenheit": {
       "label": "°F"
-    },
-    "Dimensionless": {
-      "label": ""
     },
     "EAQI": {
       "label": "EAQI"
@@ -1968,6 +1979,9 @@
     "Tonne": {
       "label": "t"
     },
+    "True/False": {
+      "label": "true / false"
+    },
     "Volt": {
       "label": "V"
     },
@@ -1988,6 +2002,9 @@
     },
     "Year": {
       "label": "a"
-    }
+    },
+	"YesNo": {
+      "label": "yes / no"
+	}
   }
 }

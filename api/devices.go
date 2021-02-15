@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -61,12 +62,13 @@ func serveError(resp http.ResponseWriter, err error) {
 	}
 
 	http.Error(resp, "internal server error", 500)
+	log.Printf("[ERR  ] %v", err)
 }
 
 // GetDevice implements GET /devices/{deviceID}
 func GetDevice(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
-	getDevice(resp, params.ByName("device_id"))
+	getDevice(resp, req, params.ByName("device_id"))
 }
 
 // PostDevice implements POST /devices/{deviceID}
@@ -78,7 +80,7 @@ func PostDevice(resp http.ResponseWriter, req *http.Request, params routing.Para
 // GetCurrentDevice implements GET /device
 func GetCurrentDevice(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
-	getDevice(resp, edge.LocalID())
+	getDevice(resp, req, edge.LocalID())
 }
 
 // GetCurrentDeviceID implements GET /device/id
@@ -199,21 +201,37 @@ func PostCurrentDeviceMeta(resp http.ResponseWriter, req *http.Request, params r
 
 ////////////////////
 
-func getDevice(resp http.ResponseWriter, deviceID string) {
+func getDevice(resp http.ResponseWriter, req *http.Request, deviceID string) {
 
-	device, err := edge.GetDevice(deviceID)
+	var buf bytes.Buffer
+	codec, err := edge.MarshalDevice(deviceID, req.Header, &buf)
 	if err != nil {
 		serveError(resp, err)
 		return
 	}
-	if device == nil {
-		resp.WriteHeader(404)
-		resp.Write([]byte("not found"))
-		return
-	}
-	encoder := json.NewEncoder(resp)
-	resp.Header().Set("Content-Type", "application/json")
-	encoder.Encode(device)
+	resp.Header().Set("Content-Type", codec)
+	resp.Write(buf.Bytes())
+
+	// if err := edge.GetDevice(deviceID, req.Header, req.Body); err != nil {
+	// 	serveError(resp, err)
+	// 	return
+	// }
+
+	// log.Printf("[DB   ] Post device %s.", deviceID)
+
+	// device, err := edge.GetDevice(deviceID)
+	// if err != nil {
+	// 	serveError(resp, err)
+	// 	return
+	// }
+	// if device == nil {
+	// 	resp.WriteHeader(404)
+	// 	resp.Write([]byte("not found"))
+	// 	return
+	// }
+	// encoder := json.NewEncoder(resp)
+	// resp.Header().Set("Content-Type", "application/json")
+	// encoder.Encode(device)
 }
 
 ////////////////////
@@ -242,7 +260,7 @@ func postDevices(resp http.ResponseWriter, req *http.Request) {
 
 func postDevice(resp http.ResponseWriter, req *http.Request, deviceID string) {
 
-	if err := edge.PostDevice(deviceID, req.Header, req.Body); err != nil {
+	if err := edge.UnmarshalDevice(deviceID, req.Header, req.Body); err != nil {
 		serveError(resp, err)
 		return
 	}

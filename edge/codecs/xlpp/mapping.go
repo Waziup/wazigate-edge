@@ -16,20 +16,39 @@ var sensorMapping = map[xlpp.Type]def{
 		Quantity: "Acceleration",
 		Unit:     "MetrePerSecondSquare",
 	},
-	xlpp.TypeAltitude:     {},
-	xlpp.TypeAnalogInput:  {},
-	xlpp.TypeAnalogOutput: {},
-	xlpp.TypeArray:        {},
+	xlpp.TypeAltitude: {
+		Quantity: "Altitude",
+		Unit:     "Metre",
+	},
+	xlpp.TypeAnalogInput: {
+		Quantity: "AnalogeValue",
+	},
+	xlpp.TypeAnalogOutput: {
+		Quantity: "AnalogeValue",
+	},
+	xlpp.TypeArray: {
+		Quantity: "Array",
+	},
 	xlpp.TypeBarometricPressure: {
 		Kind:     "PressureSensor",
 		Quantity: "AtmosphericPressure",
 		Unit:     "Hectopascal",
 	},
-	xlpp.TypeBinary:    {},
-	xlpp.TypeBool:      {},
-	xlpp.TypeBoolFalse: {},
-	xlpp.TypeBoolTrue:  {},
-	xlpp.TypeColour:    {},
+	xlpp.TypeBinary: {
+		Quantity: "Binary",
+	},
+	xlpp.TypeBool: {
+		Quantity: "Boolean",
+	},
+	xlpp.TypeBoolFalse: {
+		Quantity: "Boolean",
+	},
+	xlpp.TypeBoolTrue: {
+		Quantity: "Boolean",
+	},
+	xlpp.TypeColour: {
+		Quantity: "Color",
+	},
 	xlpp.TypeConcentration: {
 		Kind:     "GaseousPollutantSensor",
 		Quantity: "ChemicalAgentConcentration",
@@ -40,8 +59,12 @@ var sensorMapping = map[xlpp.Type]def{
 		Quantity: "ElectricCurrent",
 		Unit:     "Ampere",
 	},
-	xlpp.TypeDigitalInput:  {},
-	xlpp.TypeDigitalOutput: {},
+	xlpp.TypeDigitalInput: {
+		Quantity: "DigitalValue",
+	},
+	xlpp.TypeDigitalOutput: {
+		Quantity: "DigitalValue",
+	},
 	xlpp.TypeDirection: {
 		Kind:     "WindDirectionSensor", // or SunPositionDirectionSensor
 		Quantity: "WindDirection",
@@ -79,8 +102,10 @@ var sensorMapping = map[xlpp.Type]def{
 		Quantity: "Illuminance",
 		Unit:     "Lux",
 	},
-	xlpp.TypeNull:   {},
-	xlpp.TypeObject: {},
+	xlpp.TypeNull: {},
+	xlpp.TypeObject: {
+		Quantity: "Object",
+	},
 	xlpp.TypePercentage: {
 		Unit: "Percent",
 	},
@@ -98,8 +123,12 @@ var sensorMapping = map[xlpp.Type]def{
 		Quantity: "RelativeHumidity",
 		Unit:     "Percent",
 	},
-	xlpp.TypeString: {},
-	xlpp.TypeSwitch: {},
+	xlpp.TypeString: {
+		Quantity: "String",
+	},
+	xlpp.TypeSwitch: {
+		Quantity: "Boolean",
+	},
 	xlpp.TypeTemperature: {
 		Kind:     "Thermometer",
 		Quantity: "Temperature",
@@ -122,19 +151,37 @@ var actuatorMapping = map[xlpp.Type]def{
 		Quantity: "Acceleration",
 		Unit:     "MetrePerSecondSquare",
 	},
-	// xlpp.TypeAltitude:     {},
-	// xlpp.TypeAnalogInput:  {},
-	// xlpp.TypeAnalogOutput: {},
-	// xlpp.TypeArray:        {},
+	xlpp.TypeAltitude: {
+		Quantity: "Binary",
+	},
+	xlpp.TypeAnalogInput: {
+		Quantity: "AnalogeValue",
+	},
+	xlpp.TypeAnalogOutput: {
+		Quantity: "AnalogeValue",
+	},
+	xlpp.TypeArray: {
+		Quantity: "Array",
+	},
 	xlpp.TypeBarometricPressure: {
 		Quantity: "AtmosphericPressure",
 		Unit:     "Hectopascal",
 	},
-	// xlpp.TypeBinary:    {},
-	// xlpp.TypeBool:      {},
-	// xlpp.TypeBoolFalse: {},
-	// xlpp.TypeBoolTrue:  {},
-	// xlpp.TypeColour:    {},
+	xlpp.TypeBinary: {
+		Quantity: "Binary",
+	},
+	xlpp.TypeBool: {
+		Quantity: "Boolean",
+	},
+	xlpp.TypeBoolFalse: {
+		Quantity: "Boolean",
+	},
+	xlpp.TypeBoolTrue: {
+		Quantity: "Boolean",
+	},
+	xlpp.TypeColour: {
+		Quantity: "Color",
+	},
 	xlpp.TypeConcentration: {
 		Quantity: "ChemicalAgentConcentration",
 		Unit:     "PartsPerMillion",
@@ -143,8 +190,12 @@ var actuatorMapping = map[xlpp.Type]def{
 		Quantity: "ElectricCurrent",
 		Unit:     "Ampere",
 	},
-	// xlpp.TypeDigitalInput:  {},
-	// xlpp.TypeDigitalOutput: {},
+	xlpp.TypeDigitalInput: {
+		Quantity: "DigitalValue",
+	},
+	xlpp.TypeDigitalOutput: {
+		Quantity: "DigitalValue",
+	},
 	xlpp.TypeDirection: {
 		Quantity: "WindDirection",
 		Unit:     "DegreeAngle",
@@ -175,8 +226,10 @@ var actuatorMapping = map[xlpp.Type]def{
 		Quantity: "Illuminance",
 		Unit:     "Lux",
 	},
-	// xlpp.TypeNull:   {},
-	// xlpp.TypeObject: {},
+	xlpp.TypeNull: {},
+	xlpp.TypeObject: {
+		Quantity: "Object",
+	},
 	xlpp.TypePercentage: {
 		Unit: "Percent",
 	},
@@ -191,8 +244,12 @@ var actuatorMapping = map[xlpp.Type]def{
 		Quantity: "RelativeHumidity",
 		Unit:     "Percent",
 	},
-	// xlpp.TypeString: {},
-	// xlpp.TypeSwitch: {},
+	xlpp.TypeString: {
+		Quantity: "String",
+	},
+	xlpp.TypeSwitch: {
+		Quantity: "Boolean",
+	},
 	xlpp.TypeTemperature: {
 		Quantity: "Temperature",
 		Unit:     "DegreeCelsius",
@@ -209,7 +266,7 @@ var actuatorMapping = map[xlpp.Type]def{
 
 func typeFromDef(quantity string, unit string) xlpp.Type {
 	for t, a := range actuatorMapping {
-		if a.Quantity == quantity && a.Unit == unit {
+		if a.Quantity == quantity && (a.Unit == unit || a.Unit == "") {
 			return t
 		}
 	}

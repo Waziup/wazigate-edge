@@ -6,8 +6,8 @@ import (
 )
 
 type Codec interface {
-	WriteDevice(deviceID string, headers http.Header, r io.Reader) error
-	ReadActuators(deviceID string, headers http.Header, w io.Writer) error
+	UnmarshalDevice(deviceID string, headers http.Header, r io.Reader) error
+	MarshalDevice(deviceID string, headers http.Header, w io.Writer) error
 }
 
 var Codecs = map[string]Codec{}

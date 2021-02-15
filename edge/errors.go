@@ -9,3 +9,10 @@ type CodeError struct {
 func (e CodeError) Error() string {
 	return e.Text
 }
+
+func NewError(code int, text string) error {
+	return CodeError{
+		Code: code,
+		Text: text,
+	}
+}

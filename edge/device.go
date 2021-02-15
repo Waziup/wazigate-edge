@@ -415,36 +415,87 @@ func PostDevices(device *Device) error {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-var errNoCodec = errors.New("Err Device has no codec set. Can not process 'application/octet-stream'.")
-var errBadCodec = errors.New("Err Device meta 'codec' is not a string. Can not process 'application/octet-stream'.")
+// var errNoCodec = errors.New("Err Device has no codec set. Can not process 'application/octet-stream'.")
+// var errBadCodec = errors.New("Err Device meta 'codec' is not a string. Can not process 'application/octet-stream'.")
 
-// PostDevice writes complex data to the device.
+// UnmarshalDevice writes complex data to the device.
 // This might be JSON data, LoRaWAN XLPP payload or something else.
-func PostDevice(deviceID string, headers http.Header, r io.Reader) error {
+func UnmarshalDevice(deviceID string, headers http.Header, r io.Reader) error {
+
+	_, codec, err := FindCodec(deviceID, headers.Get("Content-Type"))
+	if err != nil {
+		return err
+	}
+	return codec.UnmarshalDevice(deviceID, headers, r)
+}
+
+func FindCodec(deviceID string, contentType string) (name string, codec Codec, err error) {
 	var ok bool
 
-	codecName := headers.Get("Cotent-Type")
-	if codecName == "application/octet-stream" {
-		meta, err := GetDeviceMeta(deviceID)
-		if err != nil {
-			return fmt.Errorf("Err Can not get device meta: %w", err)
+	warnNoDefaultCodec := false
+	warnDefaultCodecUnavailable := false
+
+	contentTypes := strings.Split(contentType, ",")
+	for _, name = range contentTypes {
+		i := strings.IndexByte(name, ';')
+		if i != -1 {
+			name = name[:i]
 		}
-		defaultCodecName := meta["codec"]
-		if defaultCodecName == nil {
-			return errNoCodec
-		}
-		codecName, ok = defaultCodecName.(string)
-		if !ok {
-			return errBadCodec
+		if name == "*/*" {
+			name = "application/json"
+			codec = Codecs[name]
+			break
+		} else if name == "application/octet-stream" {
+			meta, err := GetDeviceMeta(deviceID)
+			if err != nil {
+				return "", nil, err
+			}
+			defaultCodecName := meta["codec"]
+			if defaultCodecName == nil {
+				warnNoDefaultCodec = true
+				continue
+			}
+			name, ok = defaultCodecName.(string)
+			if !ok {
+				warnNoDefaultCodec = true
+				continue
+			}
+			if codec, ok = Codecs[name]; !ok {
+				warnDefaultCodecUnavailable = true
+				continue
+			}
+			break
+		} else {
+			if codec = Codecs[name]; codec == nil {
+				continue
+			}
+			break
 		}
 	}
 
-	codec, ok := Codecs[codecName]
-	if !ok {
-		return fmt.Errorf("Err No codec with name '%s'", codecName)
+	if codec == nil {
+		var errStr = "The 'Content-Type' or 'Accept' header did not match any known codec."
+		if warnNoDefaultCodec {
+			errStr += "\nThe Device has no default codec."
+		}
+		if warnDefaultCodecUnavailable {
+			errStr += "\nThe default codec is unavailable or was deleted."
+		}
+		return "", nil, NewError(400, errStr)
 	}
 
-	return codec.WriteDevice(deviceID, headers, r)
+	return
+}
+
+// MarshalDevice writes complex data to the device.
+// This might be JSON data, LoRaWAN XLPP payload or something else.
+func MarshalDevice(deviceID string, headers http.Header, w io.Writer) (string, error) {
+
+	name, codec, err := FindCodec(deviceID, headers.Get("Accept"))
+	if err != nil {
+		return "", err
+	}
+	return name, codec.MarshalDevice(deviceID, headers, w)
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -11,7 +11,7 @@ import (
 	"github.com/waziup/xlpp"
 )
 
-func (XLPPCodec) WriteDevice(deviceID string, headers http.Header, r io.Reader) error {
+func (XLPPCodec) UnmarshalDevice(deviceID string, headers http.Header, r io.Reader) error {
 
 	device, err := edge.GetDevice(deviceID)
 	if err != nil {
@@ -106,6 +106,9 @@ func xlppChan(m edge.Meta) int {
 	c, ok := m["xlppChan"]
 	if ok {
 		if d, ok := c.(float64); ok {
+			return int(d)
+		}
+		if d, ok := c.(int); ok {
 			return int(d)
 		}
 	}

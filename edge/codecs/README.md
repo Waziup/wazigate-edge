@@ -1,6 +1,81 @@
 # Codecs
 
-## Available Codecs
+Check `GET /codecs` to list the available user-defined and internal codecs:
+
+```json
+[
+    {
+        "id":"application/json",
+        "internal":true,
+        "name":"JSON",
+        "mime":"application/json",
+        "scriptMime":"application/octet-stream",
+        "script":"<internal>"
+    }, {
+        "id":"application/x-xlpp",
+        "internal":true,
+        "name":"XLPP (Waziup Extended Low Power Payload)",
+        "mime":"application/x-xlpp",
+        "scriptMime":"application/octet-stream",
+        "script":"<internal>"
+    }, {
+        "id":"602bcc854b9f612d980ff7c7",
+        "internal":false,
+        "name":"My Codec",
+        "mime":"",
+        "scriptMime":"application/javascript",
+        "script":"…"
+    },
+    …
+]
+```
+
+# Script Codecs
+
+Script codecs are user-defined and run a single JavScript code that does the codec marshalling / unmarshalling.
+
+To create a new codec, use `POST /codecs`:
+
+```js
+const resp = await fetch("/codecs", {
+  method: "POST",
+  body: JSON.stringify({
+    name: "My test codec",
+    scriptMime: "application/javascript",
+    script: "// your code here",
+  })
+});
+const id = await resp.text()
+console.log("New codec id:", id);
+```
+The `scriptMime` must be `application/javascript`.
+
+To overide a codec, use `POST /codecs/{id}`:
+
+```js
+fetch("/codecs/602bcc854b9f612d980ff7c7", {
+  method: "POST",
+  body: JSON.stringify({
+    name: "My test codec (v2)",
+    scriptMime: "application/javascript",
+    script: "// your code here",
+  })
+});
+```
+
+To delete a codec, use `DELETE /codecs/{id}`:
+
+```js
+fetch("/codecs/602bc61f4b9f612bf0d6969b", {
+  method: "DELETE"
+});
+```
+
+# Internal Codecs
+
+Internal codecs are codecs that are already built into the Wazigate.
+
+They have `scriptMime: application/octet-stream` and the `ID` set to the mime type:
 
 - `application/json` → JSON
 - `application/x-xlpp` → XLPP
@@ -46,7 +121,7 @@ Expected output:
 
 ## XLPP Marshalling
 
-1.  Set `quantitiy` and `xlppChan` (required):
+1.  Update your actuator with meta `quantitiy` and `xlppChan` (required):
 
 ```js
 fetch("/devices/6009b02aea2b9e3d40ff1128/actuators/602a5479ea2b9e0dbce07ef2/meta", {
@@ -61,7 +136,7 @@ fetch("/devices/6009b02aea2b9e3d40ff1128/actuators/602a5479ea2b9e0dbce07ef2/meta
 });
 ```
 
-2.  Set value (required):
+2.  Set an actuator value (required):
 ```js
 fetch("/devices/6009b02aea2b9e3d40ff1128/actuators/602a5479ea2b9e0dbce07ef2/value", {
     method: "POST",
@@ -88,7 +163,7 @@ fetch("/devices/6009b02aea2b9e3d40ff1128/actuators/602a5479ea2b9e0dbce07ef2/valu
 }
 ```
 
-4. Retrieve XLPP data:
+4. Retrieve XLPP data (XLPP Marshalling):
 
 ```js
 const resp = await fetch("/devices/6009b02aea2b9e3d40ff1128", {
@@ -123,7 +198,7 @@ Run the following snippet in your browser:
 ```js
 fetch("/devices/6009b02aea2b9e3d40ff1128", {
     method: "POST",
-    body: new Uint8Array([5, 101, 13, 141, 6, 103, 0, 184]),
+    body: new Uint8Array([5, 101, 4, 176, 6, 103, 0, 184]),
     headers: {
         "Content-Type": "application/x-xlpp"
     }

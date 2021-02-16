@@ -460,9 +460,22 @@ func FindCodec(deviceID string, contentType string) (name string, codec Codec, e
 				warnNoDefaultCodec = true
 				continue
 			}
-			if codec, ok = Codecs[name]; !ok {
-				warnDefaultCodecUnavailable = true
-				continue
+			if strings.ContainsRune(name, '/') {
+				if codec, ok = Codecs[name]; !ok {
+					warnDefaultCodecUnavailable = true
+					continue
+				}
+			} else {
+				var script ScriptCodec
+				err := dbCodecs.FindId(name).One(&script)
+				if err != nil {
+					if err == mgo.ErrNotFound {
+						warnDefaultCodecUnavailable = true
+						continue
+					}
+					return "", nil, err
+				}
+				codec = &script
 			}
 			break
 		} else {
@@ -476,10 +489,10 @@ func FindCodec(deviceID string, contentType string) (name string, codec Codec, e
 	if codec == nil {
 		var errStr = "The 'Content-Type' or 'Accept' header did not match any known codec."
 		if warnNoDefaultCodec {
-			errStr += "\nThe Device has no default codec."
+			errStr += "\nThe device has no codec set."
 		}
 		if warnDefaultCodecUnavailable {
-			errStr += "\nThe default codec is unavailable or was deleted."
+			errStr += "\nThe device codec is unavailable or was deleted."
 		}
 		return "", nil, NewError(400, errStr)
 	}

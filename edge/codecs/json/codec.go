@@ -14,6 +14,10 @@ func init() {
 
 type JSONCodec struct{}
 
+func (JSONCodec) CodecName() string {
+	return "JSON"
+}
+
 func (JSONCodec) MarshalDevice(deviceID string, headers http.Header, w io.Writer) error {
 
 	device, err := edge.GetDevice(deviceID)

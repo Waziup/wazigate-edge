@@ -14,115 +14,122 @@ func init() {
 	// Auth
 
 	router.POST("/auth/token", api.GetToken)
-	router.POST("/auth/retoken", api.IsAuthorized(api.GetRefereshToken, true /* true: check for IP based white list*/))
+	router.POST("/auth/retoken", api.IsAuthorized(api.GetRefereshToken, true))
 	router.GET("/auth/logout", api.Logout)
 	router.POST("/auth/logout", api.Logout)
 	router.GET("/auth/permissions", api.GetPermissions)
 
-	router.GET("/auth/profile", api.IsAuthorized(api.GetUserProfile, true /* true: check for IP based white list*/))
-	router.POST("/auth/profile", api.IsAuthorized(api.PostUserProfile, true /* true: check for IP based white list*/))
+	router.GET("/auth/profile", api.IsAuthorized(api.GetUserProfile, true))
+	router.POST("/auth/profile", api.IsAuthorized(api.PostUserProfile, true))
+
+	// COdecs
+
+	router.GET("/codecs", api.IsAuthorized(api.GetCodecs, true))
+	router.POST("/codecs", api.IsAuthorized(api.PostCodecs, true))
+	router.POST("/codecs/:codec_id", api.IsAuthorized(api.PostCodec, true))
+	router.DELETE("/codecs/:codec_id", api.IsAuthorized(api.DeleteCodec, true))
 
 	//Apps
 
-	router.GET("/apps", api.IsAuthorized(api.GetApps, true /* true: check for IP based white list*/))
-	router.GET("/apps/:app_id", api.IsAuthorized(api.GetApp, true /* true: check for IP based white list*/))
+	router.GET("/apps", api.IsAuthorized(api.GetApps, true))
+	router.GET("/apps/:app_id", api.IsAuthorized(api.GetApp, true))
 
-	router.POST("/apps/:app_id", api.IsAuthorized(api.PostApp, true /* true: check for IP based white list*/))
-	router.DELETE("/apps/:app_id", api.IsAuthorized(api.DeleteApp, true /* true: check for IP based white list*/))
+	router.POST("/apps/:app_id", api.IsAuthorized(api.PostApp, true))
+	router.DELETE("/apps/:app_id", api.IsAuthorized(api.DeleteApp, true))
 
-	router.POST("/apps", api.IsAuthorized(api.PostApps, true /* true: check for IP based white list*/)) // install a new app
+	router.POST("/apps", api.IsAuthorized(api.PostApps, true)) // install a new app
 
-	router.GET("/apps/:app_id/*file_path", api.IsAuthorized(api.HandleAppProxyRequest, true /* true: check for IP based white list*/))
-	router.POST("/apps/:app_id/*file_path", api.IsAuthorized(api.HandleAppProxyRequest, true /* true: check for IP based white list*/))
-	router.PUT("/apps/:app_id/*file_path", api.IsAuthorized(api.HandleAppProxyRequest, true /* true: check for IP based white list*/))
-	router.DELETE("/apps/:app_id/*file_path", api.IsAuthorized(api.HandleAppProxyRequest, true /* true: check for IP based white list*/))
+	router.GET("/apps/:app_id/*file_path", api.IsAuthorized(api.HandleAppProxyRequest, true))
+	router.POST("/apps/:app_id/*file_path", api.IsAuthorized(api.HandleAppProxyRequest, true))
+	router.PUT("/apps/:app_id/*file_path", api.IsAuthorized(api.HandleAppProxyRequest, true))
+	router.DELETE("/apps/:app_id/*file_path", api.IsAuthorized(api.HandleAppProxyRequest, true))
 
 	//Update Appps
 
-	// router.GET("/update", api.GetUpdateApps, false /* true: check for IP based white list*/))
-	router.GET("/update/:app_id", api.IsAuthorized(api.GetUpdateApp, true /* true: check for IP based white list*/))
+	// router.GET("/update", api.GetUpdateApps, false))
+	router.GET("/update/:app_id", api.IsAuthorized(api.GetUpdateApp, true))
 
-	// router.POST("/update", api.PostUpdateApps, false /* true: check for IP based white list*/))
-	router.POST("/update/:app_id", api.IsAuthorized(api.PostUpdateApp, true /* true: check for IP based white list*/))
+	// router.POST("/update", api.PostUpdateApps, false))
+	router.POST("/update/:app_id", api.IsAuthorized(api.PostUpdateApp, true))
 
 	// Device Endpoints
 
-	router.GET("/devices", api.IsAuthorized(api.GetDevices, true /* true: check for IP based white list*/))
-	router.POST("/devices", api.IsAuthorized(api.PostDevices, true /* true: check for IP based white list*/))
-	router.GET("/devices/:device_id", api.IsAuthorized(api.GetDevice, true /* true: check for IP based white list*/))
-	router.POST("/devices/:device_id", api.IsAuthorized(api.PostDevice, true /* true: check for IP based white list*/))
-	router.DELETE("/devices/:device_id", api.IsAuthorized(api.DeleteDevice, true /* true: check for IP based white list*/))
-	router.GET("/devices/:device_id/name", api.IsAuthorized(api.GetDeviceName, true /* true: check for IP based white list*/))
-	router.POST("/devices/:device_id/name", api.IsAuthorized(api.PostDeviceName, true /* true: check for IP based white list*/))
-	router.GET("/devices/:device_id/meta", api.IsAuthorized(api.GetDeviceMeta, true /* true: check for IP based white list*/))
-	router.POST("/devices/:device_id/meta", api.IsAuthorized(api.PostDeviceMeta, true /* true: check for IP based white list*/))
+	router.GET("/devices", api.IsAuthorized(api.GetDevices, true))
+	router.POST("/devices", api.IsAuthorized(api.PostDevices, true))
+	router.GET("/devices/:device_id", api.IsAuthorized(api.GetDevice, true))
+	router.POST("/devices/:device_id", api.IsAuthorized(api.PostDevice, true))
+	router.DELETE("/devices/:device_id", api.IsAuthorized(api.DeleteDevice, true))
+	router.GET("/devices/:device_id/name", api.IsAuthorized(api.GetDeviceName, true))
+	router.POST("/devices/:device_id/name", api.IsAuthorized(api.PostDeviceName, true))
+	router.GET("/devices/:device_id/meta", api.IsAuthorized(api.GetDeviceMeta, true))
+	router.POST("/devices/:device_id/meta", api.IsAuthorized(api.PostDeviceMeta, true))
 
 	// Sensor Endpoints
 
-	router.GET("/devices/:device_id/sensors", api.IsAuthorized(api.GetDeviceSensors, true /* true: check for IP based white list*/))
-	router.GET("/devices/:device_id/sensors/:sensor_id", api.IsAuthorized(api.GetDeviceSensor, true /* true: check for IP based white list*/))
+	router.GET("/devices/:device_id/sensors", api.IsAuthorized(api.GetDeviceSensors, true))
+	router.GET("/devices/:device_id/sensors/:sensor_id", api.IsAuthorized(api.GetDeviceSensor, true))
 
-	router.POST("/devices/:device_id/sensors", api.IsAuthorized(api.PostDeviceSensor, true /* true: check for IP based white list*/))
-	router.DELETE("/devices/:device_id/sensors/:sensor_id", api.IsAuthorized(api.DeleteDeviceSensor, true /* true: check for IP based white list*/))
-	router.POST("/devices/:device_id/sensors/:sensor_id/name", api.IsAuthorized(api.PostDeviceSensorName, true /* true: check for IP based white list*/))
-	router.POST("/devices/:device_id/sensors/:sensor_id/meta", api.IsAuthorized(api.PostDeviceSensorMeta, true /* true: check for IP based white list*/))
-	router.POST("/devices/:device_id/sensors/:sensor_id/meta/:meta", api.IsAuthorized(api.PostDeviceSensorMeta, true /* true: check for IP based white list*/))
+	router.POST("/devices/:device_id/sensors", api.IsAuthorized(api.PostDeviceSensor, true))
+	router.DELETE("/devices/:device_id/sensors/:sensor_id", api.IsAuthorized(api.DeleteDeviceSensor, true))
+	router.POST("/devices/:device_id/sensors/:sensor_id/name", api.IsAuthorized(api.PostDeviceSensorName, true))
+	router.POST("/devices/:device_id/sensors/:sensor_id/meta", api.IsAuthorized(api.PostDeviceSensorMeta, true))
+	router.POST("/devices/:device_id/sensors/:sensor_id/meta/:meta", api.IsAuthorized(api.PostDeviceSensorMeta, true))
 
-	router.GET("/devices/:device_id/sensors/:sensor_id/value", api.IsAuthorized(api.GetDeviceSensorValue, true /* true: check for IP based white list*/))
-	router.GET("/devices/:device_id/sensors/:sensor_id/values", api.IsAuthorized(api.GetDeviceSensorValues, true /* true: check for IP based white list*/))
+	router.GET("/devices/:device_id/sensors/:sensor_id/value", api.IsAuthorized(api.GetDeviceSensorValue, true))
+	router.GET("/devices/:device_id/sensors/:sensor_id/values", api.IsAuthorized(api.GetDeviceSensorValues, true))
 
-	router.POST("/devices/:device_id/sensors/:sensor_id/value", api.IsAuthorized(api.PostDeviceSensorValue, true /* true: check for IP based white list*/))
-	router.POST("/devices/:device_id/sensors/:sensor_id/values", api.IsAuthorized(api.PostDeviceSensorValues, true /* true: check for IP based white list*/))
+	router.POST("/devices/:device_id/sensors/:sensor_id/value", api.IsAuthorized(api.PostDeviceSensorValue, true))
+	router.POST("/devices/:device_id/sensors/:sensor_id/values", api.IsAuthorized(api.PostDeviceSensorValues, true))
 
 	// Actuator Endpoints
 
-	router.GET("/devices/:device_id/actuators", api.IsAuthorized(api.GetDeviceActuators, true /* true: check for IP based white list*/))
-	router.GET("/devices/:device_id/actuators/:actuator_id", api.IsAuthorized(api.GetDeviceActuator, true /* true: check for IP based white list*/))
+	router.GET("/devices/:device_id/actuators", api.IsAuthorized(api.GetDeviceActuators, true))
+	router.GET("/devices/:device_id/actuators/:actuator_id", api.IsAuthorized(api.GetDeviceActuator, true))
 
-	router.POST("/devices/:device_id/actuators", api.IsAuthorized(api.PostDeviceActuator, true /* true: check for IP based white list*/))
-	router.DELETE("/devices/:device_id/actuators/:actuator_id", api.IsAuthorized(api.DeleteDeviceActuator, true /* true: check for IP based white list*/))
-	router.POST("/devices/:device_id/actuators/:actuator_id/name", api.IsAuthorized(api.PostDeviceActuatorName, true /* true: check for IP based white list*/))
-	router.POST("/devices/:device_id/actuators/:actuator_id/meta", api.IsAuthorized(api.PostDeviceActuatorMeta, true /* true: check for IP based white list*/))
+	router.POST("/devices/:device_id/actuators", api.IsAuthorized(api.PostDeviceActuator, true))
+	router.DELETE("/devices/:device_id/actuators/:actuator_id", api.IsAuthorized(api.DeleteDeviceActuator, true))
+	router.POST("/devices/:device_id/actuators/:actuator_id/name", api.IsAuthorized(api.PostDeviceActuatorName, true))
+	router.POST("/devices/:device_id/actuators/:actuator_id/meta", api.IsAuthorized(api.PostDeviceActuatorMeta, true))
 
-	router.GET("/devices/:device_id/actuators/:actuator_id/value", api.IsAuthorized(api.GetDeviceActuatorValue, true /* true: check for IP based white list*/))
-	router.GET("/devices/:device_id/actuators/:actuator_id/values", api.IsAuthorized(api.GetDeviceActuatorValues, true /* true: check for IP based white list*/))
+	router.GET("/devices/:device_id/actuators/:actuator_id/value", api.IsAuthorized(api.GetDeviceActuatorValue, true))
+	router.GET("/devices/:device_id/actuators/:actuator_id/values", api.IsAuthorized(api.GetDeviceActuatorValues, true))
 
-	router.POST("/devices/:device_id/actuators/:actuator_id/value", api.IsAuthorized(api.PostDeviceActuatorValue, true /* true: check for IP based white list*/))
-	router.POST("/devices/:device_id/actuators/:actuator_id/values", api.IsAuthorized(api.PostDeviceActuatorValues, true /* true: check for IP based white list*/))
+	router.POST("/devices/:device_id/actuators/:actuator_id/value", api.IsAuthorized(api.PostDeviceActuatorValue, true))
+	router.POST("/devices/:device_id/actuators/:actuator_id/values", api.IsAuthorized(api.PostDeviceActuatorValues, true))
 
-	// Shortcut Endpoints (equals device_id = current device ID, true /* true: check for IP based white list*/))
+	// Shortcut Endpoints (equals device_id = current device ID, true))
 
-	router.GET("/device", api.IsAuthorized(api.GetCurrentDevice, true /* true: check for IP based white list*/))
+	router.GET("/device", api.IsAuthorized(api.GetCurrentDevice, true))
 	router.GET("/device/id", api.GetCurrentDeviceID)
-	router.GET("/device/name", api.IsAuthorized(api.GetCurrentDeviceName, true /* true: check for IP based white list*/))
-	router.GET("/device/meta", api.IsAuthorized(api.GetCurrentDeviceMeta, true /* true: check for IP based white list*/))
-	router.POST("/device/id", api.IsAuthorized(api.PostCurrentDeviceID, false /* true: check for IP based white list*/))
-	router.POST("/device/name", api.IsAuthorized(api.PostCurrentDeviceName, false /* true: check for IP based white list*/))
-	router.POST("/device/meta", api.IsAuthorized(api.PostCurrentDeviceMeta, false /* true: check for IP based white list*/))
+	router.GET("/device/name", api.IsAuthorized(api.GetCurrentDeviceName, true))
+	router.GET("/device/meta", api.IsAuthorized(api.GetCurrentDeviceMeta, true))
+	router.POST("/device/id", api.IsAuthorized(api.PostCurrentDeviceID, false))
+	router.POST("/device/name", api.IsAuthorized(api.PostCurrentDeviceName, false))
+	router.POST("/device/meta", api.IsAuthorized(api.PostCurrentDeviceMeta, false))
 
-	router.GET("/sensors", api.IsAuthorized(api.GetSensors, true /* true: check for IP based white list*/))
-	router.POST("/sensors", api.IsAuthorized(api.PostSensor, true /* true: check for IP based white list*/))
-	router.GET("/sensors/:sensor_id", api.IsAuthorized(api.GetSensor, true /* true: check for IP based white list*/))
-	router.DELETE("/sensors/:sensor_id", api.IsAuthorized(api.DeleteSensor, true /* true: check for IP based white list*/))
-	router.GET("/sensors/:sensor_id/value", api.IsAuthorized(api.GetSensorValue, true /* true: check for IP based white list*/))
-	router.GET("/sensors/:sensor_id/values", api.IsAuthorized(api.GetSensorValues, true /* true: check for IP based white list*/))
-	router.POST("/sensors/:sensor_id/name", api.IsAuthorized(api.PostSensorName, true /* true: check for IP based white list*/))
-	router.POST("/sensors/:sensor_id/meta", api.IsAuthorized(api.PostSensorMeta, true /* true: check for IP based white list*/))
+	router.GET("/sensors", api.IsAuthorized(api.GetSensors, true))
+	router.POST("/sensors", api.IsAuthorized(api.PostSensor, true))
+	router.GET("/sensors/:sensor_id", api.IsAuthorized(api.GetSensor, true))
+	router.DELETE("/sensors/:sensor_id", api.IsAuthorized(api.DeleteSensor, true))
+	router.GET("/sensors/:sensor_id/value", api.IsAuthorized(api.GetSensorValue, true))
+	router.GET("/sensors/:sensor_id/values", api.IsAuthorized(api.GetSensorValues, true))
+	router.POST("/sensors/:sensor_id/name", api.IsAuthorized(api.PostSensorName, true))
+	router.POST("/sensors/:sensor_id/meta", api.IsAuthorized(api.PostSensorMeta, true))
 
-	router.GET("/actuators", api.IsAuthorized(api.GetActuators, true /* true: check for IP based white list*/))
-	router.POST("/actuators", api.IsAuthorized(api.PostActuator, true /* true: check for IP based white list*/))
-	router.GET("/actuators/:actuator_id", api.IsAuthorized(api.GetActuator, true /* true: check for IP based white list*/))
-	router.DELETE("/actuators/:actuator_id", api.IsAuthorized(api.DeleteActuator, true /* true: check for IP based white list*/))
-	router.GET("/actuators/:actuator_id/value", api.IsAuthorized(api.GetActuatorValue, true /* true: check for IP based white list*/))
-	router.GET("/actuators/:actuator_id/values", api.IsAuthorized(api.GetActuatorValues, true /* true: check for IP based white list*/))
-	router.POST("/actuators/:actuator_id/name", api.IsAuthorized(api.PostActuatorName, true /* true: check for IP based white list*/))
-	router.POST("/actuators/:actuator_id/meta", api.IsAuthorized(api.PostActuatorMeta, true /* true: check for IP based white list*/))
+	router.GET("/actuators", api.IsAuthorized(api.GetActuators, true))
+	router.POST("/actuators", api.IsAuthorized(api.PostActuator, true))
+	router.GET("/actuators/:actuator_id", api.IsAuthorized(api.GetActuator, true))
+	router.DELETE("/actuators/:actuator_id", api.IsAuthorized(api.DeleteActuator, true))
+	router.GET("/actuators/:actuator_id/value", api.IsAuthorized(api.GetActuatorValue, true))
+	router.GET("/actuators/:actuator_id/values", api.IsAuthorized(api.GetActuatorValues, true))
+	router.POST("/actuators/:actuator_id/name", api.IsAuthorized(api.PostActuatorName, true))
+	router.POST("/actuators/:actuator_id/meta", api.IsAuthorized(api.PostActuatorMeta, true))
 
-	router.POST("/sensors/:sensor_id/value", api.IsAuthorized(api.PostSensorValue, true /* true: check for IP based white list*/))
-	router.POST("/sensors/:sensor_id/values", api.IsAuthorized(api.PostSensorValues, true /* true: check for IP based white list*/))
+	router.POST("/sensors/:sensor_id/value", api.IsAuthorized(api.PostSensorValue, true))
+	router.POST("/sensors/:sensor_id/values", api.IsAuthorized(api.PostSensorValues, true))
 
-	router.POST("/actuators/:actuator_id/value", api.IsAuthorized(api.PostSensorValue, true /* true: check for IP based white list*/))
-	router.POST("/actuators/:actuator_id/values", api.IsAuthorized(api.PostSensorValues, true /* true: check for IP based white list*/))
+	router.POST("/actuators/:actuator_id/value", api.IsAuthorized(api.PostSensorValue, true))
+	router.POST("/actuators/:actuator_id/values", api.IsAuthorized(api.PostSensorValues, true))
 
 	// Messages
 

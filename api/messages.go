@@ -31,7 +31,9 @@ func PostMessage(resp http.ResponseWriter, req *http.Request, params routing.Par
 
 	tools.SetRequestBody(req, &msg)
 
-	resp.Write([]byte(msg.ID))
+	resp.Header().Set("Content-Type", "application/json")
+	data, _ := json.Marshal(msg.ID)
+	resp.Write(data)
 }
 
 // GetMessages implements GET /devices

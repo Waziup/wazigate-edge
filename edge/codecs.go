@@ -24,20 +24,20 @@ var Codecs = map[string]Codec{}
 var ScriptExecutors = map[string]ScriptExecutor{}
 
 type ScriptCodec struct {
-	ID         string `json:"id" bson:"_id"`
-	Internal   bool   `json:"internal" bson:"-"`
-	Name       string `json:"name" bson:"name"`
-	Mime       string `json:"mime" bson:"mime"`
-	ScriptMime string `json:"scriptMime" bson:"scriptMime"`
-	Script     string `json:"script" bson:"script"`
+	ID        string `json:"id" bson:"_id"`
+	Internal  bool   `json:"internal" bson:"-"`
+	Name      string `json:"name" bson:"name"`
+	ServeMime string `json:"serveMime" bson:"serveMime"`
+	Mime      string `json:"mime" bson:"mime"`
+	Script    string `json:"script" bson:"script"`
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-var errNoExecutor = NewError(500, "the codec uses a scriptMime that is unknown to the system")
+var errNoExecutor = NewError(500, "the codec uses a mime that is unknown to the system")
 
 func (script *ScriptCodec) UnmarshalDevice(deviceID string, headers http.Header, r io.Reader) error {
-	e := ScriptExecutors[script.ScriptMime]
+	e := ScriptExecutors[script.Mime]
 	if e == nil {
 		return errNoExecutor
 	}
@@ -45,7 +45,7 @@ func (script *ScriptCodec) UnmarshalDevice(deviceID string, headers http.Header,
 }
 
 func (script *ScriptCodec) MarshalDevice(deviceID string, headers http.Header, w io.Writer) error {
-	e := ScriptExecutors[script.ScriptMime]
+	e := ScriptExecutors[script.Mime]
 	if e == nil {
 		return errNoExecutor
 	}
@@ -63,7 +63,7 @@ func PostCodec(codec *ScriptCodec) error {
 	if codec.ID == "" {
 		codec.ID = newID(time.Now()).Hex()
 	}
-	_, ok := ScriptExecutors[codec.ScriptMime]
+	_, ok := ScriptExecutors[codec.Mime]
 	if !ok {
 		return errNoExecutor
 	}
@@ -99,12 +99,12 @@ func (iter *CodecsIter) Next() (*ScriptCodec, error) {
 		mime := iter.internals[0]
 		codec := Codecs[mime]
 		iter.codec = ScriptCodec{
-			ID:         mime,
-			Mime:       mime,
-			Name:       codec.CodecName(),
-			ScriptMime: "application/octet-stream",
-			Script:     "<internal>",
-			Internal:   true,
+			ID:        mime,
+			ServeMime: mime,
+			Name:      codec.CodecName(),
+			Mime:      "application/octet-stream",
+			Script:    "<internal>",
+			Internal:  true,
 		}
 		iter.internals = iter.internals[1:]
 		return &iter.codec, nil

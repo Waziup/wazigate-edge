@@ -435,6 +435,10 @@ func FindCodec(deviceID string, contentType string) (name string, codec Codec, e
 	warnNoDefaultCodec := false
 	warnDefaultCodecUnavailable := false
 
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+
 	contentTypes := strings.Split(contentType, ",")
 	for _, name = range contentTypes {
 		i := strings.IndexByte(name, ';')

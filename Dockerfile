@@ -1,7 +1,7 @@
 FROM golang:1.13-alpine AS development
 
-# Please change this when a new image is going to be released
-ENV EDGE_VERSION=2.1.9
+# Please change this when a new build is going to be pushed
+ENV EDGE_VERSION=2.1.10
 
 
 ENV CGO_ENABLED=0

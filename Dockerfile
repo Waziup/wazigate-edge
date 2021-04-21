@@ -1,8 +1,7 @@
 FROM golang:1.13-alpine AS development
 
 # Please change this when a new build is going to be pushed
-ENV EDGE_VERSION=2.1.10
-
+ENV EDGE_VERSION=2.1.11
 
 ENV CGO_ENABLED=0
 ENV GO111MODULE=on
@@ -32,7 +31,7 @@ RUN apk --no-cache add ca-certificates tzdata curl
 COPY wazigate-dashboard/node_modules/react/umd wazigate-dashboard/node_modules/react/umd
 COPY wazigate-dashboard/node_modules/react-dom/umd wazigate-dashboard/node_modules/react-dom/umd
 COPY wazigate-dashboard/index.html \
-#    wazigate-dashboard/dev.html \
+    #    wazigate-dashboard/dev.html \
     wazigate-dashboard/favicon.ico \
     wazigate-dashboard/wazigate.png \
     wazigate-dashboard/site.webmanifest \

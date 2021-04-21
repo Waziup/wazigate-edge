@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	// "strings"
@@ -137,7 +138,11 @@ func GetRefereshToken(resp http.ResponseWriter, req *http.Request, params routin
 	/*---------*/
 
 	// fmt.Fprint(resp, tokenString)
-	tools.SendJSON(resp, tokenString)
+	// tools.SendJSON(resp, tokenString)
+
+	log.Printf("[ GHOLI ]: [%s]", tokenString)
+
+	resp.Write([]byte(tokenString))
 }
 
 /*---------------------*/
@@ -146,9 +151,13 @@ func getAuthorizedUserID(req *http.Request) (string, error) {
 
 	reqToken := ""
 
-	if req.Header["Token"] != nil && len(req.Header["Token"][0]) > 0 {
+	if req.Header["Authorization"] != nil && len(req.Header["Authorization"][0]) > 0 {
 
-		reqToken = req.Header["Token"][0]
+		bearToken := req.Header["Authorization"][0]
+		strArr := strings.Split(bearToken, " ")
+		if len(strArr) == 2 {
+			reqToken = strArr[1]
+		}
 
 	} else {
 
@@ -368,7 +377,16 @@ func IsAuthorized(endpoint routing.Handle, checkIPWhiteList bool) routing.Handle
 
 		/*-------------*/
 
-		reqToken := req.Header.Get("Token")
+		reqToken := ""
+		bearToken := req.Header.Get("Authorization")
+
+		if bearToken != "" && len(bearToken) > 0 {
+
+			strArr := strings.Split(bearToken, " ")
+			if len(strArr) == 2 {
+				reqToken = strArr[1]
+			}
+		}
 
 		if reqToken == "" {
 			c, err := req.Cookie("Token")

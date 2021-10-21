@@ -18,7 +18,7 @@ RUN npm i && npm run build
 ################################################################################
 
 
-FROM golang:1.13-alpine AS edge
+FROM golang:1.13-alpine AS bin
 
 ENV CGO_ENABLED=0
 ENV GO111MODULE=on
@@ -34,7 +34,7 @@ RUN go build -ldflags "-s -w" -o wazigate-edge .
 ################################################################################
 
 
-FROM alpine:latest AS production
+FROM alpine:latest AS app
 
 RUN apk add --no-cache ca-certificates tzdata curl
 
@@ -52,7 +52,7 @@ COPY --from=dashboard /wazigate-dashboard/dist wazigate-dashboard/dist
 COPY --from=dashboard /wazigate-dashboard/docs wazigate-dashboard/docs
 COPY --from=dashboard /wazigate-dashboard/admin wazigate-dashboard/admin
 
-COPY --from=edge /wazigate-edge/wazigate-edge .
+COPY --from=bin /wazigate-edge/wazigate-edge .
 
 EXPOSE 80/tcp
 EXPOSE 1883/tcp

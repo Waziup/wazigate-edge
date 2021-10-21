@@ -23,12 +23,20 @@ import (
 // const edgeVersion = "2.1.3"
 
 // We may use env vars in future, this path is relative to wazigate-host
-const appsDirectoryOnHost = "../apps/"
+const appsDirectoryOnHost = "/var/lib/wazigate/apps/"
 
 // The apps folder is also mapped to make it easier and faster for some operation
-const appsDirectoryMapped = "/root/apps"
+const appsDir = "apps"
 
 const dockerSocketAddress = "/var/run/docker.sock"
+
+func init() {
+	if err := os.Mkdir(appsDir, 0622); err != nil {
+		if !os.IsExist(err) {
+			log.Fatalf("The Wazigate Apps directory could not be created: %v", err)
+		}
+	}
+}
 
 /*-----------------------------*/
 
@@ -144,28 +152,16 @@ func getListOfInstalledApps(withDockerStatus bool) ([]map[string]interface{}, er
 	// However we treat it differently
 	out = append(out, getAppInfo("wazigate-edge", withDockerStatus))
 
-	repoList, err := ioutil.ReadDir(appsDirectoryMapped)
+	appsList, err := ioutil.ReadDir(appsDir)
 	if err != nil {
 		return out, err
 	}
-
-	for _, repo := range repoList {
-		appsList, err := ioutil.ReadDir(appsDirectoryMapped + "/" + repo.Name())
-		if err != nil {
-			log.Printf("[ERR  ]: %s ", err.Error())
-			continue
-		}
-		for _, app := range appsList {
-
-			appID := repo.Name() + "." + app.Name()
-			appInfo := getAppInfo(appID, withDockerStatus)
-
-			if appInfo != nil {
-				out = append(out, appInfo)
-			}
-			// else {
-			// 	out = append(out, map[string]interface{}{"id": repo.Name() + "." + app.Name()})
-			// }
+	for _, app := range appsList {
+		appId := app.Name()
+		log.Printf("Checking app '%s' ...", appId)
+		appInfo := getAppInfo(appId, withDockerStatus)
+		if appInfo != nil {
+			out = append(out, appInfo)
 		}
 	}
 
@@ -227,7 +223,7 @@ func GetApp(resp http.ResponseWriter, req *http.Request, params routing.Params) 
 
 func getAppInfo(appID string, withDockerStatus bool) map[string]interface{} {
 
-	appPath := strings.Replace(appID, ".", "/", 1)
+	// appPath := strings.Replace(appID, ".", "/", 1)
 
 	var dockerState map[string]interface{}
 	if withDockerStatus {
@@ -303,7 +299,7 @@ func getAppInfo(appID string, withDockerStatus bool) map[string]interface{} {
 
 	} else {
 
-		appPkgRaw, err := ioutil.ReadFile(appsDirectoryMapped + "/" + appPath + "/package.json")
+		appPkgRaw, err := ioutil.ReadFile(appsDir + "/" + appID + "/package.json")
 		if err != nil {
 			// resp.WriteHeader(404)
 
@@ -375,7 +371,7 @@ func PostApps(resp http.ResponseWriter, req *http.Request, params routing.Params
 func PostApp(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
 	appID := params.ByName("app_id")
-	appFullPath := appsDirectoryOnHost + strings.Replace(appID, ".", "/", 1)
+	appFullPath := appsDirectoryOnHost + appID
 
 	resp.Header().Set("Content-Type", "application/json")
 
@@ -496,7 +492,7 @@ func HandleAppProxyRequest(resp http.ResponseWriter, req *http.Request, params r
 
 	appID := params.ByName("app_id")
 
-	socketAddr := appsDirectoryMapped + "/" + strings.Replace(appID, ".", "/", 1) + "/proxy.sock"
+	socketAddr := appsDir + "/" + appID + "/proxy.sock"
 
 	proxy := http.Client{
 		Transport: &http.Transport{
@@ -695,7 +691,7 @@ func GetUpdateApp(resp http.ResponseWriter, req *http.Request, params routing.Pa
 
 func getAppImages(appID string) ([]string, error) {
 
-	appFullPath := appsDirectoryMapped + "/" + strings.Replace(appID, ".", "/", 1)
+	appFullPath := appsDir + "/" + appID
 	var out []string
 
 	if appID == "wazigate-edge" {
@@ -1048,7 +1044,7 @@ func installApp(imageName string) (string, error) {
 
 func uninstallApp(appID string, keepConfig bool) error {
 
-	appFullPath := appsDirectoryOnHost + strings.Replace(appID, ".", "/", 1)
+	appFullPath := appsDirectoryOnHost + appID
 
 	cmd := "cd \"" + appFullPath + "\" && IMG=$(docker-compose images -q) && docker-compose rm -fs && docker rmi -f $IMG; "
 	if keepConfig {
@@ -1057,7 +1053,7 @@ func uninstallApp(appID string, keepConfig bool) error {
 
 	} else {
 
-		cmd += "docker system prune -f && rm -r ../../" + strings.Replace(appID, ".", "/", 1)
+		cmd += "docker system prune -f && rm -r ../../" + appID
 		//We use this path to make sure to delete the app folder if it really exist and not to delete the entire app folder or something else
 	}
 

@@ -9,17 +9,20 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/Waziup/wazigate-edge/clouds"
 	"github.com/Waziup/wazigate-edge/edge"
+	_ "github.com/Waziup/wazigate-edge/edge/codecs/javascript"
 	_ "github.com/Waziup/wazigate-edge/edge/codecs/json"
 	_ "github.com/Waziup/wazigate-edge/edge/codecs/xlpp"
-	_ "github.com/Waziup/wazigate-edge/edge/codecs/javascript"
 	"github.com/Waziup/wazigate-edge/mqtt"
 	"github.com/Waziup/wazigate-edge/tools"
+	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 )
 
@@ -90,7 +93,7 @@ func main() {
 
 	dbAddrStr, ok := os.LookupEnv("WAZIUP_MONGO")
 	if !ok {
-		dbAddrStr = "localhost:27017"
+		dbAddrStr = "mongodb://localhost:27017/?connect=direct"
 	}
 	dbAddr := flag.String("db", dbAddrStr, "MongoDB address")
 
@@ -108,7 +111,25 @@ func main() {
 	////////////////////
 
 	log.Printf("[DB   ] Dialing MongoDB at %q...\n", *dbAddr)
-	err = edge.Connect("mongodb://" + *dbAddr + "/?connect=direct")
+
+	var info *mgo.DialInfo
+	if strings.HasPrefix(*dbAddr, "unix://") {
+		*dbAddr = (*dbAddr)[7:] // remove "unix://"
+		info, err = mgo.ParseURL("127.0.0.1")
+		if err != nil {
+			log.Fatal(err)
+		}
+		info.Direct = true
+		info.DialServer = dialServerUnix(*dbAddr)
+	} else {
+		info, err = mgo.ParseURL(*dbAddr)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	info.Timeout = 5 * time.Second
+	err = edge.ConnectWithInfo(info)
 	if err != nil {
 		log.Fatalf("[DB   ] MongoDB client error: %v\n", err)
 	}
@@ -397,4 +418,10 @@ func eventCallback(cloud *clouds.Cloud, event clouds.Event) {
 		Topic: "clouds/" + cloud.ID + "/events",
 		Data:  data,
 	})
+}
+
+func dialServerUnix(addr string) func(_ *mgo.ServerAddr) (net.Conn, error) {
+	return func(_ *mgo.ServerAddr) (net.Conn, error) {
+		return net.Dial("unix", addr)
+	}
 }

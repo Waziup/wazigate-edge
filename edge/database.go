@@ -27,12 +27,11 @@ var dbUsers *mgo.Collection
 // dbConfig is the database holding the configurations in a key-value form
 var dbConfig *mgo.Collection
 
-// Connect initializes the edge core by connecting to the database.
-func Connect(addr string) error {
-
+// ConnectWithInfo initializes the edge core by connecting to the database.
+func ConnectWithInfo(info *mgo.DialInfo) error {
 	i := 0
 	for true {
-		db, err := mgo.Dial(addr)
+		db, err := mgo.DialWithInfo(info)
 		if err != nil {
 			i++
 			if i == 5 {
@@ -53,4 +52,13 @@ func Connect(addr string) error {
 		return nil
 	}
 	return nil // unreachable
+}
+
+func Connect(addr string) error {
+	info, err := mgo.ParseURL(addr)
+	if err != nil {
+		return err
+	}
+	info.Timeout = 10 * time.Second
+	return ConnectWithInfo(info)
 }

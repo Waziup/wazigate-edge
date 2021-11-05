@@ -1,0 +1,24 @@
+{
+  "name": "wazigate-edge",
+  "version": "3.0.0",
+  "description": "Waziup firmware for Edge computing.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/waziup/wazigate-edge.git"
+  },
+  "keywords": [
+    "Waziup",
+    "Wazigate",
+    "Wazigate-Edge"
+  ],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/waziup/wazigate-edge/issues"
+  },
+  "homepage": "https://github.com/waziup/wazigate-edge#readme"
+}

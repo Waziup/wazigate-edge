@@ -1,13 +1,4 @@
-
-FROM python:2 AS dashboard
-# pyhton is required to build libsass for node-sass
-# https://github.com/sass/node-sass/issues/3033
-
-# libgnutls30 is required for
-# https://github.com/nodesource/distributions/issues/1266
-RUN apt-get update && apt-get install -y --no-install-recommends curl git libgnutls30
-RUN curl -sL https://deb.nodesource.com/setup_14.x | bash -
-RUN apt-get install -y --no-install-recommends nodejs
+FROM waziup/node-sass:14 AS dashboard
 
 COPY wazigate-dashboard/. /wazigate-dashboard
 

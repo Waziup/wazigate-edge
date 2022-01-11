@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"os/exec"
 	"reflect"
 	"strings"
@@ -263,43 +262,43 @@ func delete(t *testing.T, path string, expectedCode int, expect interface{}) {
 	}
 }
 
-func checkMongoVersion(t *testing.T) {
-	t.Log("$ mongod --version")
-	mongo := exec.Command("mongod", "--version")
-	out, err := mongo.CombinedOutput()
-	if err != nil {
-		t.Fatalf("can not get mongod version. mongod is required for this test.\n%v", err)
-	}
-	i := bytes.IndexByte(out, '\n')
-	if i == -1 {
-		t.Fatalf("mongod unusual output:\n%v", string(out))
-	}
-	t.Log(string(out[:i]))
-}
+// func checkMongoVersion(t *testing.T) {
+// 	t.Log("$ mongod --version")
+// 	mongo := exec.Command("mongod", "--version")
+// 	out, err := mongo.CombinedOutput()
+// 	if err != nil {
+// 		t.Fatalf("can not get mongod version. mongod is required for this test.\n%v", err)
+// 	}
+// 	i := bytes.IndexByte(out, '\n')
+// 	if i == -1 {
+// 		t.Fatalf("mongod unusual output:\n%v", string(out))
+// 	}
+// 	t.Log(string(out[:i]))
+// }
 
-func runMongoBackground(t *testing.T) *exec.Cmd {
-	t.Log("$ mongod --dbpath ./test/db --port 27019")
-	mongo := exec.Command("mongod", "--dbpath", "./test/db", "--port", "27019")
-	mongo.Stdout = os.Stdout
-	mongo.Stderr = os.Stderr
-	err := mongo.Start()
-	if err != nil {
-		t.Fatalf("mongod is required for this test.\n%v", err)
-	}
-	return mongo
-}
+// func runMongoBackground(t *testing.T) *exec.Cmd {
+// 	t.Log("$ mongod --dbpath ./test/db --port 27019")
+// 	mongo := exec.Command("mongod", "--dbpath", "./test/db", "--port", "27019")
+// 	mongo.Stdout = os.Stdout
+// 	mongo.Stderr = os.Stderr
+// 	err := mongo.Start()
+// 	if err != nil {
+// 		t.Fatalf("mongod is required for this test.\n%v", err)
+// 	}
+// 	return mongo
+// }
 
-func runEdgeBackground(t *testing.T) *exec.Cmd {
-	t.Log("$ wazigate-edge")
-	edge := exec.Command("wazigate-edge")
-	edge.Stdout = os.Stdout
-	edge.Stderr = os.Stderr
-	err := edge.Start()
-	if err != nil {
-		t.Fatalf("wazigate-edge.exe is required for this test.\n%v", err)
-	}
-	return edge
-}
+// func runEdgeBackground(t *testing.T) *exec.Cmd {
+// 	t.Log("$ wazigate-edge")
+// 	edge := exec.Command("wazigate-edge")
+// 	edge.Stdout = os.Stdout
+// 	edge.Stderr = os.Stderr
+// 	err := edge.Start()
+// 	if err != nil {
+// 		t.Fatalf("wazigate-edge.exe is required for this test.\n%v", err)
+// 	}
+// 	return edge
+// }
 
 func subscribe(t *testing.T, topic string) (*exec.Cmd, *bufio.Reader) {
 	t.Log("SUBSCRIBE", topic)

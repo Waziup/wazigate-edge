@@ -149,12 +149,16 @@ func main() {
 
 	log.Printf("[     ] Local device ID is %q.\n", edge.LocalID())
 
-	initDevice()
+	if err := initDevice(); err != nil {
+		log.Fatalf("[ERR  ] Setup failed: %v", err)
+	}
 
 	mqttLogger := log.New(&mqttPrefixWriter{}, "[MQTT ] ", 0)
 	mqttServer = &MQTTServer{mqtt.NewServer(mqttAuth, mqttLogger, mqtt.LogLevel(LogLevel))}
 
-	initSync()
+	if err := initSync(); err != nil {
+		log.Fatalf("[ERR  ] Setup failed: %v.", err)
+	}
 
 	////////////////////
 
@@ -352,17 +356,15 @@ func (w *mqttPrefixWriter) Write(data []byte) (n int, err error) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-func initDevice() {
-	local, err := edge.GetDevice(edge.LocalID())
+func initDevice() (err error) {
+	local, _ := edge.GetDevice(edge.LocalID())
 	if local == nil {
 		err = edge.PostDevices(&edge.Device{
 			ID:   edge.LocalID(),
 			Name: "Gateway " + edge.LocalID(),
 		})
-		if err != nil {
-			log.Fatalf("[DB   ] Err %v", err)
-		}
 	}
+	return err
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -375,20 +377,29 @@ func getCloudsFile() string {
 	return cloudsFile
 }
 
-func initSync() {
+var defaultCloud = &clouds.Cloud{
+	ID:   "waziup",
+	Name: "Waziup Cloud",
+	REST: "//api.waziup.io/api/v2",
+}
+
+func initSync() error {
 	cloudsFile := getCloudsFile()
 	file, err := os.Open(cloudsFile)
-	if err != nil {
+	if os.IsNotExist(err) {
+		clouds.AddCloud(defaultCloud)
+	} else if err != nil {
 		log.Printf("[Err  ] Can not open %q: %s", cloudsFile, err.Error())
-		return
-	}
-	err = clouds.ReadCloudConfig(file)
-	if err != nil {
-		log.Printf("[Err  ] Can not read %q: %s", cloudsFile, err.Error())
-		return
-	}
+		return err
+	} else {
+		err = clouds.ReadCloudConfig(file)
+		if err != nil {
+			log.Printf("[Err  ] Can not read %q: %s", cloudsFile, err.Error())
+			return err
+		}
 
-	log.Printf("[Up   ] Read %d from %q:", len(clouds.GetClouds()), cloudsFile)
+		log.Printf("[Up   ] Read %d from %q:", len(clouds.GetClouds()), cloudsFile)
+	}
 	for id, cloud := range clouds.GetClouds() {
 		log.Printf("[Up   ] Cloud %q: %s@%s", id, cloud.Username, cloud.REST)
 	}
@@ -399,6 +410,7 @@ func initSync() {
 
 	clouds.OnStatus(statusCallback)
 	clouds.OnEvent(eventCallback)
+	return nil
 }
 
 func statusCallback(cloud *clouds.Cloud, ent clouds.Entity, status *clouds.Status) {

@@ -378,9 +378,10 @@ func getCloudsFile() string {
 }
 
 var defaultCloud = &clouds.Cloud{
-	ID:   "waziup",
-	Name: "Waziup Cloud",
-	REST: "//api.waziup.io/api/v2",
+	ID:     "waziup",
+	Name:   "Waziup Cloud",
+	REST:   "//api.waziup.io/api/v2",
+	Paused: true,
 }
 
 func initSync() error {

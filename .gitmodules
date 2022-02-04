@@ -1,3 +1,4 @@
 [submodule "wazigate-dashboard"]
 	path = wazigate-dashboard
 	url = https://github.com/Waziup/wazigate-dashboard
+	branch = master

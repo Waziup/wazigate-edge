@@ -253,7 +253,9 @@ func postDevices(resp http.ResponseWriter, req *http.Request) {
 
 	clouds.FlagDevice(device.ID, clouds.ActionCreate, device.Meta)
 
-	resp.Write([]byte(device.ID))
+	encoder := json.NewEncoder(resp)
+	resp.Header().Set("Content-Type", "application/json")
+	encoder.Encode(device.ID)
 }
 
 ////////////////////
@@ -276,9 +278,10 @@ func getDeviceName(resp http.ResponseWriter, req *http.Request, deviceID string)
 		serveError(resp, err)
 		return
 	}
-	resp.Header().Set("Content-Type", "text/plain")
-	// resp.Header().Set("Content-Type", "application/json")
-	resp.Write([]byte(name))
+
+	encoder := json.NewEncoder(resp)
+	resp.Header().Set("Content-Type", "application/json")
+	encoder.Encode(name)
 }
 
 func postDeviceName(resp http.ResponseWriter, req *http.Request, deviceID string) {

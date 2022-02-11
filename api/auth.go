@@ -365,9 +365,15 @@ func IsAuthorized(endpoint routing.Handle, checkIPWhiteList bool) routing.Handle
 				log.Printf("[ERR  ] Whitelist check failed: Invalid req.RemoteAddr: %q", req.RemoteAddr)
 				return
 			}
-			ok, err := IsWazigateIP(reqIP)
+			ok, err := IsDockerSubnet(reqIP)
 			if err != nil {
-				log.Printf("[ERR  ] Whitelist check failed for %q", req.RemoteAddr)
+				log.Printf("[ERR  ] Whitelist check for docker subnet failed for %q: %v", req.RemoteAddr, err)
+			}
+			if !ok {
+				ok, err = IsDockerHost(reqIP)
+				if err != nil {
+					log.Printf("[ERR  ] Whitelist check for docker host failed for %q: %v", req.RemoteAddr, err)
+				}
 			}
 			if ok {
 				endpoint(resp, req, params)
@@ -431,9 +437,9 @@ var listOfWhiteIPs map[string]interface{} = map[string]interface{}{}
 
 var wazigateSubnet *net.IPNet
 
-// IsWazigateIP calls `docker network inspect wazigate` to get the wazigate subnet from docker.
+// IsDockerSubnet calls `docker network inspect wazigate` to get the wazigate subnet from docker.
 // It checks if the ip is in the subnet, because all containers from docker are whitelisted for the API.
-func IsWazigateIP(ip net.IP) (bool, error) {
+func IsDockerSubnet(ip net.IP) (bool, error) {
 
 	if wazigateSubnet == nil {
 
@@ -476,6 +482,34 @@ func IsWazigateIP(ip net.IP) (bool, error) {
 	}
 
 	return wazigateSubnet.Contains(ip), nil
+}
+
+var defaultHostIp = net.IPv4(173, 17, 0, 1)
+var hostIPs []net.IP
+
+const dockerHostAddr = "host.docker.internal"
+
+func IsDockerHost(ip net.IP) (bool, error) {
+
+	if hostIPs == nil {
+		ips, err := net.LookupIP(dockerHostAddr)
+		if err != nil {
+			log.Printf("[ERR  ] Docker host address '%s' could not be resolved: %v", dockerHostAddr, err)
+		}
+		if len(ips) == 0 {
+			hostIPs = []net.IP{defaultHostIp}
+		} else {
+			hostIPs = ips
+		}
+	}
+
+	for _, hostIP := range hostIPs {
+		if ip.Equal(hostIP) {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 /*---------------------*/

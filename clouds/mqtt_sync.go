@@ -85,6 +85,10 @@ func (cloud *Cloud) mqttPersistentSync() {
 			break
 		}
 
+		if cloud.PausingMQTT {
+			return
+		}
+
 		log.Printf("[UP   ] MQTT is now connected.")
 
 		// cloud.Printf("MQTT sucessfully connected.", 200)

@@ -15,7 +15,6 @@ import (
 // SysClearAll implements PUT /sys/clear_all
 func SysClearAll(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
-
 }
 
 var startTime time.Time
@@ -96,4 +95,9 @@ func SysDeleteLog(resp http.ResponseWriter, req *http.Request, params routing.Pa
 		http.Error(resp, "Error: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
+}
+
+func SysGetVersion(resp http.ResponseWriter, req *http.Request, params routing.Params) {
+	version := os.Getenv("WAZIGATE_VERSION")
+	resp.Write([]byte(version))
 }

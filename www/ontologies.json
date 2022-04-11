@@ -38,10 +38,7 @@
     },
     "Altitude": {
       "label": "Altitude",
-      "quantities": [
-        "Metre",
-		"Kilometre
-      ],
+      "quantities": [],
       "icon": "meter"
     },
     "AtmosphericPressureSensor": {

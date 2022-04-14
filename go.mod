@@ -8,7 +8,7 @@ require (
 	github.com/gorilla/websocket v1.4.2
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
-	github.com/waziup/xlpp v0.0.0-20210211074047-840b8f6ddda6
+	github.com/waziup/xlpp v0.0.0-20220414103253-7597d155cec3
 	golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/yaml.v2 v2.2.8

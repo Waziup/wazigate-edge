@@ -1,5 +1,6 @@
 package codec
 
+// import xlpp
 import (
 	"github.com/waziup/xlpp"
 )
@@ -173,12 +174,12 @@ var actuatorMapping = map[xlpp.Type]def{
 	xlpp.TypeBool: {
 		Quantity: "Boolean",
 	},
-	xlpp.TypeBoolFalse: {
-		Quantity: "Boolean",
-	},
-	xlpp.TypeBoolTrue: {
-		Quantity: "Boolean",
-	},
+	// xlpp.TypeBoolFalse: {
+	// 	Quantity: "Boolean",
+	// },
+	// xlpp.TypeBoolTrue: {
+	// 	Quantity: "Boolean",
+	// },
 	xlpp.TypeColour: {
 		Quantity: "Color",
 	},
@@ -247,9 +248,9 @@ var actuatorMapping = map[xlpp.Type]def{
 	xlpp.TypeString: {
 		Quantity: "String",
 	},
-	xlpp.TypeSwitch: {
-		Quantity: "Boolean",
-	},
+	// xlpp.TypeSwitch: {
+	// 	Quantity: "Boolean",
+	// },
 	xlpp.TypeTemperature: {
 		Quantity: "Temperature",
 		Unit:     "DegreeCelsius",
@@ -265,9 +266,25 @@ var actuatorMapping = map[xlpp.Type]def{
 }
 
 func typeFromDef(quantity string, unit string) xlpp.Type {
-	for t, a := range actuatorMapping {
-		if a.Quantity == quantity && (a.Unit == unit || a.Unit == "") {
-			return t
+	if quantity != "" && unit != "" {
+		for t, a := range actuatorMapping {
+			if a.Quantity == quantity && a.Unit == unit {
+				return t
+			}
+		}
+	}
+	if quantity != "" {
+		for t, a := range actuatorMapping {
+			if a.Quantity == quantity && a.Unit == "" {
+				return t
+			}
+		}
+	}
+	if unit != "" {
+		for t, a := range actuatorMapping {
+			if a.Quantity == "" && a.Unit == unit {
+				return t
+			}
 		}
 	}
 	return 255

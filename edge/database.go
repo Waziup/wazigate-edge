@@ -34,7 +34,7 @@ func ConnectWithInfo(info *mgo.DialInfo) error {
 		db, err := mgo.DialWithInfo(info)
 		if err != nil {
 			i++
-			if i == 5 {
+			if i == 100 {
 				return err
 			}
 			time.Sleep(time.Second * 2)

@@ -12,6 +12,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -26,8 +27,9 @@ import (
 	"github.com/globalsign/mgo/bson"
 )
 
-var branch string  // set by compiler
-var version string // set by compiler
+var branch string    // set by compiler
+var version string   // set by compiler
+var buildtime string // set by compiler
 
 var static http.Handler
 
@@ -62,9 +64,11 @@ func main() {
 
 	////////////////////
 
+	buildtimeUnix, _ := strconv.ParseInt(buildtime, 10, 64)
+
 	log.Println("Waziup API Server")
 	if branch != "" {
-		log.Printf("This is a %q build, version %q.", branch, version)
+		log.Printf("This is a %q build, version %q, build \"%s\".", branch, version, time.Unix(buildtimeUnix, 0).Format(time.RFC3339))
 	}
 	log.Println("--------------------")
 

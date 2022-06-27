@@ -9,4 +9,5 @@ npm i && npm run build
 cd ..
 
 # Build wazigate(-edge)
+export GOARCH=arm64 GOOS=linux
 go build -ldflags "-s -w" -o wazigate .

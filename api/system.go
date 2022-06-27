@@ -12,6 +12,10 @@ import (
 	routing "github.com/julienschmidt/httprouter"
 )
 
+var Version string
+var Branch string
+var Buildtime int64
+
 // SysClearAll implements PUT /sys/clear_all
 func SysClearAll(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
@@ -98,6 +102,21 @@ func SysDeleteLog(resp http.ResponseWriter, req *http.Request, params routing.Pa
 }
 
 func SysGetVersion(resp http.ResponseWriter, req *http.Request, params routing.Params) {
-	version := os.Getenv("WAZIGATE_VERSION")
-	resp.Write([]byte(version))
+	resp.Write([]byte(Version))
+}
+
+type Info struct {
+	Version   string `json:"version"`
+	Branch    string `json:"branch"`
+	Buildtime int64  `json:"buildtime"`
+}
+
+func SysGetInfo(resp http.ResponseWriter, req *http.Request, params routing.Params) {
+	info := Info{
+		Version:   Version,
+		Branch:    Branch,
+		Buildtime: Buildtime,
+	}
+	data, _ := json.Marshal(&info)
+	resp.Write(data)
 }

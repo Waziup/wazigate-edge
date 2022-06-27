@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Waziup/wazigate-edge/api"
 	"github.com/Waziup/wazigate-edge/clouds"
 	"github.com/Waziup/wazigate-edge/edge"
 	_ "github.com/Waziup/wazigate-edge/edge/codecs/javascript"
@@ -71,6 +72,10 @@ func main() {
 		log.Printf("This is a %q build, version %q, build \"%s\".", branch, version, time.Unix(buildtimeUnix, 0).Format(time.RFC3339))
 	}
 	log.Println("--------------------")
+
+	api.Version = version
+	api.Buildtime = buildtimeUnix
+	api.Branch = branch
 
 	////////////////////
 

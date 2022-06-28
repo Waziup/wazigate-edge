@@ -150,7 +150,6 @@ func LocalID() string {
 
 	localID, err := GetConfig("gatewayID")
 	if err != nil {
-		log.Printf("[WARN ] LocalID: %s", err.Error())
 		if err == mgo.ErrNotFound {
 			log.Printf("[INFO ] Creating a new gateway ID...")
 			localID = GenerateNewGatewayID()
@@ -177,8 +176,7 @@ func GenerateNewGatewayID() string {
 	if err != nil {
 		log.Printf("[ERR  ] Get new GWID: %s", err.Error())
 	} else {
-
-		localIDPrefix, err = hex.DecodeString(strings.Replace(string(mac), ":", "", -1))
+		localIDPrefix, err = hex.DecodeString(strings.TrimSpace(strings.Replace(string(mac), ":", "", -1)))
 		if err != nil {
 			log.Printf("[ERR  ] Get new GWID: %s", err.Error())
 		}

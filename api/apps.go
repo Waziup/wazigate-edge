@@ -22,7 +22,7 @@ import (
 
 // const edgeVersion = "2.1.3"
 
-// We may use env vars in future, this path is relative to wazigate-host
+// We may use env vars in future, path to waziapps folder
 const appsDirectoryOnHost = "/var/lib/wazigate/apps/"
 
 // The apps folder is also mapped to make it easier and faster for some operation

@@ -198,6 +198,7 @@ func main() {
 	}
 
 	ListenAndServerMQTT()
+	go tools.ServeHost()
 	ListenAndServeHTTP() // will block
 }
 

@@ -10,7 +10,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 )
@@ -82,40 +81,6 @@ func GetIPAddr() string {
 	}
 	return ""
 }
-
-/*-----------------------------*/
-
-// ExecOnHostWithLogs runs bash commands on the host through a unix socket
-func ExecOnHostWithLogs(cmd string, withLogs bool) (string, error) {
-
-	if withLogs {
-		log.Printf("[Exec  ]: Host Command [ %s ]", cmd)
-	}
-
-	socketAddr := os.Getenv("WAZIGATE_HOST_ADDR")
-	if socketAddr == "" {
-		socketAddr = "/var/run/wazigate-host.sock" // Default address for the Host
-	}
-
-	out, err := SockPostReqest(socketAddr, "cmd", cmd)
-	return string(out), err
-}
-
-/*-----------------------------*/
-
-// // exeCmdWithLogs runs bash commands in the container
-// func exeCmd( cmd string) ( string, error) {
-
-// 	exe := exec.Command( "sh", "-c", cmd)
-//     stdout, err := exe.Output()
-
-//     if( err != nil) {
-//         return "", err
-// 	}
-// 	return strings.Trim( string( stdout), " \n\t\r"), nil
-// }
-
-/*-----------------------------*/
 
 // SockDeleteReqest makes a DELETE request to a unix socket
 // ex:	SockDeleteReqest( "/var/run/wazigate-host.sock", "containers/waziup.wazigate-test")
@@ -196,7 +161,7 @@ func SockPostReqest(socketAddr string, API string, postValues string) ([]byte, e
 // SocketReqest makes a request to a unix socket
 func SocketReqest(socketAddr string, url string, method string, contentType string, body io.Reader) (*http.Response, error) {
 
-	log.Printf("[APP  ] Proxy `%s` %s \"%s\"", socketAddr, method, url)
+	log.Printf("[     ] Proxy `%s` %s \"%s\"", socketAddr, method, url)
 
 	httpc := http.Client{
 		Transport: &http.Transport{
@@ -211,7 +176,7 @@ func SocketReqest(socketAddr string, url string, method string, contentType stri
 	req, err := http.NewRequest(method, "http://localhost/"+url, body)
 
 	if err != nil {
-		log.Printf("[APP  ] Proxy Err %s ", err.Error())
+		log.Printf("[     ] Proxy Err %s ", err.Error())
 		return nil, err
 	}
 
@@ -222,7 +187,7 @@ func SocketReqest(socketAddr string, url string, method string, contentType stri
 	response, err := httpc.Do(req)
 
 	if err != nil {
-		log.Printf("[APP  ] Proxy Err %s ", err.Error())
+		log.Printf("[     ] Proxy Err %s ", err.Error())
 		return nil, err
 	}
 

@@ -407,7 +407,7 @@ func PostApp(resp http.ResponseWriter, req *http.Request, params routing.Params)
 			cmd = "cd \"" + appFullPath + "\" && docker-compose pull && docker-compose up -d --no-build"
 		}
 
-		out, err := tools.ExecOnHostWithLogs(cmd, true)
+		out, err := tools.ExecCommand(cmd, true)
 		if err != nil {
 			log.Printf("[Err  ] PostApp: %s", err.Error())
 			out = err.Error()
@@ -696,7 +696,7 @@ func getAppImages(appID string) ([]string, error) {
 
 	if appID == "wazigate-edge" {
 		cmd := "cd ../ && CNTS=$(sudo docker-compose ps -q) && for cId in $CNTS; do cImage=$(sudo docker ps --format '{{.Image}}' -f id=${cId}); echo $cImage; done;"
-		stdout, err := tools.ExecOnHostWithLogs(cmd, true)
+		stdout, err := tools.ExecCommand(cmd, true)
 		out = strings.Split(strings.TrimSpace(stdout), "\n")
 		return out, err
 	}
@@ -724,7 +724,7 @@ func getAppImages(appID string) ([]string, error) {
 func dockerHubAccessible() bool {
 
 	cmd := "timeout 3 curl -Is https://hub.docker.com/ | head -n 1 | awk '{print $2}'"
-	rCode, err := tools.ExecOnHostWithLogs(cmd, true)
+	rCode, err := tools.ExecCommand(cmd, true)
 
 	if err != nil {
 		log.Printf("[ERR  ] Docker Hub Accesibility Error: %s\n", err.Error())
@@ -828,8 +828,8 @@ func updateEdge() error {
 
 	updateEdgeInProgress = true
 
-	cmd := "sudo bash update.sh | sudo tee update.logs &" // Run it and unlock the thing
-	stdout, err := tools.ExecOnHostWithLogs(cmd, true)
+	cmd := "sudo bash ../../update.sh | sudo tee update.logs &" // Run it and unlock the thing
+	stdout, err := tools.ExecCommand(cmd, true)
 
 	log.Printf("[INFO ] Updating the edge: %s", stdout)
 
@@ -863,7 +863,7 @@ func getUpdateEdgeStatus() {
 	/*-----------*/
 
 	cmd := "cat update.logs"
-	stdout, err := tools.ExecOnHostWithLogs(cmd, false)
+	stdout, err := tools.ExecCommand(cmd, false)
 	if err != nil {
 		stdout = ""
 	}
@@ -923,7 +923,7 @@ func installApp(imageName string) (string, error) {
 
 	// out, err := tools.SockPostReqest( dockerSocketAddress, "containers/create", imageName)
 	cmd := "docker pull " + imageName
-	out, err := tools.ExecOnHostWithLogs(cmd, true)
+	out, err := tools.ExecCommand(cmd, true)
 
 	installingAppStatus[appStatusIndex].log += out
 
@@ -937,7 +937,7 @@ func installApp(imageName string) (string, error) {
 
 	// out, err = tools.SockPostReqest( dockerSocketAddress, "images/create", "{\"Image\": \""+ imageName +"\"}")
 	cmd = "docker create " + imageName
-	containerID, err := tools.ExecOnHostWithLogs(cmd, true)
+	containerID, err := tools.ExecCommand(cmd, true)
 
 	if err != nil {
 		installingAppStatus[appStatusIndex].done = true
@@ -966,7 +966,7 @@ func installApp(imageName string) (string, error) {
 
 	cmd = "mkdir -p \"" + appsDirectoryOnHost + repoName + "\" ;"
 	cmd += "mkdir -p \"" + appFullPath + "\""
-	out, err = tools.ExecOnHostWithLogs(cmd, true)
+	out, err = tools.ExecCommand(cmd, true)
 	if err != nil {
 		installingAppStatus[appStatusIndex].done = true
 
@@ -977,7 +977,7 @@ func installApp(imageName string) (string, error) {
 	/*-----------*/
 
 	cmd = "docker cp " + containerID + ":/index.zip " + appFullPath + "/"
-	out, err = tools.ExecOnHostWithLogs(cmd, true)
+	out, err = tools.ExecCommand(cmd, true)
 
 	installingAppStatus[appStatusIndex].log += out
 
@@ -991,12 +991,12 @@ func installApp(imageName string) (string, error) {
 	/*-----------*/
 
 	cmd = "docker rm " + containerID
-	out, _ = tools.ExecOnHostWithLogs(cmd, true)
+	out, _ = tools.ExecCommand(cmd, true)
 
 	/*-----------*/
 
 	cmd = "unzip -o " + appFullPath + "/index.zip -d " + appFullPath
-	out, err = tools.ExecOnHostWithLogs(cmd, true)
+	out, err = tools.ExecCommand(cmd, true)
 
 	if err != nil {
 		installingAppStatus[appStatusIndex].log += out
@@ -1009,13 +1009,13 @@ func installApp(imageName string) (string, error) {
 	/*-----------*/
 
 	cmd = "rm -f " + appFullPath + "/index.zip"
-	out, _ = tools.ExecOnHostWithLogs(cmd, true)
+	out, _ = tools.ExecCommand(cmd, true)
 
 	/*-----------*/
 
 	// Pulling the dependencies
 	cmd = "cd \"" + appFullPath + "\" && docker-compose pull && docker-compose up -d --no-build"
-	out, err = tools.ExecOnHostWithLogs(cmd, true)
+	out, err = tools.ExecCommand(cmd, true)
 
 	installingAppStatus[appStatusIndex].log += "\nDownloading the dependencies...\n"
 	installingAppStatus[appStatusIndex].log += out
@@ -1057,7 +1057,7 @@ func uninstallApp(appID string, keepConfig bool) error {
 		//We use this path to make sure to delete the app folder if it really exist and not to delete the entire app folder or something else
 	}
 
-	out, err := tools.ExecOnHostWithLogs(cmd, true)
+	out, err := tools.ExecCommand(cmd, true)
 
 	log.Printf("[APP  ] DELETE App: %s\n\t%v\n", appID, out)
 

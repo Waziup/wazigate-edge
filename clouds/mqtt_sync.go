@@ -202,7 +202,7 @@ func tunnel(data []byte) []byte {
 		return tunnelError
 	}
 
-	req, err := http.NewRequest(method, "http://wazigate-edge"+uri, bytes.NewReader(body))
+	req, err := http.NewRequest(method, "http://wazigate"+uri, bytes.NewReader(body))
 	if err != nil {
 		log.Printf("[TUNL ] Error %v", err)
 		return tunnelError

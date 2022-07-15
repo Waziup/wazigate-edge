@@ -165,6 +165,8 @@ func main() {
 	mqttLogger := log.New(&mqttPrefixWriter{}, "[MQTT ] ", 0)
 	mqttServer = &MQTTServer{mqtt.NewServer(mqttAuth, mqttLogger, mqtt.LogLevel(LogLevel))}
 
+	api.Publish = publish
+
 	if err := initSync(); err != nil {
 		log.Fatalf("[ERR  ] Setup failed: %v.", err)
 	}
@@ -360,7 +362,7 @@ func (w *mqttLogWriter) Write(data []byte) (n int, err error) {
 type mqttPrefixWriter struct{}
 
 func (w *mqttPrefixWriter) Write(data []byte) (n int, err error) {
-	log.Print(string(data))
+	// log.Print(string(data))
 	return len(data), nil
 }
 

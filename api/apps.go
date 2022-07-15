@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -15,6 +16,8 @@ import (
 	"time"
 
 	tools "github.com/Waziup/wazigate-edge/tools"
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/client"
 	routing "github.com/julienschmidt/httprouter"
 )
 
@@ -877,167 +880,33 @@ func getUpdateEdgeStatus() {
 
 func installApp(imageName string) (string, error) {
 
-	var msg string
 	var err error
 
-	//<!-- Get the App information
-
-	sp1 := strings.Split(imageName, ":")
-
-	tag := ""
-	if len(sp1) == 2 {
-		tag = sp1[1] //Image tag
+	ctx := context.Background()
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return "", err
 	}
 
-	sp2 := strings.Split(sp1[0], "/")
-
-	repoName := sp2[0]
-	appName := repoName + "_app" // some random default name in case of error
-	if len(sp2) > 1 {
-		appName = sp2[1]
+	out, err := cli.ImagePull(ctx, imageName, types.ImagePullOptions{})
+	if err != nil {
+		return "", err
 	}
 
-	appFullPath := appsDirectoryOnHost + repoName + "/" + appName
-
-	//-->
-
-	/*-----------*/
-
-	appID := repoName + "." + appName
-	appStatusIndex := -1
-	for i := range installingAppStatus {
-		if installingAppStatus[i].id == appID {
-			appStatusIndex = i
+	r := bufio.NewReader(out)
+	for {
+		line, _, err := r.ReadLine()
+		if err != nil {
+			if err == io.EOF {
+				return "", nil
+			}
+			return "", err
 		}
-	}
-	if appStatusIndex == -1 {
-		installingAppStatus = append(installingAppStatus, installingAppStatusType{appID, false, ""})
-		appStatusIndex = len(installingAppStatus) - 1
+		log.Printf("[     ] Docker: %s", line)
+		Publish("sys/app-install", line)
 	}
 
-	/*-----------*/
-
-	installingAppStatus[appStatusIndex].log = "Installing initialized\n"
-
-	installingAppStatus[appStatusIndex].log += "\nDownloading [ " + appName + " : " + tag + " ] \n"
-
-	// out, err := tools.SockPostReqest( dockerSocketAddress, "containers/create", imageName)
-	cmd := "docker pull " + imageName
-	out, err := tools.ExecCommand(cmd, true)
-
-	installingAppStatus[appStatusIndex].log += out
-
-	if err != nil {
-		installingAppStatus[appStatusIndex].done = true
-		msg = "Download Failed!"
-		return msg, err
-	}
-
-	/*-----------*/
-
-	// out, err = tools.SockPostReqest( dockerSocketAddress, "images/create", "{\"Image\": \""+ imageName +"\"}")
-	cmd = "docker create " + imageName
-	containerID, err := tools.ExecCommand(cmd, true)
-
-	if err != nil {
-		installingAppStatus[appStatusIndex].done = true
-
-		msg = err.Error()
-		return msg, err
-	}
-
-	// dockerJSONRaw, _ := tools.SockGetReqest( dockerSocketAddress, "containers/"+ appID +"/json" )
-
-	// var dockerJSON struct {
-	// 	Image	string `json:"Image"`
-	// }
-
-	// if dockerJSONRaw != nil {
-	// 	if err := json.Unmarshal(dockerJSONRaw, &dockerJSON); err == nil {
-	// 		appImageID = dockerJSON.Image;
-	// 	}
-	// }
-
-	// containerID :=
-
-	installingAppStatus[appStatusIndex].log += "\nTermporary container created\n"
-
-	/*-----------*/
-
-	cmd = "mkdir -p \"" + appsDirectoryOnHost + repoName + "\" ;"
-	cmd += "mkdir -p \"" + appFullPath + "\""
-	out, err = tools.ExecCommand(cmd, true)
-	if err != nil {
-		installingAppStatus[appStatusIndex].done = true
-
-		msg = err.Error()
-		return msg, err
-	}
-
-	/*-----------*/
-
-	cmd = "docker cp " + containerID + ":/index.zip " + appFullPath + "/"
-	out, err = tools.ExecCommand(cmd, true)
-
-	installingAppStatus[appStatusIndex].log += out
-
-	if err != nil {
-		installingAppStatus[appStatusIndex].done = true
-
-		msg = "`index.zip` file extraction failed!"
-		return msg, err
-	}
-
-	/*-----------*/
-
-	cmd = "docker rm " + containerID
-	out, _ = tools.ExecCommand(cmd, true)
-
-	/*-----------*/
-
-	cmd = "unzip -o " + appFullPath + "/index.zip -d " + appFullPath
-	out, err = tools.ExecCommand(cmd, true)
-
-	if err != nil {
-		installingAppStatus[appStatusIndex].log += out
-		installingAppStatus[appStatusIndex].done = true
-
-		msg = "Could not unzip `index.zip`!"
-		return msg, err
-	}
-
-	/*-----------*/
-
-	cmd = "rm -f " + appFullPath + "/index.zip"
-	out, _ = tools.ExecCommand(cmd, true)
-
-	/*-----------*/
-
-	// Pulling the dependencies
-	cmd = "cd \"" + appFullPath + "\" && docker-compose pull && docker-compose up -d --no-build"
-	out, err = tools.ExecCommand(cmd, true)
-
-	installingAppStatus[appStatusIndex].log += "\nDownloading the dependencies...\n"
-	installingAppStatus[appStatusIndex].log += out
-
-	if err != nil {
-		installingAppStatus[appStatusIndex].done = true
-
-		msg = "Failed to download the dependencies!"
-		return msg, err
-	}
-
-	/*-----------*/
-
-	/*outJson, err := json.Marshal( out)
-	if( err != nil) {
-		log.Printf( "[ERR  ] %s", err.Error())
-	}/**/
-
-	installingAppStatus[appStatusIndex].log += "\nAll done :)"
-	installingAppStatus[appStatusIndex].done = true
-
-	return "Install successfull", nil
+	return "Install successful", err
 }
 
 /*-----------------------------*/

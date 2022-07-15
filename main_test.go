@@ -141,7 +141,7 @@ func TestMQTTAPI(t *testing.T) {
 		t.Fatalf("expected 465, got %v (%v)", line, err)
 	}
 
-	publish(t, "devices/"+device1.ID+"/sensors/"+sensor.ID+"/value", "\"WooHoo\"")
+	publishT(t, "devices/"+device1.ID+"/sensors/"+sensor.ID+"/value", "\"WooHoo\"")
 	line, err = subs.ReadString('\n')
 	line = strings.TrimSpace(line)
 	if err != nil || line != "\"WooHoo\"" {
@@ -314,7 +314,7 @@ func subscribe(t *testing.T, topic string) (*exec.Cmd, *bufio.Reader) {
 	return subscriber, bufio.NewReader(out)
 }
 
-func publish(t *testing.T, topic string, msg string) {
+func publishT(t *testing.T, topic string, msg string) {
 	t.Log("PUBLISH", topic, msg)
 	publisher := exec.Command("mosquitto_pub", "--protocol-version", "mqttv31", "--topic", topic, "-q", "1", "-m", msg)
 	err := publisher.Run()

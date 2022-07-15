@@ -9,10 +9,11 @@
             "program": "${workspaceFolder}",
             "env": {
                 "WAZIUP_LOG": "debug,date,time",
+                "WAZIUP_HTTP_ADDR": ":8080"
             },
             "args": [
                 "-www",
-                "${workspaceFolder}/../wazigate-dashboard"
+                "${workspaceFolder}/wazigate-dashboard"
             ],
             "buildFlags": "-ldflags='-X main.branch=v2 -X main.version=2.0.0 -X main.buildtime=1655894260'"
         }

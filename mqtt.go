@@ -51,6 +51,10 @@ func isUnsupervised(path string) bool {
 		path != "messages" && !strings.HasPrefix(path, "messages/")
 }
 
+func publish(topic string, data []byte) {
+	mqttServer.Publish(nil, &mqtt.Message{Topic: topic, Data: data})
+}
+
 func (server *MQTTServer) Publish(sender mqtt.Sender, msg *mqtt.Message) int {
 
 	if sender == nil {

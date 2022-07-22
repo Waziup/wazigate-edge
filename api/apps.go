@@ -18,6 +18,7 @@ import (
 
 	"github.com/Waziup/wazigate-edge/tools"
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	routing "github.com/julienschmidt/httprouter"
 )
@@ -950,8 +951,15 @@ func installApp(imageName string) (string, error) {
 	/*-----------*/
 
 	// out, err = tools.SockPostReqest( dockerSocketAddress, "images/create", "{\"Image\": \""+ imageName +"\"}")
-	cmd := "docker create " + imageName
-	containerID, err := tools.ExecCommand(cmd, true)
+	//cmd := "docker create " + imageName
+	//containerID, err := tools.ExecCommand(cmd, true)
+	config := &types.ContainerCreateConfig{
+		Name: appID,
+		Config: &container.Config{
+			Image: imageName,
+		},
+	}
+	container, err := cli.ContainerCreate(ctx, config.Config, nil, nil, nil, "")
 
 	if err != nil {
 		installingAppStatus[appStatusIndex].done = true
@@ -992,8 +1000,8 @@ func installApp(imageName string) (string, error) {
 
 	/*-----------*/
 
-	filecontent, _, err := cli.CopyFromContainer(context.Background(), containerID, "/var/lib/waziapp/")
-
+	//filecontent, _, err := cli.CopyFromContainer(context.Background(), container.ID, "/var/lib/waziapp/")
+	filecontent, _, err := cli.CopyFromContainer(context.Background(), container.ID, "/index.zip")
 	err = tools.Untar(appFullPath+"/", filecontent)
 
 	//installingAppStatus[appStatusIndex].log += outp
@@ -1007,7 +1015,7 @@ func installApp(imageName string) (string, error) {
 
 	/*-----------*/
 
-	err = cli.ContainerRemove(context.Background(), containerID, types.ContainerRemoveOptions{})
+	err = cli.ContainerRemove(context.Background(), container.ID, types.ContainerRemoveOptions{})
 
 	if err != nil {
 		installingAppStatus[appStatusIndex].done = true
@@ -1017,7 +1025,7 @@ func installApp(imageName string) (string, error) {
 	}
 	/*-----------*/
 
-	cmd = "unzip -o " + appFullPath + "/index.zip -d " + appFullPath
+	cmd := "unzip -o " + appFullPath + "/index.zip -d " + appFullPath
 	outp, err = tools.ExecCommand(cmd, true)
 
 	if err != nil {

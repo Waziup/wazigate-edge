@@ -70,7 +70,7 @@ func ExecCommand(cmd string, withLogs bool) (out string, err error) {
 		log.Printf("[     ] > %s", cmd)
 	}
 	exe := exec.Command("sh", "-c", string(cmd))
-	exe.Dir = execPath
+	//  exe.Dir = execPath
 	stdout, err := exe.Output()
 	if withLogs {
 		if err != nil {

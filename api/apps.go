@@ -694,7 +694,7 @@ func GetUpdateApp(resp http.ResponseWriter, req *http.Request, params routing.Pa
 
 func getAppImages(appID string) ([]string, error) {
 
-	appFullPath := appsDir + "/" + appID
+	appFullPath := filepath.Join(appsDir, appID)
 	var out []string
 
 	if appID == "wazigate-edge" {
@@ -1076,16 +1076,15 @@ func installApp(imageName string) (string, error) {
 
 func uninstallApp(appID string, keepConfig bool) error {
 
-	appFullPath := appsDir + appID
+	appFullPath := filepath.Join(appsDir, appID)
 
-	cmd := "cd \"" + appFullPath + "\" && IMG=$(docker-compose images -q) && docker-compose rm -fs && docker rmi -f $IMG; "
+	cmd := "cd \"" + appFullPath + "\" && pwd && IMG=$(docker-compose images -q) && docker-compose rm -fs && docker rmi -f $IMG; "
 	if keepConfig {
 
 		cmd += "rm ./package.json;"
 
 	} else {
-
-		cmd += "docker system prune -f && rm -r ../../" + appID
+		cmd += "docker system prune -f && rm -r ../" + appID
 		//We use this path to make sure to delete the app folder if it really exist and not to delete the entire app folder or something else
 	}
 

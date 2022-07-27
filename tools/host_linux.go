@@ -17,9 +17,9 @@ import (
 /*-------------------------*/
 
 // sockAddr represents the unix socket for this service
-const sockAddr = "/tmp/wazigate-host.sock"
+const sockAddr = "/var/run/wazigate-host.sock"
 
-//const sockAddr = "./wazigate-host.sock"
+//const sockAddr = "/tmp/wazigate-host.sock" //for debug
 
 /*-------------------------*/
 

@@ -31,7 +31,7 @@ import (
 // const appsDir = "/var/lib/wazigate/apps/"
 
 // The apps folder is also mapped to make it easier and faster for some operation
-const appsDir = "apps"
+const appsDir = "apps/waziup"
 
 const dockerSocketAddress = "/var/run/docker.sock"
 
@@ -1076,6 +1076,9 @@ func installApp(imageName string) (string, error) {
 
 func uninstallApp(appID string, keepConfig bool) error {
 
+	var out string
+	var err error
+
 	appFullPath := filepath.Join(appsDir, appID)
 
 	cmd := "cd \"" + appFullPath + "\" && pwd && IMG=$(docker-compose images -q) && docker-compose rm -fs && docker rmi -f $IMG; "
@@ -1084,11 +1087,13 @@ func uninstallApp(appID string, keepConfig bool) error {
 		cmd += "rm ./package.json;"
 
 	} else {
+		// Remove all unused containers, networks, images (both dangling and unreferenced), and volumes.
+		//cli.VolumesPrune(context.Background(), pruneFilters filters.Args) (types.VolumesPruneReport, error)
 		cmd += "docker system prune -f && rm -r ../" + appID
 		//We use this path to make sure to delete the app folder if it really exist and not to delete the entire app folder or something else
 	}
 
-	out, err := tools.ExecCommand(cmd, true)
+	out, err = tools.ExecCommand(cmd, true)
 
 	log.Printf("[APP  ] DELETE App: %s\n\t%v\n", appID, out)
 

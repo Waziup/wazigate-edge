@@ -31,7 +31,7 @@ import (
 // const appsDir = "/var/lib/wazigate/apps/"
 
 // The apps folder is also mapped to make it easier and faster for some operation
-const appsDir = "apps/waziup"
+const appsDir = "apps"
 
 const dockerSocketAddress = "/var/run/docker.sock"
 
@@ -228,7 +228,7 @@ func GetApp(resp http.ResponseWriter, req *http.Request, params routing.Params) 
 
 func getAppInfo(appID string, withDockerStatus bool) map[string]interface{} {
 
-	// appPath := strings.Replace(appID, ".", "/", 1)
+	//appPath := strings.Replace(appID, ".", "/", 1)
 
 	var dockerState map[string]interface{}
 	if withDockerStatus {

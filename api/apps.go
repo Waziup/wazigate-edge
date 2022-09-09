@@ -321,6 +321,17 @@ func getAppInfo(appID string, withDockerStatus bool) map[string]interface{} {
 
 	/*------*/
 
+	// if dockerState != nil && dockerState["status"].(string) != "running" {
+	// 	appFullPath := filepath.Join(appsDir, appID)
+	// 	cmd := "cd \"" + appFullPath + "\" && docker-compose up -d"
+	// 	outp, err := tools.ExecCommand(cmd, true)
+
+	// 	if err != nil {
+	// 		log.Printf("[ERR  ] Cannot start App: Output: %s, Error: %s", outp, err.Error())
+	// 		return nil
+	// 	}
+	// }
+
 	return map[string]interface{}{
 		"id":          appID,
 		"name":        appPkg["name"],
@@ -554,6 +565,8 @@ func handleAppProxyError(appID string, moreInfo string) string {
 
 	appInfo := getAppInfo(appID, true /* withDockerStatus */)
 
+	restartBtn := ""
+
 	appName := appID
 	if appInfo["name"] != nil {
 		appName = appInfo["name"].(string)
@@ -567,10 +580,17 @@ func handleAppProxyError(appID string, moreInfo string) string {
 	} else if appInfo["state"] == nil {
 
 		errMsg = "This app has not launched yet!"
-
+		restartBtn = `<Button onClick="startApp()">
+			<svg xmlns="http://www.w3.org/2000/svg" height="48" width="48"><path d="M16 37.85v-28l22 14Zm3-14Zm0 8.55 13.45-8.55L19 15.3Z"/></svg>
+			Start
+		</Button>`
 	} else {
 
 		errMsg = "This app is not running!"
+		restartBtn = `<Button onClick="startApp()">
+			<svg xmlns="http://www.w3.org/2000/svg" height="48" width="48"><path d="M16 37.85v-28l22 14Zm3-14Zm0 8.55 13.45-8.55L19 15.3Z"/></svg>
+			Start
+		</Button>`
 	}
 
 	return fmt.Sprintf(`<!DOCTYPE html>
@@ -579,9 +599,9 @@ func handleAppProxyError(appID string, moreInfo string) string {
 			<style type="text/css">
 				.error{padding: 24px;margin-top: 50px;z-index: 1;position: relative;background-color: #ffb294;
 					border-radius: 5px;font-family: "Roboto", "Helvetica", "Arial", sans-serif;}
-				.error p{border: 1px solid #ca4e1d;padding: 10px;border-radius: 3px;}
-				.error h2{font-size: 3.75rem;font-weight: 300;line-height: 1.2;}
-				.error svg{top: 82px;color: #c7917c;right: 18px;width: 90px;
+				.error p {border: 1px solid #ca4e1d;padding: 10px;border-radius: 3px;}
+				.error h2 {font-size: 3.75rem;font-weight: 300;line-height: 1.2;}
+				.error svg {top: 82px;color: #c7917c;right: 18px;width: 90px;
 					height: 90px;z-index: -1;position: absolute;fill: currentColor;
 					display: inline-block;font-size: 1.5rem;flex-shrink: 0;user-select: none;
 					transition: fill 200ms cubic-bezier(0.4, 0, 0.2, 1) 0ms;}
@@ -595,9 +615,27 @@ func handleAppProxyError(appID string, moreInfo string) string {
 					<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"></path>
 				</svg>
 				<p>%s</p>
+				<div>%s</div>
 			</div>
 		</body>
-	</html>`, errMsg, appName, moreInfo)
+		<script>
+			function startApp() {
+				fetch("/apps/%s", {
+					method: "POST",
+					body: JSON.stringify({
+						action: "start"
+					}),
+					header: {
+						"Content-Type": "application/json"
+					}
+				}).then(() => {
+					location.reload();
+				}, (err) => {
+					alert("App could not be started! "+err);
+				})
+			}
+		</script>
+	</html>`, errMsg, appName, moreInfo, restartBtn, appID)
 
 }
 

@@ -17,7 +17,7 @@ import (
 /*-------------------------*/
 
 // sockAddr represents the unix socket for this service
-const sockAddr = "/var/run/wazigate-host.sock"
+const sockAddr = "/var/run/wazigate-host.sock" //for rpi
 
 //const sockAddr = "/tmp/wazigate-host.sock" //for debug
 

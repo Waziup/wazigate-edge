@@ -969,9 +969,56 @@ func installApp(imageName string) (string, error) {
 		return "", err
 	}
 
+	// //platform := [...]string{"linux/arm", "linux/arm64", "linux/aarch64", "linux/arm64/v8"}
+	// platform := [...]string{"linux"}
+	// var out io.ReadCloser
+
+	// for i, s := range platform {
+	// 	opts := types.ImagePullOptions{Platform: s}
+	// 	out, err = cli.ImagePull(ctx, imageName, opts)
+	// 	if err != nil {
+	// 		installingAppStatus[appStatusIndex].log += "Image has the following platform: " + platform[i] + "\n"
+	// 		break
+	// 	} else {
+	// 		installingAppStatus[appStatusIndex].log += "Image does not match the following platform: " + platform[i] + "\n"
+	// 		continue
+	// 	}
+	// }
+
 	out, err := cli.ImagePull(ctx, imageName, types.ImagePullOptions{})
+
 	if err != nil {
-		return "", err
+		installingAppStatus[appStatusIndex].done = true
+
+		msg = err.Error()
+		return msg, err
+	}
+
+	platform := [...]string{"arm", "arm64", "aarch64", "arm64/v8"}
+	man_cmd := "docker manifest inspect --verbose " + imageName + " | grep architecture | sed 's/\"architecture\"://' | xargs | sed 's/,//'"
+	image_arch, err := tools.ExecCommand(man_cmd, true)
+
+	if err != nil {
+		installingAppStatus[appStatusIndex].done = true
+
+		msg = err.Error()
+		return msg, err
+	}
+
+	foundMatch := false
+	for i, plat := range platform {
+		if plat == image_arch {
+			installingAppStatus[appStatusIndex].log += "Image has the following platform: " + platform[i] + "\n"
+			foundMatch = true
+			break
+		} else {
+			installingAppStatus[appStatusIndex].log += "Image does not match the following platform: " + platform[i] + "\n"
+		}
+	}
+
+	if !foundMatch {
+		err = fmt.Errorf("Image does not match the architecture of the host operating system. Only arm, arm64, aarch64, arm64/v8 is supported.")
+		return "Image does not match the architecture of the host operating system. Only arm, arm64, aarch64, arm64/v8 is supported.", err
 	}
 
 	buf := new(bytes.Buffer)
@@ -1040,6 +1087,16 @@ func installApp(imageName string) (string, error) {
 
 	//filecontent, _, err := cli.CopyFromContainer(context.Background(), container.ID, "/var/lib/waziapp/")
 	filecontent, _, err := cli.CopyFromContainer(context.Background(), container.ID, "/index.zip")
+
+	if err != nil {
+		installingAppStatus[appStatusIndex].done = true
+
+		msg = "copy index.zip failed file extraction failed!"
+		return msg, err
+	}
+
+	/*-----------*/
+
 	err = tools.Untar(appFullPath+"/", filecontent)
 
 	//installingAppStatus[appStatusIndex].log += outp

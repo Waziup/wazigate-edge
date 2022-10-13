@@ -581,14 +581,14 @@ func handleAppProxyError(appID string, moreInfo string) string {
 
 		errMsg = "This app has not launched yet!"
 		restartBtn = `<Button onClick="startApp()">
-			<svg xmlns="http://www.w3.org/2000/svg" height="48" width="48"><path d="M16 37.85v-28l22 14Zm3-14Zm0 8.55 13.45-8.55L19 15.3Z"/></svg>
+			<svg xmlns="http://www.w3.org/2000/svg" height="24" width="24"><path d="M16 37.85v-28l22 14Zm3-14Zm0 8.55 13.45-8.55L19 15.3Z"/></svg>
 			Start
 		</Button>`
 	} else {
 
 		errMsg = "This app is not running!"
 		restartBtn = `<Button onClick="startApp()">
-			<svg xmlns="http://www.w3.org/2000/svg" height="48" width="48"><path d="M16 37.85v-28l22 14Zm3-14Zm0 8.55 13.45-8.55L19 15.3Z"/></svg>
+			<svg xmlns="http://www.w3.org/2000/svg" height="24" width="24"><path d="M16 37.85v-28l22 14Zm3-14Zm0 8.55 13.45-8.55L19 15.3Z"/></svg>
 			Start
 		</Button>`
 	}
@@ -638,7 +638,6 @@ func handleAppProxyError(appID string, moreInfo string) string {
 					}
 				}).then(() => {
 					setTimeout(bgFetch, 1000);
-					
 				}, (err) => {
 					alert("App could not be started! "+err);
 				})

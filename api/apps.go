@@ -619,6 +619,14 @@ func handleAppProxyError(appID string, moreInfo string) string {
 			</div>
 		</body>
 		<script>
+		    function bgFetch() {
+				fetch(location.href).then((resp) => {
+					if(resp.ok)
+						location.reload()
+					else
+						setTimeout(bgFetch, 1000);
+				})
+			}
 			function startApp() {
 				fetch("/apps/%s", {
 					method: "POST",
@@ -629,7 +637,8 @@ func handleAppProxyError(appID string, moreInfo string) string {
 						"Content-Type": "application/json"
 					}
 				}).then(() => {
-					location.reload();
+					setTimeout(bgFetch, 1000);
+					
 				}, (err) => {
 					alert("App could not be started! "+err);
 				})
@@ -1134,7 +1143,14 @@ func installApp(imageName string) (string, error) {
 	/*-----------*/
 
 	cmd = "rm -f " + appFullPath + "/index.zip"
-	outp, _ = tools.ExecCommand(cmd, true)
+	outp, err = tools.ExecCommand(cmd, true)
+
+	if err != nil {
+		installingAppStatus[appStatusIndex].done = true
+
+		msg = "Failed to delete `index.zip`!"
+		return msg, err
+	}
 
 	/*-----------*/
 

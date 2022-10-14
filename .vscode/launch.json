@@ -15,7 +15,7 @@
                 "-www",
                 "${workspaceFolder}/wazigate-dashboard"
             ],
-            "buildFlags": "-ldflags='-X main.branch=v2 -X main.version=2.0.0 -X main.buildtime=1655894260'"
+            "buildFlags": "-ldflags='-X main.branch=v2 -X main.version=2.0.0 -X main.buildtime=1655894260 main.buildNr=1234'"
         }
     ]
 }

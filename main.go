@@ -31,6 +31,7 @@ import (
 var branch string    // set by compiler
 var version string   // set by compiler
 var buildtime string // set by compiler
+var buildNr string   // set by compiler
 
 var static http.Handler
 
@@ -69,13 +70,14 @@ func main() {
 
 	log.Println("Waziup API Server")
 	if branch != "" {
-		log.Printf("This is a %q build, version %q, build \"%s\".", branch, version, time.Unix(buildtimeUnix, 0).Format(time.RFC3339))
+		log.Printf("This is a %q build, version %q, buildNr %q, buildtime \"%s\".", branch, version, buildNr, time.Unix(buildtimeUnix, 0).Format(time.RFC3339))
 	}
 	log.Println("--------------------")
 
 	api.Version = version
 	api.Buildtime = buildtimeUnix
 	api.Branch = branch
+	api.buildNr = buildNr
 
 	////////////////////
 

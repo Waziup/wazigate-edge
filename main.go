@@ -77,7 +77,7 @@ func main() {
 	api.Version = version
 	api.Buildtime = buildtimeUnix
 	api.Branch = branch
-	api.buildNr = buildNr
+	api.BuildNr = buildNr
 
 	////////////////////
 

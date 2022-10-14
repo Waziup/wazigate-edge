@@ -15,7 +15,7 @@ import (
 var Version string
 var Branch string
 var Buildtime int64
-var buildNr string
+var BuildNr string
 
 // SysClearAll implements PUT /sys/clear_all
 func SysClearAll(resp http.ResponseWriter, req *http.Request, params routing.Params) {
@@ -107,7 +107,7 @@ func SysGetVersion(resp http.ResponseWriter, req *http.Request, params routing.P
 }
 
 func SysGetBuildNr(resp http.ResponseWriter, req *http.Request, params routing.Params) {
-	resp.Write([]byte(buildNr))
+	resp.Write([]byte(BuildNr))
 }
 
 type Info struct {

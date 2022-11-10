@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -10,11 +11,15 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
 
-	tools "github.com/Waziup/wazigate-edge/tools"
+	"github.com/Waziup/wazigate-edge/tools"
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/client"
 	routing "github.com/julienschmidt/httprouter"
 )
 
@@ -23,7 +28,7 @@ import (
 // const edgeVersion = "2.1.3"
 
 // We may use env vars in future, path to waziapps folder
-const appsDirectoryOnHost = "/var/lib/wazigate/apps/"
+// const appsDir = "/var/lib/wazigate/apps/"
 
 // The apps folder is also mapped to make it easier and faster for some operation
 const appsDir = "apps"
@@ -31,7 +36,7 @@ const appsDir = "apps"
 const dockerSocketAddress = "/var/run/docker.sock"
 
 func init() {
-	if err := os.Mkdir(appsDir, 0622); err != nil {
+	if err := os.Mkdir(appsDir, 0755); err != nil {
 		if !os.IsExist(err) {
 			log.Fatalf("The Wazigate Apps directory could not be created: %v", err)
 		}
@@ -223,13 +228,13 @@ func GetApp(resp http.ResponseWriter, req *http.Request, params routing.Params) 
 
 func getAppInfo(appID string, withDockerStatus bool) map[string]interface{} {
 
-	// appPath := strings.Replace(appID, ".", "/", 1)
+	//appPath := strings.Replace(appID, ".", "/", 1)
 
 	var dockerState map[string]interface{}
 	if withDockerStatus {
 
 		// cmd := "docker inspect " + appID
-		// dockerJSONRaw, _ := tools.ExecOnHostWithLogs(cmd, true)
+		// dockerJSONRaw, _ := tools.ExecCommand(cmd, true)
 
 		dockerJSONRaw, _ := tools.SockGetReqest(dockerSocketAddress, "containers/"+appID+"/json")
 
@@ -299,7 +304,7 @@ func getAppInfo(appID string, withDockerStatus bool) map[string]interface{} {
 
 	} else {
 
-		appPkgRaw, err := ioutil.ReadFile(appsDir + "/" + appID + "/package.json")
+		appPkgRaw, err := ioutil.ReadFile(filepath.Join(appsDir, appID, "package.json"))
 		if err != nil {
 			// resp.WriteHeader(404)
 
@@ -315,6 +320,17 @@ func getAppInfo(appID string, withDockerStatus bool) map[string]interface{} {
 	}
 
 	/*------*/
+
+	// if dockerState != nil && dockerState["status"].(string) != "running" {
+	// 	appFullPath := filepath.Join(appsDir, appID)
+	// 	cmd := "cd \"" + appFullPath + "\" && docker-compose up -d"
+	// 	outp, err := tools.ExecCommand(cmd, true)
+
+	// 	if err != nil {
+	// 		log.Printf("[ERR  ] Cannot start App: Output: %s, Error: %s", outp, err.Error())
+	// 		return nil
+	// 	}
+	// }
 
 	return map[string]interface{}{
 		"id":          appID,
@@ -371,7 +387,7 @@ func PostApps(resp http.ResponseWriter, req *http.Request, params routing.Params
 func PostApp(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
 	appID := params.ByName("app_id")
-	appFullPath := appsDirectoryOnHost + appID
+	appFullPath := filepath.Join(appsDir, appID)
 
 	resp.Header().Set("Content-Type", "application/json")
 
@@ -401,13 +417,11 @@ func PostApp(resp http.ResponseWriter, req *http.Request, params routing.Params)
 
 		// /containers/{id}/start // docker-compose is much simpler to use than docker APIs
 
-		cmd := "cd \"" + appFullPath + "\"; docker-compose " + appConfig.Action
-
+		cmd := "docker-compose " + appConfig.Action
 		if appConfig.Action == "first-start" {
-			cmd = "cd \"" + appFullPath + "\" && docker-compose pull && docker-compose up -d --no-build"
+			cmd = "docker-compose pull && docker-compose up -d --no-build"
 		}
-
-		out, err := tools.ExecCommand(cmd, true)
+		out, err := tools.Shell(appFullPath, cmd)
 		if err != nil {
 			log.Printf("[Err  ] PostApp: %s", err.Error())
 			out = err.Error()
@@ -426,7 +440,7 @@ func PostApp(resp http.ResponseWriter, req *http.Request, params routing.Params)
 	if appConfig.Restart != "" {
 
 		// cmd := "docker update --restart=" + appConfig.Restart + " " + appID
-		// out, err := tools.ExecOnHostWithLogs(cmd, true)
+		// out, err := tools.ExecCommand(cmd, true)
 
 		updateStr := fmt.Sprintf(`{"RestartPolicy": { "Name": "%s"}}`, appConfig.Restart)
 		out, err := tools.SockPostReqest(dockerSocketAddress, "containers/"+appID+"/update", updateStr)
@@ -551,6 +565,8 @@ func handleAppProxyError(appID string, moreInfo string) string {
 
 	appInfo := getAppInfo(appID, true /* withDockerStatus */)
 
+	restartBtn := ""
+
 	appName := appID
 	if appInfo["name"] != nil {
 		appName = appInfo["name"].(string)
@@ -564,10 +580,17 @@ func handleAppProxyError(appID string, moreInfo string) string {
 	} else if appInfo["state"] == nil {
 
 		errMsg = "This app has not launched yet!"
-
+		restartBtn = `<Button onClick="startApp()">
+			<svg xmlns="http://www.w3.org/2000/svg" height="24" width="24"><path d="M16 37.85v-28l22 14Zm3-14Zm0 8.55 13.45-8.55L19 15.3Z"/></svg>
+			Start
+		</Button>`
 	} else {
 
 		errMsg = "This app is not running!"
+		restartBtn = `<Button onClick="startApp()">
+			<svg xmlns="http://www.w3.org/2000/svg" height="24" width="24"><path d="M16 37.85v-28l22 14Zm3-14Zm0 8.55 13.45-8.55L19 15.3Z"/></svg>
+			Start
+		</Button>`
 	}
 
 	return fmt.Sprintf(`<!DOCTYPE html>
@@ -576,9 +599,9 @@ func handleAppProxyError(appID string, moreInfo string) string {
 			<style type="text/css">
 				.error{padding: 24px;margin-top: 50px;z-index: 1;position: relative;background-color: #ffb294;
 					border-radius: 5px;font-family: "Roboto", "Helvetica", "Arial", sans-serif;}
-				.error p{border: 1px solid #ca4e1d;padding: 10px;border-radius: 3px;}
-				.error h2{font-size: 3.75rem;font-weight: 300;line-height: 1.2;}
-				.error svg{top: 82px;color: #c7917c;right: 18px;width: 90px;
+				.error p {border: 1px solid #ca4e1d;padding: 10px;border-radius: 3px;}
+				.error h2 {font-size: 3.75rem;font-weight: 300;line-height: 1.2;}
+				.error svg {top: 82px;color: #c7917c;right: 18px;width: 90px;
 					height: 90px;z-index: -1;position: absolute;fill: currentColor;
 					display: inline-block;font-size: 1.5rem;flex-shrink: 0;user-select: none;
 					transition: fill 200ms cubic-bezier(0.4, 0, 0.2, 1) 0ms;}
@@ -592,9 +615,35 @@ func handleAppProxyError(appID string, moreInfo string) string {
 					<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"></path>
 				</svg>
 				<p>%s</p>
+				<div>%s</div>
 			</div>
 		</body>
-	</html>`, errMsg, appName, moreInfo)
+		<script>
+		    function bgFetch() {
+				fetch(location.href).then((resp) => {
+					if(resp.ok)
+						location.reload()
+					else
+						setTimeout(bgFetch, 1000);
+				})
+			}
+			function startApp() {
+				fetch("/apps/%s", {
+					method: "POST",
+					body: JSON.stringify({
+						action: "start"
+					}),
+					header: {
+						"Content-Type": "application/json"
+					}
+				}).then(() => {
+					setTimeout(bgFetch, 1000);
+				}, (err) => {
+					alert("App could not be started! "+err);
+				})
+			}
+		</script>
+	</html>`, errMsg, appName, moreInfo, restartBtn, appID)
 
 }
 
@@ -691,7 +740,7 @@ func GetUpdateApp(resp http.ResponseWriter, req *http.Request, params routing.Pa
 
 func getAppImages(appID string) ([]string, error) {
 
-	appFullPath := appsDir + "/" + appID
+	appFullPath := filepath.Join(appsDir, appID)
 	var out []string
 
 	if appID == "wazigate-edge" {
@@ -897,13 +946,14 @@ func installApp(imageName string) (string, error) {
 		appName = sp2[1]
 	}
 
-	appFullPath := appsDirectoryOnHost + repoName + "/" + appName
-
 	//-->
 
 	/*-----------*/
 
 	appID := repoName + "." + appName
+
+	appFullPath := filepath.Join(appsDir, appID)
+
 	appStatusIndex := -1
 	for i := range installingAppStatus {
 		if installingAppStatus[i].id == appID {
@@ -921,11 +971,69 @@ func installApp(imageName string) (string, error) {
 
 	installingAppStatus[appStatusIndex].log += "\nDownloading [ " + appName + " : " + tag + " ] \n"
 
-	// out, err := tools.SockPostReqest( dockerSocketAddress, "containers/create", imageName)
-	cmd := "docker pull " + imageName
-	out, err := tools.ExecCommand(cmd, true)
+	ctx := context.Background()
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return "", err
+	}
 
-	installingAppStatus[appStatusIndex].log += out
+	// //platform := [...]string{"linux/arm", "linux/arm64", "linux/aarch64", "linux/arm64/v8"}
+	// platform := [...]string{"linux"}
+	// var out io.ReadCloser
+
+	// for i, s := range platform {
+	// 	opts := types.ImagePullOptions{Platform: s}
+	// 	out, err = cli.ImagePull(ctx, imageName, opts)
+	// 	if err != nil {
+	// 		installingAppStatus[appStatusIndex].log += "Image has the following platform: " + platform[i] + "\n"
+	// 		break
+	// 	} else {
+	// 		installingAppStatus[appStatusIndex].log += "Image does not match the following platform: " + platform[i] + "\n"
+	// 		continue
+	// 	}
+	// }
+
+	out, err := cli.ImagePull(ctx, imageName, types.ImagePullOptions{})
+
+	if err != nil {
+		installingAppStatus[appStatusIndex].done = true
+
+		msg = err.Error()
+		return msg, err
+	}
+
+	platform := [...]string{"arm", "arm64", "aarch64", "arm64/v8"}
+	man_cmd := "docker manifest inspect --verbose " + imageName + " | grep architecture | sed 's/\"architecture\"://' | xargs | sed 's/,//'"
+	image_arch, err := tools.ExecCommand(man_cmd, true)
+
+	if err != nil {
+		installingAppStatus[appStatusIndex].done = true
+
+		msg = err.Error()
+		return msg, err
+	}
+
+	foundMatch := false
+	for i, plat := range platform {
+		if plat == image_arch {
+			installingAppStatus[appStatusIndex].log += "Image has the following platform: " + platform[i] + "\n"
+			foundMatch = true
+			break
+		} else {
+			installingAppStatus[appStatusIndex].log += "Image does not match the following platform: " + platform[i] + "\n"
+		}
+	}
+
+	if !foundMatch {
+		err = fmt.Errorf("Image does not match the architecture of the host operating system. Only arm, arm64, aarch64, arm64/v8 is supported.")
+		return "Image does not match the architecture of the host operating system. Only arm, arm64, aarch64, arm64/v8 is supported.", err
+	}
+
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(out)
+	outp := buf.String()
+
+	installingAppStatus[appStatusIndex].log += outp
 
 	if err != nil {
 		installingAppStatus[appStatusIndex].done = true
@@ -936,8 +1044,15 @@ func installApp(imageName string) (string, error) {
 	/*-----------*/
 
 	// out, err = tools.SockPostReqest( dockerSocketAddress, "images/create", "{\"Image\": \""+ imageName +"\"}")
-	cmd = "docker create " + imageName
-	containerID, err := tools.ExecCommand(cmd, true)
+	//cmd := "docker create " + imageName
+	//containerID, err := tools.ExecCommand(cmd, true)
+	config := &types.ContainerCreateConfig{
+		Name: appID,
+		Config: &container.Config{
+			Image: imageName,
+		},
+	}
+	container, err := cli.ContainerCreate(ctx, config.Config, nil, nil, nil, "")
 
 	if err != nil {
 		installingAppStatus[appStatusIndex].done = true
@@ -963,10 +1078,12 @@ func installApp(imageName string) (string, error) {
 	installingAppStatus[appStatusIndex].log += "\nTermporary container created\n"
 
 	/*-----------*/
+	if err := os.MkdirAll(appFullPath, 0755); err != nil {
+		if !os.IsExist(err) {
+			return "", fmt.Errorf("the Wazigate App directory could not be created %w", err)
+		}
+	}
 
-	cmd = "mkdir -p \"" + appsDirectoryOnHost + repoName + "\" ;"
-	cmd += "mkdir -p \"" + appFullPath + "\""
-	out, err = tools.ExecCommand(cmd, true)
 	if err != nil {
 		installingAppStatus[appStatusIndex].done = true
 
@@ -976,30 +1093,46 @@ func installApp(imageName string) (string, error) {
 
 	/*-----------*/
 
-	cmd = "docker cp " + containerID + ":/index.zip " + appFullPath + "/"
-	out, err = tools.ExecCommand(cmd, true)
-
-	installingAppStatus[appStatusIndex].log += out
+	//filecontent, _, err := cli.CopyFromContainer(context.Background(), container.ID, "/var/lib/waziapp/")
+	filecontent, _, err := cli.CopyFromContainer(context.Background(), container.ID, "/index.zip")
 
 	if err != nil {
 		installingAppStatus[appStatusIndex].done = true
 
-		msg = "`index.zip` file extraction failed!"
+		msg = "copy index.zip failed file extraction failed!"
 		return msg, err
 	}
 
 	/*-----------*/
 
-	cmd = "docker rm " + containerID
-	out, _ = tools.ExecCommand(cmd, true)
+	err = tools.Untar(appFullPath+"/", filecontent)
+
+	//installingAppStatus[appStatusIndex].log += outp
+
+	if err != nil {
+		installingAppStatus[appStatusIndex].done = true
+
+		msg = "untar file extraction failed!"
+		return msg, err
+	}
 
 	/*-----------*/
 
-	cmd = "unzip -o " + appFullPath + "/index.zip -d " + appFullPath
-	out, err = tools.ExecCommand(cmd, true)
+	err = cli.ContainerRemove(context.Background(), container.ID, types.ContainerRemoveOptions{})
 
 	if err != nil {
-		installingAppStatus[appStatusIndex].log += out
+		installingAppStatus[appStatusIndex].done = true
+
+		msg = "remove temporary container failed"
+		return msg, err
+	}
+	/*-----------*/
+
+	cmd := "unzip -o " + appFullPath + "/index.zip -d " + appFullPath
+	outp, err = tools.ExecCommand(cmd, true)
+
+	if err != nil {
+		installingAppStatus[appStatusIndex].log += outp
 		installingAppStatus[appStatusIndex].done = true
 
 		msg = "Could not unzip `index.zip`!"
@@ -1009,16 +1142,23 @@ func installApp(imageName string) (string, error) {
 	/*-----------*/
 
 	cmd = "rm -f " + appFullPath + "/index.zip"
-	out, _ = tools.ExecCommand(cmd, true)
+	outp, err = tools.ExecCommand(cmd, true)
+
+	if err != nil {
+		installingAppStatus[appStatusIndex].done = true
+
+		msg = "Failed to delete `index.zip`!"
+		return msg, err
+	}
 
 	/*-----------*/
 
 	// Pulling the dependencies
 	cmd = "cd \"" + appFullPath + "\" && docker-compose pull && docker-compose up -d --no-build"
-	out, err = tools.ExecCommand(cmd, true)
+	outp, err = tools.ExecCommand(cmd, true)
 
 	installingAppStatus[appStatusIndex].log += "\nDownloading the dependencies...\n"
-	installingAppStatus[appStatusIndex].log += out
+	installingAppStatus[appStatusIndex].log += outp
 
 	if err != nil {
 		installingAppStatus[appStatusIndex].done = true
@@ -1038,26 +1178,32 @@ func installApp(imageName string) (string, error) {
 	installingAppStatus[appStatusIndex].done = true
 
 	return "Install successfull", nil
+
+	/*-----------------------------*/
 }
 
 /*-----------------------------*/
 
 func uninstallApp(appID string, keepConfig bool) error {
 
-	appFullPath := appsDirectoryOnHost + appID
+	var out string
+	var err error
 
-	cmd := "cd \"" + appFullPath + "\" && IMG=$(docker-compose images -q) && docker-compose rm -fs && docker rmi -f $IMG; "
+	appFullPath := filepath.Join(appsDir, appID)
+
+	cmd := "cd \"" + appFullPath + "\" && pwd && IMG=$(docker-compose images -q) && docker-compose rm -fs && docker rmi -f $IMG; "
 	if keepConfig {
 
 		cmd += "rm ./package.json;"
 
 	} else {
-
-		cmd += "docker system prune -f && rm -r ../../" + appID
+		// Remove all unused containers, networks, images (both dangling and unreferenced), and volumes.
+		//cli.VolumesPrune(context.Background(), pruneFilters filters.Args) (types.VolumesPruneReport, error)
+		cmd += "docker system prune -f && rm -r ../" + appID
 		//We use this path to make sure to delete the app folder if it really exist and not to delete the entire app folder or something else
 	}
 
-	out, err := tools.ExecCommand(cmd, true)
+	out, err = tools.ExecCommand(cmd, true)
 
 	log.Printf("[APP  ] DELETE App: %s\n\t%v\n", appID, out)
 

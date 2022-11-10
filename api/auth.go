@@ -1,11 +1,11 @@
 package api
 
 import (
-	"encoding/base64"
+	"crypto/rand"
+	"encoding/base32"
 	"encoding/json"
 	"fmt"
 	"log"
-	"math/rand"
 	"net"
 	"net/http"
 	"strings"
@@ -236,14 +236,14 @@ func getSecret() []byte {
 	}
 
 	secretMinSize := 40
-	someBytes := make([]byte, secretMinSize)
-	rand.Seed(time.Now().UTC().UnixNano())
+	someBytes := make([]byte, 32)
 
-	for i := 0; i < secretMinSize; i++ {
-		someBytes[i] = byte(rand.Intn(255))
+	_, err := rand.Read(someBytes)
+	if err != nil {
+		log.Printf("[ERR  ] GetSecret: %s", err.Error())
 	}
 
-	tokenSecret = []byte(base64.StdEncoding.EncodeToString(someBytes))
+	tokenSecret = []byte(base32.StdEncoding.EncodeToString(someBytes)[:secretMinSize])
 	return tokenSecret
 }
 
@@ -374,6 +374,9 @@ func IsAuthorized(endpoint routing.Handle, checkIPWhiteList bool) routing.Handle
 				if err != nil {
 					log.Printf("[ERR  ] Whitelist check for docker host failed for %q: %v", req.RemoteAddr, err)
 				}
+			}
+			if !ok && reqIP.IsLoopback() {
+				ok = true
 			}
 			if ok {
 				endpoint(resp, req, params)

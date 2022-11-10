@@ -17,9 +17,9 @@ import (
 /*-------------------------*/
 
 // sockAddr represents the unix socket for this service
-const sockAddr = "/var/run/wazigate-host.sock"
+const sockAddr = "/var/run/wazigate-host.sock" //for rpi
 
-//const sockAddr = "./wazigate-host.sock"
+//const sockAddr = "/tmp/wazigate-host.sock" //for debug
 
 /*-------------------------*/
 
@@ -70,7 +70,7 @@ func ExecCommand(cmd string, withLogs bool) (out string, err error) {
 		log.Printf("[     ] > %s", cmd)
 	}
 	exe := exec.Command("sh", "-c", string(cmd))
-	exe.Dir = execPath
+	//  exe.Dir = execPath
 	stdout, err := exe.Output()
 	if withLogs {
 		if err != nil {
@@ -83,4 +83,17 @@ func ExecCommand(cmd string, withLogs bool) (out string, err error) {
 	out = strings.Trim(string(stdout), " \n\t\r")
 
 	return out, err
+}
+
+func Shell(dir string, sh string) (string, error) {
+	cmd := exec.Command("sh", "-c", sh)
+	cmd.Dir = dir
+	log.Printf("[     ] > %s", sh)
+	out, err := cmd.Output()
+	if err != nil {
+		log.Printf("[ERR  ] > %s (%s)", out, err)
+	} else {
+		log.Printf("[     ] > %s", sh)
+	}
+	return string(out), err
 }

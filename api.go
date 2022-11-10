@@ -158,5 +158,7 @@ func init() {
 	router.DELETE("/sys/log/:log_id", api.IsAuthorized(api.SysDeleteLog, true /* true: check for IP based white list*/))
 
 	router.GET("/version", api.IsAuthorized(api.SysGetVersion, true /* true: check for IP based white list*/))
+	router.GET("/buildnr", api.IsAuthorized(api.SysGetBuildNr, true /* true: check for IP based white list*/))
+
 	router.GET("/info", api.IsAuthorized(api.SysGetInfo, true /* true: check for IP based white list*/))
 }

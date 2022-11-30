@@ -14,7 +14,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/Waziup/wazigate-edge/tools"
 	"github.com/docker/docker/api/types"
@@ -514,8 +513,7 @@ func HandleAppProxyRequest(resp http.ResponseWriter, req *http.Request, params r
 				// the proxy uses linux sockets that are created by each app
 				return net.Dial("unix", socketAddr)
 			},
-			MaxIdleConns:    50,
-			IdleConnTimeout: 4 * 60 * time.Second,
+			DisableKeepAlives: true,
 		},
 	}
 
@@ -555,6 +553,7 @@ func HandleAppProxyRequest(resp http.ResponseWriter, req *http.Request, params r
 	var written int64
 	if proxyResp.Body != nil {
 		written, _ = io.Copy(resp, proxyResp.Body)
+		proxyResp.Body.Close()
 	}
 	log.Printf("[APP  ] << %d %s (%d B)", proxyResp.StatusCode, proxyResp.Status, written)
 }

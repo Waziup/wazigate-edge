@@ -26,6 +26,7 @@ import (
 	"github.com/Waziup/wazigate-edge/tools"
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
+	"github.com/go-chi/chi/v5/middleware"
 )
 
 var branch string    // set by compiler
@@ -114,7 +115,8 @@ func main() {
 
 	if *www != "" {
 		log.Printf("[WWW  ] Serving from %q\n", *www)
-		static = http.FileServer(http.Dir(*www))
+		compressMiddleware := middleware.Compress(5)
+		static = compressMiddleware(http.FileServer(http.Dir(*www)))
 	} else {
 		log.Printf("[WWW  ] Not serving www files.\n")
 	}

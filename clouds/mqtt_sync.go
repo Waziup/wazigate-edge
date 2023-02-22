@@ -124,14 +124,7 @@ func (cloud *Cloud) mqttPersistentSync() {
 			}
 
 			if strings.HasPrefix(msg.Topic, tunnelDownTopic) {
-				ref := msg.Topic[len(tunnelDownTopic):]
-				resp := tunnel(msg.Data)
-				if resp != nil {
-					cloud.client.Publish(&mqtt.Message{
-						Topic: tunnelUpTopic + ref,
-						Data:  resp,
-					})
-				}
+				go cloud.thread_tunnel(msg, tunnelDownTopic, tunnelUpTopic)
 				continue
 			}
 
@@ -147,6 +140,17 @@ func (cloud *Cloud) mqttPersistentSync() {
 	cloud.mqttMutex.Lock()
 	cloud.client = nil
 	cloud.mqttMutex.Unlock()
+}
+
+func (cloud *Cloud) thread_tunnel(msg *mqtt.Message, tunnelDownTopic string, tunnelUpTopic string) {
+	ref := msg.Topic[len(tunnelDownTopic):]
+	resp := tunnel(msg.Data)
+	if resp != nil {
+		cloud.client.Publish(&mqtt.Message{
+			Topic: tunnelUpTopic + ref,
+			Data:  resp,
+		})
+	}
 }
 
 var tunnelError []byte

@@ -22,6 +22,7 @@ type Actuator struct {
 	Created  time.Time   `json:"created" bson:"created"`
 	Time     time.Time   `json:"time" bson:"time"`
 	Value    interface{} `json:"value" bson:"value"`
+	Meta     Meta        `json:"meta" bson:"meta"`
 }
 
 // GetDeviceActuator implements GET /devices/{deviceID}/actuators/{actuatorID}

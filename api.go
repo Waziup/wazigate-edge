@@ -151,6 +151,13 @@ func init() {
 	router.GET("/clouds/:cloud_id/status", api.IsAuthorized(api.GetCloudStatus, true /* true: check for IP based white list*/))
 	router.GET("/clouds/:cloud_id/events", api.IsAuthorized(api.GetCloudEvents, true /* true: check for IP based white list*/))
 
+	// Export, Backup and Import
+
+	router.GET("/exportall", api.IsAuthorized(api.GetExportAllInOne, true /* true: check for IP based white list*/))
+	router.GET("/exporttree", api.IsAuthorized(api.GetExportTree, true /* true: check for IP based white list*/))
+
+	// Sys
+
 	router.GET("/sys/uptime", api.IsAuthorized(api.SysGetUptime, true /* true: check for IP based white list*/))
 	router.PUT("/sys/clear_all", api.IsAuthorized(api.SysClearAll, true /* true: check for IP based white list*/))
 	router.GET("/sys/logs", api.IsAuthorized(api.SysGetLogs, true /* true: check for IP based white list*/))

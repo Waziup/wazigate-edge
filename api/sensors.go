@@ -21,6 +21,7 @@ type Sensor struct {
 	Created  time.Time   `json:"created" bson:"created"`
 	Time     time.Time   `json:"time" bson:"time"`
 	Value    interface{} `json:"value" bson:"value"`
+	Meta     Meta        `json:"meta" bson:"meta"`
 }
 
 // GetDeviceSensor implements GET /devices/{deviceID}/sensors/{sensorID}

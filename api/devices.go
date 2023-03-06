@@ -24,6 +24,7 @@ type Device struct {
 	Actuators []*Actuator `json:"actuators" bson:"actuators"`
 	Modified  time.Time   `json:"modified" bson:"modified"`
 	Created   time.Time   `json:"created" bson:"created"`
+	Meta      Meta        `json:"meta" bson:"meta"`
 }
 
 ////////////////////

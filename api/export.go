@@ -16,7 +16,7 @@ import (
 )
 
 // Only use host API calls for export
-var Urls = []string{"http://localhost:8080/" /*, "http://192.168.188.86/"*/}
+var Urls = []string{"http://localhost/" /*, "http://192.168.188.86/"*/}
 
 // Meta holds entity metadata.
 type Meta map[string]interface{}
@@ -114,12 +114,12 @@ func exportTree() {
 	deviceRecord := make([][]string, 0)
 
 	for _, url := range Urls {
+		// // Get token, important for non localhost devices
+		// token := execCurlCmd(url + "/auth/token -d \"{\"username\": \"admin\", \"password\": \"loragateway\"}\"")
+		// fmt.Println(string(token))
+
 		// Add devices to url for convenience
 		url = url + "devices"
-
-		// Get token, important for non localhost devices
-		token := execCurlCmd(url + "/auth/token -d \"{\"username\": \"admin\", \"password\": \"loragateway\"}\"")
-		fmt.Println(string(token))
 
 		// API call to Gateway
 		outputCmd := execCurlCmd(url)
@@ -339,12 +339,12 @@ func exportAllInOne() ([][]string, error) {
 	record := make([][]string, 0)
 
 	for _, url := range Urls {
+		// // Get token, important for non localhost devices
+		// token := execCurlCmd(url + "/auth/token -d \"{\"username\": \"admin\", \"password\": \"loragateway\"}\"")
+		// fmt.Println(string(token))
+
 		// Add devices to url for convenience
 		url += "devices"
-
-		// Get token, important for non localhost devices
-		token := execCurlCmd(url + "/auth/token -d \"{\"username\": \"admin\", \"password\": \"loragateway\"}\"")
-		fmt.Println(string(token))
 
 		// API call to Gateway
 		outputCmd := execCurlCmd(url)

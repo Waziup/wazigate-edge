@@ -60,8 +60,8 @@ type Meta map[string]interface{}
 // 	Meta      Meta        `json:"meta" bson:"meta"`
 // }
 
-func execCurlCmd(url string) []byte {
-	cmd := exec.Command("curl", url)
+func execCurlCmd(url string, token string) []byte {
+	cmd := exec.Command("curl", "--header", "Authorization: Bearer "+token, url)
 	output, err := cmd.Output()
 	if err != nil {
 		fmt.Println("Error invoking curl cmd", err)
@@ -114,15 +114,19 @@ func exportTree() {
 	deviceRecord := make([][]string, 0)
 
 	for _, url := range Urls {
-		// // Get token, important for non localhost devices
-		// token := execCurlCmd(url + "/auth/token -d \"{\"username\": \"admin\", \"password\": \"loragateway\"}\"")
-		// fmt.Println(string(token))
+		// Get token, important for non localhost devices
+		cmd := exec.Command("curl", "-X", "POST", url+"auth/token", "-H", "accept: application/json", "-d", "{\"username\": \"admin\", \"password\": \"loragateway\"}")
+		token, err := cmd.Output()
+		if err != nil {
+			fmt.Println("Error invoking curl cmd", err)
+		}
+		fmt.Println("Token: ", string(token))
 
 		// Add devices to url for convenience
 		url = url + "devices"
 
 		// API call to Gateway
-		outputCmd := execCurlCmd(url)
+		outputCmd := execCurlCmd(url, string(token))
 
 		// Create an empty map to hold the parsed JSON devices
 		devices := make([]*Device, 0)
@@ -194,7 +198,7 @@ func exportTree() {
 
 				// Create sensor probe request
 				requestUrl := url + "/" + currentId + "/sensors/" + currentSensorId + "/values"
-				response := execCurlCmd(requestUrl)
+				response := execCurlCmd(requestUrl, string(token))
 
 				// Create an empty map to hold the parsed JSON devices
 				values := make([]*Value, 0)
@@ -269,7 +273,7 @@ func exportTree() {
 
 				// Create actuator probe request
 				requestUrl := url + "/" + currentId + "/actuators/" + currentActuatorId + "/values"
-				response := execCurlCmd(requestUrl)
+				response := execCurlCmd(requestUrl, string(token))
 
 				// Create an empty map to hold the parsed JSON values
 				values := make([]*Value, 0)
@@ -339,21 +343,25 @@ func exportAllInOne() ([][]string, error) {
 	record := make([][]string, 0)
 
 	for _, url := range Urls {
-		// // Get token, important for non localhost devices
-		// token := execCurlCmd(url + "/auth/token -d \"{\"username\": \"admin\", \"password\": \"loragateway\"}\"")
-		// fmt.Println(string(token))
+		// Get token, important for non localhost devices
+		cmd := exec.Command("curl", "-X", "POST", url+"auth/token", "-H", "accept: application/json", "-d", "{\"username\": \"admin\", \"password\": \"loragateway\"}")
+		token, err := cmd.Output()
+		if err != nil {
+			fmt.Println("Error invoking curl cmd", err)
+		}
+		fmt.Println("Token: ", string(token))
 
 		// Add devices to url for convenience
 		url += "devices"
 
 		// API call to Gateway
-		outputCmd := execCurlCmd(url)
+		outputCmd := execCurlCmd(url, string(token))
 
 		// Create an empty map to hold the parsed JSON devices
 		devices := make([]*Device, 0)
 
 		// Write json response to map
-		err := json.Unmarshal(outputCmd, &devices)
+		err = json.Unmarshal(outputCmd, &devices)
 		if err != nil {
 			fmt.Println("Error parsing JSON []byte:", err)
 			return nil, err
@@ -370,7 +378,7 @@ func exportAllInOne() ([][]string, error) {
 
 				// Create sensor probe request
 				requestUrl := url + "/" + currentId + "/sensors/" + currentSensorId + "/values"
-				response := execCurlCmd(requestUrl)
+				response := execCurlCmd(requestUrl, string(token))
 
 				// Create an empty map to hold the parsed JSON devices
 				values := make([]*Value, 0)
@@ -413,7 +421,7 @@ func exportAllInOne() ([][]string, error) {
 
 				// Create actuator probe request
 				requestUrl := url + "/" + currentId + "/actuators/" + currentActuatorId + "/values"
-				response := execCurlCmd(requestUrl)
+				response := execCurlCmd(requestUrl, string(token))
 
 				// Create an empty map to hold the parsed JSON devices
 				values := make([]*Value, 0)

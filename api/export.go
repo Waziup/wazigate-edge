@@ -11,12 +11,14 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
+	"time"
 
 	routing "github.com/julienschmidt/httprouter"
 )
 
 // Only use host API calls for export
-var Urls = []string{"http://localhost/" /*, "http://192.168.188.86/"*/}
+var Urls = []string{"http://localhost:8080/" /*, "http://192.168.188.86/"*/}
 
 // Meta holds entity metadata.
 type Meta map[string]interface{}
@@ -102,13 +104,32 @@ func transpose(a [][]string) [][]string {
 	return b
 }
 
-func exportTree() {
+func readCsvFile(filePath string) [][]string {
+	f, err := os.Open(filePath)
+	if err != nil {
+		fmt.Println("Unable to read input file "+filePath, err)
+	}
+	defer f.Close()
+
+	csvReader := csv.NewReader(f)
+	records, err := csvReader.ReadAll()
+	if err != nil {
+		fmt.Println("Unable to parse file as CSV for "+filePath, err)
+	}
+
+	return records
+}
+
+func exportTree() error {
 	// Create static folders and files
 	parentFolder := "exportTree"
 	err := os.Mkdir(parentFolder, os.FileMode(0755))
-	if err != nil {
-		fmt.Println("Error creating folder: ", err)
+	if os.IsExist(err) {
+		fmt.Println("Folder ", parentFolder, " already exists")
+	} else {
+		return err
 	}
+
 	deviceWriter := createCsv(filepath.Join(parentFolder, "devices.csv"))
 
 	deviceRecord := make([][]string, 0)
@@ -119,6 +140,7 @@ func exportTree() {
 		token, err := cmd.Output()
 		if err != nil {
 			fmt.Println("Error invoking curl cmd", err)
+			return err
 		}
 		fmt.Println("Token: ", string(token))
 
@@ -135,7 +157,7 @@ func exportTree() {
 		err = json.Unmarshal(outputCmd, &devices)
 		if err != nil {
 			fmt.Println("Error parsing JSON []byte:", err)
-			return
+			return err
 		}
 
 		// Iterate through map
@@ -152,13 +174,16 @@ func exportTree() {
 			metaDeviceData, err := json.Marshal(devices[device].Meta)
 			if err != nil {
 				fmt.Println("Error marshal meta device data to JSON:", err)
-				return
+				return err
 			}
 			deviceSlice[4] = string(metaDeviceData)
 			deviceRecord = append(deviceRecord[:device], deviceSlice)
-			err = os.Mkdir(filepath.Join(parentFolder, currentId), os.FileMode(0755))
-			if err != nil {
-				fmt.Println("Error creating folder: ", err)
+			path := filepath.Join(parentFolder, currentId)
+			err = os.Mkdir(path, os.FileMode(0755))
+			if os.IsExist(err) {
+				fmt.Println("Folder ", path, " already exists")
+			} else {
+				return err
 			}
 
 			// Sensors
@@ -176,21 +201,24 @@ func exportTree() {
 				sensorsRecordSlice := make([]string, 7)
 				sensorsRecordSlice[0] = currentSensorId
 				sensorsRecordSlice[1] = devices[device].Sensors[sensor].Name
-				sensorsRecordSlice[2] = devices[device].Sensors[sensor].Created.String()
-				sensorsRecordSlice[3] = devices[device].Sensors[sensor].Modified.String()
+				sensorsRecordSlice[2] = devices[device].Sensors[sensor].Created.Format("2006-01-02T15:04:05-0700")
+				sensorsRecordSlice[3] = devices[device].Sensors[sensor].Modified.Format("2006-01-02T15:04:05-0700")
 				metaSensorsData, err := json.Marshal(devices[device].Sensors[sensor].Meta)
 				if err != nil {
 					fmt.Println("Error marshal meta sensor data to JSON:", err)
-					return
+					return err
 				}
 				sensorsRecordSlice[4] = string(metaSensorsData)
 				sensorsRecord = append(sensorsRecord[:sensor], sensorsRecordSlice)
 
 				// Values of probes
 				// Folder for sensordata
-				err = os.Mkdir(filepath.Join(parentFolder, currentId, currentSensorId), os.FileMode(0755))
-				if err != nil {
-					fmt.Println("Error creating folder: ", err)
+				path := filepath.Join(parentFolder, currentId, currentSensorId)
+				err = os.Mkdir(path, os.FileMode(0755))
+				if os.IsExist(err) {
+					fmt.Println("Folder ", path, " already exists")
+				} else {
+					return err
 				}
 
 				// Create CSV to hold values
@@ -207,7 +235,7 @@ func exportTree() {
 				err = json.Unmarshal(response, &values)
 				if err != nil {
 					fmt.Println("Error parsing Value JSON []byte:", err)
-					return
+					return err
 				}
 
 				// Array to hold values and timestamps of one specific sensor probe
@@ -215,11 +243,11 @@ func exportTree() {
 				// Iterate over values map and create record
 				for messurement := range values {
 					sensorRecord[messurement] = make([]string, 2)
-					sensorRecord[messurement][0] = values[messurement].Time.String()
+					sensorRecord[messurement][0] = values[messurement].Time.Format("2006-01-02T15:04:05-0700")
 					valueData, err := json.Marshal(values[messurement].Value)
 					if err != nil {
 						fmt.Println("Error marshal value data to JSON:", err)
-						return
+						return err
 					}
 					sensorRecord[messurement][1] = string(valueData)
 				}
@@ -228,7 +256,7 @@ func exportTree() {
 				err = sensorWriter.WriteAll(sensorRecord)
 				if err != nil {
 					fmt.Println(err)
-					continue
+					return err
 				}
 			}
 			// Actuators
@@ -246,26 +274,24 @@ func exportTree() {
 				actuatorsRecordSlice := make([]string, 7)
 				actuatorsRecordSlice[0] = currentActuatorId
 				actuatorsRecordSlice[1] = devices[device].Actuators[actuator].Name
-				actuatorsRecordSlice[2] = devices[device].Actuators[actuator].Created.String()
-				actuatorsRecordSlice[3] = devices[device].Actuators[actuator].Modified.String()
+				actuatorsRecordSlice[2] = devices[device].Actuators[actuator].Created.Format("2006-01-02T15:04:05-0700")
+				actuatorsRecordSlice[3] = devices[device].Actuators[actuator].Modified.Format("2006-01-02T15:04:05-0700")
 				metaActuatorsData, err := json.Marshal(devices[device].Actuators[actuator].Meta)
 				if err != nil {
 					fmt.Println("Error marshal meta actuator data to JSON:", err)
-					return
+					return err
 				}
 				actuatorsRecordSlice[4] = string(metaActuatorsData)
 				actuatorsRecord = append(actuatorsRecord[:actuator], actuatorsRecordSlice)
 
-				err = os.Mkdir(filepath.Join(parentFolder, currentId, currentActuatorId), os.FileMode(0755))
-				if err != nil {
-					fmt.Println("Error creating folder: ", err)
-				}
-
 				// Values of probes
 				// Folder for actuatordata
-				err = os.Mkdir(filepath.Join(parentFolder, currentId, currentActuatorId), os.FileMode(0755))
-				if err != nil {
-					fmt.Println("Error creating folder: ", err)
+				path := filepath.Join(parentFolder, currentId, currentActuatorId)
+				err = os.Mkdir(path, os.FileMode(0755))
+				if os.IsExist(err) {
+					fmt.Println("Folder ", path, " already exists")
+				} else {
+					return err
 				}
 
 				// Create CSV to hold values
@@ -282,7 +308,7 @@ func exportTree() {
 				err = json.Unmarshal(response, &values)
 				if err != nil {
 					fmt.Println("Error parsing Value JSON []byte:", err)
-					return
+					return err
 				}
 
 				// Array to hold values and timestamps of one specific actuator probe
@@ -290,11 +316,11 @@ func exportTree() {
 				// Iterate over values map and create record
 				for messurement := range values {
 					actuatorRecord[messurement] = make([]string, 2)
-					actuatorRecord[messurement][0] = values[messurement].Time.String()
+					actuatorRecord[messurement][0] = values[messurement].Time.Format("2006-01-02T15:04:05-0700")
 					valueData, err := json.Marshal(values[messurement].Value)
 					if err != nil {
 						fmt.Println("Error marshal value data to JSON:", err)
-						return
+						return err
 					}
 					actuatorRecord[messurement][1] = string(valueData)
 				}
@@ -303,7 +329,7 @@ func exportTree() {
 				err = actuatorWriter.WriteAll(actuatorRecord)
 				if err != nil {
 					fmt.Println(err)
-					continue
+					return err
 				}
 
 			}
@@ -312,12 +338,12 @@ func exportTree() {
 			err = sensorsWriter.WriteAll(sensorsRecord)
 			if err != nil {
 				fmt.Println(err)
-				continue
+				return err
 			}
 			err = actuatorsWriter.WriteAll(actuatorsRecord)
 			if err != nil {
 				fmt.Println(err)
-				continue
+				return err
 			}
 		}
 
@@ -325,16 +351,19 @@ func exportTree() {
 		err = deviceWriter.WriteAll(deviceRecord)
 		if err != nil {
 			fmt.Println(err)
-			continue
+			return err
 		}
 	}
 	// Create ZIP file containing all the data
 	cmd := exec.Command("zip", "-r", "exportTree.zip", "exportTree")
 	output, err := cmd.Output()
 	if err != nil {
-		fmt.Println("Error invoking curl cmd", err)
+		fmt.Println("Error invoking zip cmd", err)
+		return err
 	}
 	fmt.Println("Creating zip file for csv export: \n", string(output))
+
+	return nil
 }
 
 // Exports all probes into one file
@@ -400,7 +429,7 @@ func exportAllInOne() ([][]string, error) {
 
 				// Iterate over values map and create record
 				for messurement := range values {
-					recordTimes[messurement+1] = values[messurement].Time.String()
+					recordTimes[messurement+1] = values[messurement].Time.Format("2006-01-02T15:04:05-0700")
 					valueData, err := json.Marshal(values[messurement].Value)
 					if err != nil {
 						fmt.Println("Error marshal value data to JSON:", err)
@@ -443,7 +472,7 @@ func exportAllInOne() ([][]string, error) {
 
 				// Iterate over values map and create record
 				for messurement := range values {
-					recordTimes[messurement+1] = values[messurement].Time.String()
+					recordTimes[messurement+1] = values[messurement].Time.Format("2006-01-02T15:04:05-0700")
 					valueData, err := json.Marshal(values[messurement].Value)
 					if err != nil {
 						fmt.Println("Error marshal value data to JSON:", err)
@@ -465,9 +494,105 @@ func exportAllInOne() ([][]string, error) {
 	return tRecord, nil
 }
 
+// TODO: save index of last hit to preserve time, delete site2 in csv name
+func exportForMl(allRecords [][]string, duration time.Duration, from time.Time, to time.Time) [][]string {
+	// Print some debug metrics
+	fmt.Println("The choosen duration for the individual time bins was set to:", duration, "minutes.")
+	fmt.Println("The timespan was set from: ", from.String(), " to: ", to.String())
+	fmt.Println("From is before to: ", from.Before(to), " :)")
+	fmt.Println("Add ten min: ", from.Add(duration), "\n")
+	fmt.Println("Length of all_records", len(allRecords))
+
+	// Create tabletop
+	binnedRecords := make([][]string, 0)
+	tableTopSlice := make([]string, 1)
+	width := len(allRecords[0])
+	for i := 0; i < width; i += 2 {
+		//fmt.Println(allRecords[0][i] + allRecords[0][i+1])
+		tableTopSlice = append(tableTopSlice, allRecords[0][i]+"; "+allRecords[0][i+1])
+	}
+	binnedRecords = append(binnedRecords, tableTopSlice)
+	fmt.Println("tableTopSlice : ", tableTopSlice)
+
+	// Create empty array with time bins, fill according to time constraints
+	for d := from; d.Before(to); d = d.Add(duration) {
+		sliceBin := make([]string, 1)
+		sliceBin[0] = d.Format("2006-01-02T15:04:05-0700")
+		binnedRecords = append(binnedRecords, sliceBin)
+	}
+	// Current line in binnedRecords (starts with one because of tabletop)
+	var currentLine = 1
+	// Create array that holds position of last hit
+	lastIndices := make([]int, width/2)
+
+	// Fill with values from allRecords
+	// Iterate through timestamps
+	for d := from; d.Before(to); d = d.Add(duration) {
+		fmt.Println("Current date bin : ", d)
+		// Iterate through rows
+		//binnedRecordsSlice := make([][]string, 0)
+		for j := 0; j < width; j += 2 {
+
+			var numValues int
+			var sum float64
+
+			// Jump to previous index (or row) of this col
+			jdiv := j / 2
+			i := lastIndices[jdiv] + 1
+
+			// Iterate through a specific cols
+			for ; i < len(allRecords); i++ {
+
+				// Parse current time
+				recordTime, err := time.Parse("2006-01-02 15:04:05 -0700 MST", allRecords[i][j])
+				if err != nil {
+					//fmt.Println("Error parsing from string to time, there might be no values present at this cell.", err, i)
+					break // no more values afterwards, if there is not timestamp -> exit col and
+				}
+
+				if recordTime.Before(d) {
+					//fmt.Println("Before, should not see this often because of cached position, only in first iterations")
+					continue
+				} else if recordTime.Before(d.Add(duration)) {
+
+					v, err := strconv.ParseFloat(allRecords[i][j+1], 64)
+					if err != nil {
+						break
+					}
+					sum += v
+					numValues++
+
+					//fmt.Println("recordTime :", recordTime, " is WITHIN the current 10min bin: ", d, "Current Device, Sensor: ", allRecords[0][j+1], " \t With a value of: ", allRecords[i][j+1])
+
+				} else if recordTime.After(d.Add(duration)) {
+					//fmt.Println("recordTime is AFTER 10min bin: ", recordTime)
+					break // Do not iterate further through this col, because it is chronological
+				}
+			}
+
+			if numValues == 0 {
+				binnedRecords[currentLine] = append(binnedRecords[currentLine], "")
+			} else {
+				v := sum / float64(numValues)
+				binnedRecords[currentLine] = append(binnedRecords[currentLine], strconv.FormatFloat(v, 'f', 5, 64))
+			}
+
+			lastIndices[jdiv] = i - 1
+		}
+		currentLine++
+	}
+
+	return binnedRecords
+}
+
 func GetExportTree(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 	// Function to create tree
-	exportTree()
+	err := exportTree()
+
+	if err != nil {
+		serveError(resp, err)
+		return
+	}
 
 	// Read zip in []byte
 	buf, err := os.ReadFile("exportTree.zip")
@@ -482,12 +607,14 @@ func GetExportTree(resp http.ResponseWriter, req *http.Request, params routing.P
 	resp.Write(buf)
 
 	// Delete resources afterwards
-	err = os.RemoveAll("./exportTree")
+	err = os.RemoveAll("exportTree")
+
 	if err != nil {
 		serveError(resp, err)
 		return
 	}
-	err = os.Remove("./exportTree.zip")
+	err = os.Remove("exportTree.zip")
+
 	if err != nil {
 		serveError(resp, err)
 		return
@@ -506,8 +633,50 @@ func GetExportAllInOne(resp http.ResponseWriter, req *http.Request, params routi
 	// Write to CSV buffer
 	var buf bytes.Buffer
 	writer := csv.NewWriter(&buf)
-
 	writer.WriteAll(record)
+
+	// Create response
+	resp.Header().Set("Content-Type", "text/csv")
+	resp.Write(buf.Bytes())
+}
+
+func GetExportMlBins(resp http.ResponseWriter, req *http.Request, params routing.Params) {
+	// GetExportMlBins is dependent on exportAllInOne()
+	record, err := exportAllInOne()
+
+	if err != nil {
+		serveError(resp, err)
+		return
+	}
+
+	// Get values from wg-sys ui
+	values := req.URL.Query()
+	from, err := time.Parse("2006-01-02T15:04:05-0700", values.Get("from"))
+	if err != nil {
+		serveError(resp, err)
+		return
+	}
+	from = from.UTC()
+
+	to, err := time.Parse("2006-01-02T15:04:05-0700", values.Get("to"))
+	if err != nil {
+		serveError(resp, err)
+		return
+	}
+	to = to.UTC()
+
+	duration, err := time.ParseDuration(values.Get("duration"))
+	if err != nil {
+		serveError(resp, err)
+		return
+	}
+	// Call exportForMl
+	binnedRecords := exportForMl(record, duration, from, to)
+
+	// Write to CSV buffer
+	var buf bytes.Buffer
+	writer := csv.NewWriter(&buf)
+	writer.WriteAll(binnedRecords)
 
 	// Create response
 	resp.Header().Set("Content-Type", "text/csv")

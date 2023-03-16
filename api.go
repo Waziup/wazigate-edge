@@ -155,6 +155,7 @@ func init() {
 
 	router.GET("/exportall", api.IsAuthorized(api.GetExportAllInOne, true /* true: check for IP based white list*/))
 	router.GET("/exporttree", api.IsAuthorized(api.GetExportTree, true /* true: check for IP based white list*/))
+	router.GET("/exportforml", api.IsAuthorized(api.GetExportMlBins, true /* true: check for IP based white list*/))
 
 	// Sys
 

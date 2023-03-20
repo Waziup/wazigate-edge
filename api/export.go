@@ -640,7 +640,7 @@ func GetExportAllInOne(resp http.ResponseWriter, req *http.Request, params routi
 	resp.Write(buf.Bytes())
 }
 
-func GetExportMlBins(resp http.ResponseWriter, req *http.Request, params routing.Params) {
+func GetExportBins(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 	// GetExportMlBins is dependent on exportAllInOne()
 	record, err := exportAllInOne()
 

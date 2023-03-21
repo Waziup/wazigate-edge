@@ -201,8 +201,8 @@ func exportTree() error {
 				sensorsRecordSlice := make([]string, 7)
 				sensorsRecordSlice[0] = currentSensorId
 				sensorsRecordSlice[1] = devices[device].Sensors[sensor].Name
-				sensorsRecordSlice[2] = devices[device].Sensors[sensor].Created.Format("2006-01-02T15:04:05-0700")
-				sensorsRecordSlice[3] = devices[device].Sensors[sensor].Modified.Format("2006-01-02T15:04:05-0700")
+				sensorsRecordSlice[2] = devices[device].Sensors[sensor].Created.Local().Format("2006-01-02T15:04:05-0700")
+				sensorsRecordSlice[3] = devices[device].Sensors[sensor].Modified.Local().Format("2006-01-02T15:04:05-0700")
 				metaSensorsData, err := json.Marshal(devices[device].Sensors[sensor].Meta)
 				if err != nil {
 					fmt.Println("Error marshal meta sensor data to JSON:", err)
@@ -243,7 +243,7 @@ func exportTree() error {
 				// Iterate over values map and create record
 				for messurement := range values {
 					sensorRecord[messurement] = make([]string, 2)
-					sensorRecord[messurement][0] = values[messurement].Time.Format("2006-01-02T15:04:05-0700")
+					sensorRecord[messurement][0] = values[messurement].Time.Local().Format("2006-01-02T15:04:05-0700")
 					valueData, err := json.Marshal(values[messurement].Value)
 					if err != nil {
 						fmt.Println("Error marshal value data to JSON:", err)
@@ -274,8 +274,8 @@ func exportTree() error {
 				actuatorsRecordSlice := make([]string, 7)
 				actuatorsRecordSlice[0] = currentActuatorId
 				actuatorsRecordSlice[1] = devices[device].Actuators[actuator].Name
-				actuatorsRecordSlice[2] = devices[device].Actuators[actuator].Created.Format("2006-01-02T15:04:05-0700")
-				actuatorsRecordSlice[3] = devices[device].Actuators[actuator].Modified.Format("2006-01-02T15:04:05-0700")
+				actuatorsRecordSlice[2] = devices[device].Actuators[actuator].Created.Local().Format("2006-01-02T15:04:05-0700")
+				actuatorsRecordSlice[3] = devices[device].Actuators[actuator].Modified.Local().Format("2006-01-02T15:04:05-0700")
 				metaActuatorsData, err := json.Marshal(devices[device].Actuators[actuator].Meta)
 				if err != nil {
 					fmt.Println("Error marshal meta actuator data to JSON:", err)
@@ -316,7 +316,7 @@ func exportTree() error {
 				// Iterate over values map and create record
 				for messurement := range values {
 					actuatorRecord[messurement] = make([]string, 2)
-					actuatorRecord[messurement][0] = values[messurement].Time.Format("2006-01-02T15:04:05-0700")
+					actuatorRecord[messurement][0] = values[messurement].Time.Local().Format("2006-01-02T15:04:05-0700")
 					valueData, err := json.Marshal(values[messurement].Value)
 					if err != nil {
 						fmt.Println("Error marshal value data to JSON:", err)
@@ -429,7 +429,7 @@ func exportAllInOne() ([][]string, error) {
 
 				// Iterate over values map and create record
 				for messurement := range values {
-					recordTimes[messurement+1] = values[messurement].Time.Format("2006-01-02T15:04:05-0700")
+					recordTimes[messurement+1] = values[messurement].Time.Local().Format("2006-01-02T15:04:05-0700")
 					valueData, err := json.Marshal(values[messurement].Value)
 					if err != nil {
 						fmt.Println("Error marshal value data to JSON:", err)
@@ -472,7 +472,7 @@ func exportAllInOne() ([][]string, error) {
 
 				// Iterate over values map and create record
 				for messurement := range values {
-					recordTimes[messurement+1] = values[messurement].Time.Format("2006-01-02T15:04:05-0700")
+					recordTimes[messurement+1] = values[messurement].Time.Local().Format("2006-01-02T15:04:05-0700")
 					valueData, err := json.Marshal(values[messurement].Value)
 					if err != nil {
 						fmt.Println("Error marshal value data to JSON:", err)
@@ -496,6 +496,8 @@ func exportAllInOne() ([][]string, error) {
 
 // TODO: save index of last hit to preserve time, delete site2 in csv name
 func exportForMl(allRecords [][]string, duration time.Duration, from time.Time, to time.Time) [][]string {
+	from = from.Local()
+
 	// Print some debug metrics
 	fmt.Println("The choosen duration for the individual time bins was set to:", duration, "minutes.")
 	fmt.Println("The timespan was set from: ", from.String(), " to: ", to.String())
@@ -651,14 +653,14 @@ func GetExportBins(resp http.ResponseWriter, req *http.Request, params routing.P
 
 	// Get values from wg-sys ui
 	values := req.URL.Query()
-	from, err := time.Parse("2006-01-02T15:04:05-0700", values.Get("from"))
+	from, err := time.Parse("2006-01-02T15:04:05.000Z", values.Get("from"))
 	if err != nil {
 		serveError(resp, err)
 		return
 	}
 	from = from.UTC()
 
-	to, err := time.Parse("2006-01-02T15:04:05-0700", values.Get("to"))
+	to, err := time.Parse("2006-01-02T15:04:05.000Z", values.Get("to"))
 	if err != nil {
 		serveError(resp, err)
 		return

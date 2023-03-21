@@ -126,7 +126,7 @@ func exportTree() error {
 	err := os.Mkdir(parentFolder, os.FileMode(0755))
 	if os.IsExist(err) {
 		fmt.Println("Folder ", parentFolder, " already exists")
-	} else {
+	} else if err != nil {
 		return err
 	}
 
@@ -182,7 +182,7 @@ func exportTree() error {
 			err = os.Mkdir(path, os.FileMode(0755))
 			if os.IsExist(err) {
 				fmt.Println("Folder ", path, " already exists")
-			} else {
+			} else if err != nil {
 				return err
 			}
 
@@ -217,7 +217,7 @@ func exportTree() error {
 				err = os.Mkdir(path, os.FileMode(0755))
 				if os.IsExist(err) {
 					fmt.Println("Folder ", path, " already exists")
-				} else {
+				} else if err != nil {
 					return err
 				}
 
@@ -290,7 +290,7 @@ func exportTree() error {
 				err = os.Mkdir(path, os.FileMode(0755))
 				if os.IsExist(err) {
 					fmt.Println("Folder ", path, " already exists")
-				} else {
+				} else if err != nil {
 					return err
 				}
 

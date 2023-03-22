@@ -20,6 +20,8 @@ import (
 // Only use host API calls for export
 var Urls = []string{"http://localhost/" /*, "http://192.168.188.86/"*/}
 
+var ExampleTime = "2006-01-02T15:04:05-07:00"
+
 // Meta holds entity metadata.
 type Meta map[string]interface{}
 
@@ -201,8 +203,8 @@ func exportTree() error {
 				sensorsRecordSlice := make([]string, 7)
 				sensorsRecordSlice[0] = currentSensorId
 				sensorsRecordSlice[1] = devices[device].Sensors[sensor].Name
-				sensorsRecordSlice[2] = devices[device].Sensors[sensor].Created.Local().Format("2006-01-02T15:04:05-0700")
-				sensorsRecordSlice[3] = devices[device].Sensors[sensor].Modified.Local().Format("2006-01-02T15:04:05-0700")
+				sensorsRecordSlice[2] = devices[device].Sensors[sensor].Created.Local().Format(ExampleTime)
+				sensorsRecordSlice[3] = devices[device].Sensors[sensor].Modified.Local().Format(ExampleTime)
 				metaSensorsData, err := json.Marshal(devices[device].Sensors[sensor].Meta)
 				if err != nil {
 					fmt.Println("Error marshal meta sensor data to JSON:", err)
@@ -243,7 +245,7 @@ func exportTree() error {
 				// Iterate over values map and create record
 				for messurement := range values {
 					sensorRecord[messurement] = make([]string, 2)
-					sensorRecord[messurement][0] = values[messurement].Time.Local().Format("2006-01-02T15:04:05-0700")
+					sensorRecord[messurement][0] = values[messurement].Time.Local().Format(ExampleTime)
 					valueData, err := json.Marshal(values[messurement].Value)
 					if err != nil {
 						fmt.Println("Error marshal value data to JSON:", err)
@@ -274,8 +276,8 @@ func exportTree() error {
 				actuatorsRecordSlice := make([]string, 7)
 				actuatorsRecordSlice[0] = currentActuatorId
 				actuatorsRecordSlice[1] = devices[device].Actuators[actuator].Name
-				actuatorsRecordSlice[2] = devices[device].Actuators[actuator].Created.Local().Format("2006-01-02T15:04:05-0700")
-				actuatorsRecordSlice[3] = devices[device].Actuators[actuator].Modified.Local().Format("2006-01-02T15:04:05-0700")
+				actuatorsRecordSlice[2] = devices[device].Actuators[actuator].Created.Local().Format(ExampleTime)
+				actuatorsRecordSlice[3] = devices[device].Actuators[actuator].Modified.Local().Format(ExampleTime)
 				metaActuatorsData, err := json.Marshal(devices[device].Actuators[actuator].Meta)
 				if err != nil {
 					fmt.Println("Error marshal meta actuator data to JSON:", err)
@@ -316,7 +318,7 @@ func exportTree() error {
 				// Iterate over values map and create record
 				for messurement := range values {
 					actuatorRecord[messurement] = make([]string, 2)
-					actuatorRecord[messurement][0] = values[messurement].Time.Local().Format("2006-01-02T15:04:05-0700")
+					actuatorRecord[messurement][0] = values[messurement].Time.Local().Format(ExampleTime)
 					valueData, err := json.Marshal(values[messurement].Value)
 					if err != nil {
 						fmt.Println("Error marshal value data to JSON:", err)
@@ -429,7 +431,7 @@ func exportAllInOne() ([][]string, error) {
 
 				// Iterate over values map and create record
 				for messurement := range values {
-					recordTimes[messurement+1] = values[messurement].Time.Local().Format("2006-01-02T15:04:05-0700")
+					recordTimes[messurement+1] = values[messurement].Time.Local().Format(ExampleTime)
 					valueData, err := json.Marshal(values[messurement].Value)
 					if err != nil {
 						fmt.Println("Error marshal value data to JSON:", err)
@@ -472,7 +474,7 @@ func exportAllInOne() ([][]string, error) {
 
 				// Iterate over values map and create record
 				for messurement := range values {
-					recordTimes[messurement+1] = values[messurement].Time.Local().Format("2006-01-02T15:04:05-0700")
+					recordTimes[messurement+1] = values[messurement].Time.Local().Format(ExampleTime)
 					valueData, err := json.Marshal(values[messurement].Value)
 					if err != nil {
 						fmt.Println("Error marshal value data to JSON:", err)
@@ -496,6 +498,9 @@ func exportAllInOne() ([][]string, error) {
 
 // TODO: save index of last hit to preserve time, delete site2 in csv name
 func exportForMl(allRecords [][]string, duration time.Duration, from time.Time, to time.Time) [][]string {
+	// _, offset := time.Now().Zone()
+
+	// from = from.Local().Add(time.Duration(offset) * time.Second)
 	from = from.Local()
 
 	// Print some debug metrics
@@ -519,7 +524,7 @@ func exportForMl(allRecords [][]string, duration time.Duration, from time.Time, 
 	// Create empty array with time bins, fill according to time constraints
 	for d := from; d.Before(to); d = d.Add(duration) {
 		sliceBin := make([]string, 1)
-		sliceBin[0] = d.Format("2006-01-02T15:04:05-0700")
+		sliceBin[0] = d.Format(ExampleTime)
 		binnedRecords = append(binnedRecords, sliceBin)
 	}
 	// Current line in binnedRecords (starts with one because of tabletop)
@@ -546,7 +551,7 @@ func exportForMl(allRecords [][]string, duration time.Duration, from time.Time, 
 			for ; i < len(allRecords); i++ {
 
 				// Parse current time
-				recordTime, err := time.Parse("2006-01-02 15:04:05 -0700 MST", allRecords[i][j])
+				recordTime, err := time.Parse(ExampleTime, allRecords[i][j])
 				if err != nil {
 					//fmt.Println("Error parsing from string to time, there might be no values present at this cell.", err, i)
 					break // no more values afterwards, if there is not timestamp -> exit col and

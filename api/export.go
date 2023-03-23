@@ -497,10 +497,7 @@ func exportAllInOne() ([][]string, error) {
 }
 
 // TODO: save index of last hit to preserve time, delete site2 in csv name
-func exportForMl(allRecords [][]string, duration time.Duration, from time.Time, to time.Time) [][]string {
-	// _, offset := time.Now().Zone()
-
-	// from = from.Local().Add(time.Duration(offset) * time.Second)
+func exportForMl(allRecords [][]string, duration time.Duration, clear bool, from time.Time, to time.Time) [][]string {
 	from = from.Local()
 
 	// Print some debug metrics
@@ -566,8 +563,18 @@ func exportForMl(allRecords [][]string, duration time.Duration, from time.Time, 
 					if err != nil {
 						break
 					}
-					sum += v
-					numValues++
+					if clear {
+						if numValues == 0 {
+							sum += v
+							numValues++
+						} else if v < ((sum/float64(numValues))*.8) && v > ((sum/float64(numValues))*1.2) {
+							sum += v
+							numValues++
+						}
+					} else {
+						sum += v
+						numValues++
+					}
 
 					//fmt.Println("recordTime :", recordTime, " is WITHIN the current 10min bin: ", d, "Current Device, Sensor: ", allRecords[0][j+1], " \t With a value of: ", allRecords[i][j+1])
 
@@ -677,8 +684,15 @@ func GetExportBins(resp http.ResponseWriter, req *http.Request, params routing.P
 		serveError(resp, err)
 		return
 	}
+
+	clearOutlayers, err := strconv.ParseBool(values.Get("check"))
+	if err != nil {
+		serveError(resp, err)
+		return
+	}
+
 	// Call exportForMl
-	binnedRecords := exportForMl(record, duration, from, to)
+	binnedRecords := exportForMl(record, duration, clearOutlayers, from, to)
 
 	// Write to CSV buffer
 	var buf bytes.Buffer

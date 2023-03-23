@@ -2,9 +2,12 @@ package api
 
 import (
 	"encoding/json"
+	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"regexp"
 	"time"
 
@@ -124,4 +127,29 @@ func SysGetInfo(resp http.ResponseWriter, req *http.Request, params routing.Para
 	}
 	data, _ := json.Marshal(&info)
 	resp.Write(data)
+}
+
+func SysSetNewTimezone(resp http.ResponseWriter, req *http.Request, params routing.Params) {
+	body, err := io.ReadAll(req.Body)
+	if err != nil {
+		log.Printf("[ERR  ] Error could not set timezone in golang: %s", err)
+		serveError(resp, err)
+		return
+	}
+	newTimezone := string(body)
+
+	location, err := time.LoadLocation(newTimezone)
+	if err != nil {
+		log.Printf("[ERR  ] Error could not set timezone in golang: %s", err)
+		serveError(resp, err)
+		return
+	} else {
+		time.Local = location
+		err = exec.Command("timedatectl", "set-timezone", newTimezone).Run()
+		if err != nil {
+			log.Printf("[ERR  ] Error could not set hosts timezone: %s", err)
+			serveError(resp, err)
+			return
+		}
+	}
 }

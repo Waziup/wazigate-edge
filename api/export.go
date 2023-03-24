@@ -425,9 +425,21 @@ func exportAllInOne() ([][]string, error) {
 				recordTimes := make([]string, len(values)+1)
 				recordValues := make([]string, len(values)+1)
 
+				// unmarshal metadata
+				metaDevice, err := json.Marshal(devices[device].Meta)
+				if err != nil {
+					fmt.Println("Error marshal meta device data to JSON:", err)
+					return nil, err
+				}
+				metaSensor, err := json.Marshal(devices[device].Sensors[sensor].Meta)
+				if err != nil {
+					fmt.Println("Error marshal meta device data to JSON:", err)
+					return nil, err
+				}
+
 				// Add id and name on top
-				recordTimes[0] = devices[device].ID + ", " + currentSensorId
-				recordValues[0] = devices[device].Name + ", " + devices[device].Sensors[sensor].Name
+				recordTimes[0] = devices[device].ID + ", " + devices[device].Name + ", " + string(metaDevice)
+				recordValues[0] = currentSensorId + ", " + devices[device].Sensors[sensor].Name + ", " + string(metaSensor)
 
 				// Iterate over values map and create record
 				for messurement := range values {
@@ -468,9 +480,21 @@ func exportAllInOne() ([][]string, error) {
 				recordTimes := make([]string, len(values)+1)
 				recordValues := make([]string, len(values)+1)
 
+				// unmarshal metadata
+				metaDevice, err := json.Marshal(devices[device].Meta)
+				if err != nil {
+					fmt.Println("Error marshal meta device data to JSON:", err)
+					return nil, err
+				}
+				metaActuator, err := json.Marshal(devices[device].Actuators[actuator].Meta)
+				if err != nil {
+					fmt.Println("Error marshal meta device data to JSON:", err)
+					return nil, err
+				}
+
 				// Add id and name on top
-				recordTimes[0] = devices[device].ID + ", " + currentActuatorId
-				recordValues[0] = devices[device].Name + ", " + devices[device].Actuators[actuator].Name
+				recordTimes[0] = devices[device].ID + ", " + devices[device].Name + ", " + string(metaDevice)
+				recordValues[0] = currentActuatorId + ", " + devices[device].Actuators[actuator].Name + ", " + string(metaActuator)
 
 				// Iterate over values map and create record
 				for messurement := range values {

@@ -18,7 +18,7 @@ import (
 )
 
 // Only use host API calls for export
-var Urls = []string{"http://localhost:8080/" /*, "http://192.168.188.86/"*/}
+var Urls = []string{"http://localhost/" /*, "http://192.168.188.86/"*/}
 
 var ExampleTime = "2006-01-02T15:04:05-07:00"
 

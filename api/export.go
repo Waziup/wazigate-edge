@@ -18,7 +18,7 @@ import (
 )
 
 // Only use host API calls for export
-var Urls = []string{"http://localhost/" /*, "http://192.168.188.86/"*/}
+var Urls = []string{"http://localhost:8080/" /*, "http://192.168.188.86/"*/}
 
 var ExampleTime = "2006-01-02T15:04:05-07:00"
 
@@ -63,6 +63,12 @@ type Meta map[string]interface{}
 // 	Created   time.Time   `json:"created" bson:"created"`
 // 	Meta      Meta        `json:"meta" bson:"meta"`
 // }
+
+type ProbeMeta struct {
+	Kind     string `json:"kind" bson:"kind"`
+	Quantity string `json:"quantity" bson:"quantity"`
+	Unit     string `json:"unit" bson:"unit"`
+}
 
 func execCurlCmd(url string, token string) []byte {
 	cmd := exec.Command("curl", "--header", "Authorization: Bearer "+token, url)
@@ -422,34 +428,37 @@ func exportAllInOne() ([][]string, error) {
 				}
 
 				// Slices to hold values
-				recordTimes := make([]string, len(values)+1)
-				recordValues := make([]string, len(values)+1)
+				recordTimes := make([]string, len(values)+2)
+				recordValues := make([]string, len(values)+2)
 
-				// unmarshal metadata
-				metaDevice, err := json.Marshal(devices[device].Meta)
+				// Create tabletop: Add id and name on top
+				recordTimes[0] = devices[device].ID
+				recordTimes[1] = devices[device].Name
+				recordValues[0] = currentSensorId
+
+				var metaSensorData ProbeMeta
+				metaData, err := json.Marshal(devices[device].Sensors[sensor].Meta)
 				if err != nil {
-					fmt.Println("Error marshal meta device data to JSON:", err)
+					fmt.Println("Error marshal meta data to JSON:", err)
 					return nil, err
 				}
-				metaSensor, err := json.Marshal(devices[device].Sensors[sensor].Meta)
+				// Write json response to map
+				err = json.Unmarshal(metaData, &metaSensorData)
 				if err != nil {
-					fmt.Println("Error marshal meta device data to JSON:", err)
+					fmt.Println("Error parsing Value JSON []byte:", err)
 					return nil, err
 				}
-
-				// Add id and name on top
-				recordTimes[0] = devices[device].ID + ", " + devices[device].Name + ", " + string(metaDevice)
-				recordValues[0] = currentSensorId + ", " + devices[device].Sensors[sensor].Name + ", " + string(metaSensor)
+				recordValues[1] = devices[device].Sensors[sensor].Name + " / " + metaSensorData.Kind
 
 				// Iterate over values map and create record
 				for messurement := range values {
-					recordTimes[messurement+1] = values[messurement].Time.Local().Format(ExampleTime)
+					recordTimes[messurement+2] = values[messurement].Time.Local().Format(ExampleTime)
 					valueData, err := json.Marshal(values[messurement].Value)
 					if err != nil {
 						fmt.Println("Error marshal value data to JSON:", err)
 						return nil, err
 					}
-					recordValues[messurement+1] = string(valueData)
+					recordValues[messurement+2] = string(valueData)
 
 				}
 
@@ -477,34 +486,37 @@ func exportAllInOne() ([][]string, error) {
 				}
 
 				// Slices to hold values
-				recordTimes := make([]string, len(values)+1)
-				recordValues := make([]string, len(values)+1)
+				recordTimes := make([]string, len(values)+2)
+				recordValues := make([]string, len(values)+2)
 
-				// unmarshal metadata
-				metaDevice, err := json.Marshal(devices[device].Meta)
+				// Create tabletop: Add id and name on top
+				recordTimes[0] = devices[device].ID
+				recordTimes[1] = devices[device].Name
+				recordValues[0] = currentActuatorId
+
+				var metaActuatorData ProbeMeta
+				metaData, err := json.Marshal(devices[device].Actuators[actuator].Meta)
 				if err != nil {
-					fmt.Println("Error marshal meta device data to JSON:", err)
+					fmt.Println("Error marshal meta data to JSON:", err)
 					return nil, err
 				}
-				metaActuator, err := json.Marshal(devices[device].Actuators[actuator].Meta)
+				// Write json response to map
+				err = json.Unmarshal(metaData, &metaActuatorData)
 				if err != nil {
-					fmt.Println("Error marshal meta device data to JSON:", err)
+					fmt.Println("Error parsing Meta JSON []byte:", err)
 					return nil, err
 				}
-
-				// Add id and name on top
-				recordTimes[0] = devices[device].ID + ", " + devices[device].Name + ", " + string(metaDevice)
-				recordValues[0] = currentActuatorId + ", " + devices[device].Actuators[actuator].Name + ", " + string(metaActuator)
+				recordValues[1] = devices[device].Actuators[actuator].Name + " / " + metaActuatorData.Kind
 
 				// Iterate over values map and create record
 				for messurement := range values {
-					recordTimes[messurement+1] = values[messurement].Time.Local().Format(ExampleTime)
+					recordTimes[messurement+2] = values[messurement].Time.Local().Format(ExampleTime)
 					valueData, err := json.Marshal(values[messurement].Value)
 					if err != nil {
 						fmt.Println("Error marshal value data to JSON:", err)
 						return nil, err
 					}
-					recordValues[messurement+1] = string(valueData)
+					recordValues[messurement+2] = string(valueData)
 
 				}
 
@@ -536,8 +548,7 @@ func exportForMl(allRecords [][]string, duration time.Duration, clear bool, from
 	tableTopSlice := make([]string, 1)
 	width := len(allRecords[0])
 	for i := 0; i < width; i += 2 {
-		//fmt.Println(allRecords[0][i] + allRecords[0][i+1])
-		tableTopSlice = append(tableTopSlice, allRecords[0][i]+"; "+allRecords[0][i+1])
+		tableTopSlice = append(tableTopSlice, allRecords[0][i]+"; "+allRecords[0][i+1]+" / "+allRecords[1][i]+"; "+allRecords[1][i+1])
 	}
 	binnedRecords = append(binnedRecords, tableTopSlice)
 	fmt.Println("tableTopSlice : ", tableTopSlice)

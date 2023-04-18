@@ -369,12 +369,6 @@ func IsAuthorized(endpoint routing.Handle, checkIPWhiteList bool) routing.Handle
 			if err != nil {
 				log.Printf("[ERR  ] Whitelist check for docker subnet failed for %q: %v", req.RemoteAddr, err)
 			}
-			if !ok {
-				ok, err = IsDockerHost(reqIP)
-				if err != nil {
-					log.Printf("[ERR  ] Whitelist check for docker host failed for %q: %v", req.RemoteAddr, err)
-				}
-			}
 			if !ok && reqIP.IsLoopback() {
 				ok = true
 			}
@@ -485,34 +479,6 @@ func IsDockerSubnet(ip net.IP) (bool, error) {
 	}
 
 	return wazigateSubnet.Contains(ip), nil
-}
-
-var defaultHostIp = net.IPv4(173, 17, 0, 1)
-var hostIPs []net.IP
-
-const dockerHostAddr = "host.docker.internal"
-
-func IsDockerHost(ip net.IP) (bool, error) {
-
-	if hostIPs == nil {
-		ips, err := net.LookupIP(dockerHostAddr)
-		if err != nil {
-			log.Printf("[ERR  ] Docker host address '%s' could not be resolved: %v", dockerHostAddr, err)
-		}
-		if len(ips) == 0 {
-			hostIPs = []net.IP{defaultHostIp}
-		} else {
-			hostIPs = ips
-		}
-	}
-
-	for _, hostIP := range hostIPs {
-		if ip.Equal(hostIP) {
-			return true, nil
-		}
-	}
-
-	return false, nil
 }
 
 /*---------------------*/

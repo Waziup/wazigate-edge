@@ -435,20 +435,7 @@ func exportAllInOne() ([][]string, error) {
 				recordTimes[0] = devices[device].ID
 				recordTimes[1] = devices[device].Name
 				recordValues[0] = currentSensorId
-
-				var metaSensorData ProbeMeta
-				metaData, err := json.Marshal(devices[device].Sensors[sensor].Meta)
-				if err != nil {
-					fmt.Println("Error marshal meta data to JSON:", err)
-					return nil, err
-				}
-				// Write json response to map
-				err = json.Unmarshal(metaData, &metaSensorData)
-				if err != nil {
-					fmt.Println("Error parsing Value JSON []byte:", err)
-					return nil, err
-				}
-				recordValues[1] = devices[device].Sensors[sensor].Name + " / " + metaSensorData.Kind
+				recordValues[1] = devices[device].Sensors[sensor].Name + " / " + devices[device].Sensors[sensor].Meta.Kind()
 
 				// Iterate over values map and create record
 				for messurement := range values {
@@ -493,20 +480,7 @@ func exportAllInOne() ([][]string, error) {
 				recordTimes[0] = devices[device].ID
 				recordTimes[1] = devices[device].Name
 				recordValues[0] = currentActuatorId
-
-				var metaActuatorData ProbeMeta
-				metaData, err := json.Marshal(devices[device].Actuators[actuator].Meta)
-				if err != nil {
-					fmt.Println("Error marshal meta data to JSON:", err)
-					return nil, err
-				}
-				// Write json response to map
-				err = json.Unmarshal(metaData, &metaActuatorData)
-				if err != nil {
-					fmt.Println("Error parsing Meta JSON []byte:", err)
-					return nil, err
-				}
-				recordValues[1] = devices[device].Actuators[actuator].Name + " / " + metaActuatorData.Kind
+				recordValues[1] = devices[device].Actuators[actuator].Name + " / " + devices[device].Actuators[actuator].Meta.Kind()
 
 				// Iterate over values map and create record
 				for messurement := range values {
@@ -520,7 +494,7 @@ func exportAllInOne() ([][]string, error) {
 
 				}
 
-				// Append times and values to arry
+				// Append times and values to array
 				record = append(record, recordTimes, recordValues)
 			}
 
@@ -532,13 +506,12 @@ func exportAllInOne() ([][]string, error) {
 	return tRecord, nil
 }
 
-// TODO: save index of last hit to preserve time, delete site2 in csv name
 func exportForMl(allRecords [][]string, duration time.Duration, clear bool, from time.Time, to time.Time) [][]string {
 	from = from.Local()
 
 	// Print some debug metrics
-	fmt.Println("The choosen duration for the individual time bins was set to:", duration, "minutes.")
-	fmt.Println("The timespan was set from: ", from.String(), " to: ", to.String())
+	fmt.Println("The choosen duration for the individual time bins was set to:", duration)
+	fmt.Println("The timespan was set from:", from.String(), " to:", to.String())
 	fmt.Println("From is before to: ", from.Before(to), " :)")
 	fmt.Println("Add ten min: ", from.Add(duration), "\n")
 	fmt.Println("Length of all_records", len(allRecords))
@@ -577,7 +550,7 @@ func exportForMl(allRecords [][]string, duration time.Duration, clear bool, from
 
 			// Jump to previous index (or row) of this col
 			jdiv := j / 2
-			i := lastIndices[jdiv] + 1
+			i := lastIndices[jdiv] + 2
 
 			// Iterate through a specific cols
 			for ; i < len(allRecords); i++ {
@@ -626,7 +599,7 @@ func exportForMl(allRecords [][]string, duration time.Duration, clear bool, from
 				binnedRecords[currentLine] = append(binnedRecords[currentLine], strconv.FormatFloat(v, 'f', 5, 64))
 			}
 
-			lastIndices[jdiv] = i - 1
+			lastIndices[jdiv] = i - 2
 		}
 		currentLine++
 	}
@@ -737,4 +710,11 @@ func GetExportBins(resp http.ResponseWriter, req *http.Request, params routing.P
 	// Create response
 	resp.Header().Set("Content-Type", "text/csv")
 	resp.Write(buf.Bytes())
+}
+
+func (meta Meta) Kind() string {
+	if v, ok := meta["kind"].(string); ok {
+		return v
+	}
+	return ""
 }

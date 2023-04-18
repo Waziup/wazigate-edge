@@ -54,7 +54,7 @@ Now build the wazigate-edge executable:
 ```bash
 git clone https://github.com/Waziup/wazigate-edge.git
 cd wazigate-edge
-go build .
+GOOS=linux GOARCH=arm64 go build -ldflags "-s -w -X main.branch=v2 -X main.version=2.3.3 -X main.buildNr=12 -X main.buildtime=156587" -o wazigate .
 ```
 
 And run the wazigate-edge server with:

@@ -441,7 +441,7 @@ func IsDockerSubnet(ip net.IP) (bool, error) {
 	if wazigateSubnet == nil {
 
 		//Get all container's IP list
-		dockerJSONRaw, err := tools.SockGetReqest(dockerSocketAddress, "networks/wazigate")
+		dockerJSONRaw, err := tools.SockGetReqest("networks/wazigate")
 
 		if err != nil {
 			log.Printf("[ERR  ] Can not \"docker network inspect wazigate\": %v", err.Error())

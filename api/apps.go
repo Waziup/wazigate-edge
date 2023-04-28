@@ -235,7 +235,7 @@ func getAppInfo(appID string, withDockerStatus bool) map[string]interface{} {
 		// cmd := "docker inspect " + appID
 		// dockerJSONRaw, _ := tools.ExecCommand(cmd, true)
 
-		dockerJSONRaw, _ := tools.SockGetReqest(dockerSocketAddress, "containers/"+appID+"/json")
+		dockerJSONRaw, _ := tools.SockGetReqest("containers/" + appID + "/json")
 
 		var dockerJSON struct {
 			State struct {
@@ -668,7 +668,7 @@ func GetUpdateApp(resp http.ResponseWriter, req *http.Request, params routing.Pa
 
 		/*-------*/
 
-		remoteImageInfoRaw, _ := tools.SockGetReqest(dockerSocketAddress, "distribution/"+image+"/json")
+		remoteImageInfoRaw, _ := tools.SockGetReqest("distribution/" + image + "/json")
 		if err != nil {
 			log.Printf("[APP  ] %v", err)
 			continue
@@ -691,7 +691,7 @@ func GetUpdateApp(resp http.ResponseWriter, req *http.Request, params routing.Pa
 
 		/*-------*/
 
-		localImageInfoRaw, _ := tools.SockGetReqest(dockerSocketAddress, "images/"+image+"/json")
+		localImageInfoRaw, _ := tools.SockGetReqest("images/" + image + "/json")
 		if err != nil {
 			log.Printf("[APP  ] %v", err)
 			continue

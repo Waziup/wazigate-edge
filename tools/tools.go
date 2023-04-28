@@ -17,6 +17,18 @@ import (
 	"time"
 )
 
+const dockerSocketAddress = "/var/run/docker.sock"
+
+var httpc = http.Client{
+	Transport: &http.Transport{
+		DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
+			return net.Dial("unix", dockerSocketAddress)
+		},
+		MaxIdleConns:    50,
+		IdleConnTimeout: 4 * 60 * time.Second,
+	},
+}
+
 type ClosingBuffer struct {
 	*bytes.Buffer
 }
@@ -87,9 +99,9 @@ func GetIPAddr() string {
 
 // SockDeleteReqest makes a DELETE request to a unix socket
 // ex:	SockDeleteReqest( "/var/run/wazigate-host.sock", "containers/waziup.wazigate-test")
-func SockDeleteReqest(socketAddr string, API string) ([]byte, error) {
+func SockDeleteReqest(API string) ([]byte, error) {
 
-	response, err := SocketReqest(socketAddr, API, "DELETE", "", nil)
+	response, err := SocketReqest(API, "DELETE", "", nil)
 	if err != nil {
 		if response != nil {
 			response.Body.Close()
@@ -113,9 +125,9 @@ func SockDeleteReqest(socketAddr string, API string) ([]byte, error) {
 
 // SockGetReqest makes a GET request to a unix socket
 // ex:	SockGetReqest( "/var/run/wazigate-host.sock", "/")
-func SockGetReqest(socketAddr string, API string) ([]byte, error) {
+func SockGetReqest(API string) ([]byte, error) {
 
-	response, err := SocketReqest(socketAddr, API, "GET", "", nil)
+	response, err := SocketReqest(API, "GET", "", nil)
 	if err != nil {
 		if response != nil {
 			response.Body.Close()
@@ -139,7 +151,7 @@ func SockGetReqest(socketAddr string, API string) ([]byte, error) {
 // ex (post Request):	SockPostReqest( "/var/run/wazigate-host.sock", "cmd", "ls -a")
 func SockPostReqest(socketAddr string, API string, postValues string) ([]byte, error) {
 
-	response, err := SocketReqest(socketAddr, API, "POST", "application/json", strings.NewReader(postValues))
+	response, err := SocketReqest(API, "POST", "application/json", strings.NewReader(postValues))
 
 	if err != nil {
 		if response != nil {
@@ -162,19 +174,9 @@ func SockPostReqest(socketAddr string, API string, postValues string) ([]byte, e
 /*-----------------------------*/
 
 // SocketReqest makes a request to a unix socket
-func SocketReqest(socketAddr string, url string, method string, contentType string, body io.Reader) (*http.Response, error) {
+func SocketReqest(url string, method string, contentType string, body io.Reader) (*http.Response, error) {
 
-	log.Printf("[     ] Proxy `%s` %s \"%s\"", socketAddr, method, url)
-
-	httpc := http.Client{
-		Transport: &http.Transport{
-			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
-				return net.Dial("unix", socketAddr)
-			},
-			MaxIdleConns:    50,
-			IdleConnTimeout: 4 * 60 * time.Second,
-		},
-	}
+	log.Printf("[     ] Proxy `%s` %s \"%s\"", dockerSocketAddress, method, url)
 
 	req, err := http.NewRequest(method, "http://localhost/"+url, body)
 

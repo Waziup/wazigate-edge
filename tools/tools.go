@@ -58,6 +58,11 @@ func SendJSON(resp http.ResponseWriter, obj interface{}) {
 	resp.Header().Set("Content-Type", "application/json")
 	resp.Write(data)
 }
+func SendPlainResponse(resp http.ResponseWriter, plain_response string) {
+
+	resp.Header().Set("Content-Type", "text/plain")
+	resp.Write([]byte(plain_response))
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 

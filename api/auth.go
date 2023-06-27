@@ -36,6 +36,8 @@ const (
 // GetToken implements POST /auth/token
 func GetToken(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
+	clientsRequestAccept := req.Header.Get("accept")
+
 	body, err := tools.ReadAll(req.Body)
 	if err != nil {
 		log.Printf("[ERR  ] GetToken: %s", err.Error())
@@ -93,7 +95,12 @@ func GetToken(resp http.ResponseWriter, req *http.Request, params routing.Params
 	/*---------*/
 
 	// fmt.Fprint(resp, tokenString)
-	tools.SendJSON(resp, tokenString)
+
+	if clientsRequestAccept == "text/plain" {
+		tools.SendPlainResponse(resp, tokenString)
+	} else {
+		tools.SendJSON(resp, tokenString)
+	}
 }
 
 /*---------------------*/
@@ -102,6 +109,8 @@ func GetToken(resp http.ResponseWriter, req *http.Request, params routing.Params
 // it takes a valid token and generate a new valid token
 // it is used to keep the user logged in without asking for credentials every time the token gets expired
 func GetRefereshToken(resp http.ResponseWriter, req *http.Request, params routing.Params) {
+
+	clientsRequestAccept := req.Header.Get("accept")
 
 	userID, err := getAuthorizedUserID(req)
 
@@ -140,9 +149,14 @@ func GetRefereshToken(resp http.ResponseWriter, req *http.Request, params routin
 	// fmt.Fprint(resp, tokenString)
 	// tools.SendJSON(resp, tokenString)
 
-	log.Printf("[ GHOLI ]: [%s]", tokenString)
+	//log.Printf("[ GHOLI ]: [%s]", tokenString)
 
-	resp.Write([]byte(tokenString))
+	//resp.Write([]byte(tokenString))
+	if clientsRequestAccept == "text/plain" {
+		tools.SendPlainResponse(resp, tokenString)
+	} else {
+		tools.SendJSON(resp, tokenString)
+	}
 }
 
 /*---------------------*/

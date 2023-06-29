@@ -12,3 +12,6 @@ node_modules
 /.project
 wazigate-dashboard
 wazigate-edge
+
+# Executable
+wazigate-edge.exe

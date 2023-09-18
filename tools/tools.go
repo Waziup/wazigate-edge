@@ -123,9 +123,9 @@ func SockDeleteReqest(API string) ([]byte, error) {
 
 /*-----------------------------*/
 
-// SockGetReqest makes a GET request to a unix socket
-// ex:	SockGetReqest( "/var/run/wazigate-host.sock", "/")
-func SockGetReqest(API string) ([]byte, error) {
+// SockGetRequest makes a GET request to a unix socket
+// ex:	SockGetRequest( "/var/run/wazigate-host.sock", "/")
+func SockGetRequest(API string) ([]byte, error) {
 
 	response, err := SocketReqest(API, "GET", "", nil)
 	if err != nil {

@@ -105,6 +105,11 @@ func getActuatorValues(resp http.ResponseWriter, deviceID string, actuatorID str
 			resp.Write([]byte{','})
 		}
 	}
+
+	if err != io.EOF {
+		log.Printf("[ERR  ] Get actuator values: %v", err)
+	}
+
 	resp.Write([]byte{']'})
 }
 

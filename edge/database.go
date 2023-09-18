@@ -1,6 +1,9 @@
 package edge
 
 import (
+	"embed"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/globalsign/mgo"
@@ -49,9 +52,63 @@ func ConnectWithInfo(info *mgo.DialInfo) error {
 		dbCodecs = db.DB("waziup").C("codecs")
 		dbUsers = db.DB("waziup").C("users")
 		dbConfig = db.DB("waziup").C("config")
+
+		err = CheckCustomJSCodecsAvailable()
+		if err != nil {
+			return err
+		}
+
 		return nil
 	}
 	return nil // unreachable
+}
+
+// Go embed loads the files at the COMPILE TIME and puts them into the binary exectable.
+//
+//go:embed codecs/custom/*.js
+var codecs embed.FS
+
+// TODO: use proper logging and error handling
+func CheckCustomJSCodecsAvailable() error {
+	count, err := dbCodecs.Count()
+	if err != nil {
+		return err
+	}
+
+	fmt.Print("There are ", count, "custom js codec installed")
+	if count == 0 {
+
+		files, err := codecs.ReadDir("codecs/custom")
+		if err != nil {
+			return err
+		}
+
+		for _, file := range files {
+			data, err := codecs.ReadFile("codecs/custom/" + file.Name())
+			if err != nil {
+				return err
+			}
+
+			// Extract name without file extension
+			codecName := strings.TrimSuffix(file.Name(), ".js")
+
+			// Create codec instance
+			codec := ScriptCodec{
+				Name:      codecName,
+				Mime:      "application/javascript",
+				ServeMime: "application/waziup." + strings.ReplaceAll(codecName, " ", ""),
+				Script:    string(data),
+			}
+
+			// Post codec
+			err = PostCodec(&codec)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 func Connect(addr string) error {

@@ -105,6 +105,9 @@ func getSensorValues(resp http.ResponseWriter, deviceID string, sensorID string,
 			resp.Write([]byte{','})
 		}
 	}
+	if err != io.EOF {
+		log.Printf("[ERR  ] Get sensor values: %v", err)
+	}
 	resp.Write([]byte{']'})
 }
 

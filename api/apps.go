@@ -235,7 +235,7 @@ func getAppInfo(appID string, withDockerStatus bool) map[string]interface{} {
 		// cmd := "docker inspect " + appID
 		// dockerJSONRaw, _ := tools.ExecCommand(cmd, true)
 
-		dockerJSONRaw, _ := tools.SockGetReqest("containers/" + appID + "/json")
+		dockerJSONRaw, _ := tools.SockGetRequest("containers/" + appID + "/json")
 
 		var dockerJSON struct {
 			State struct {
@@ -668,7 +668,7 @@ func GetUpdateApp(resp http.ResponseWriter, req *http.Request, params routing.Pa
 
 		/*-------*/
 
-		remoteImageInfoRaw, _ := tools.SockGetReqest("distribution/" + image + "/json")
+		remoteImageInfoRaw, _ := tools.SockGetRequest("distribution/" + image + "/json")
 		if err != nil {
 			log.Printf("[APP  ] %v", err)
 			continue
@@ -691,7 +691,7 @@ func GetUpdateApp(resp http.ResponseWriter, req *http.Request, params routing.Pa
 
 		/*-------*/
 
-		localImageInfoRaw, _ := tools.SockGetReqest("images/" + image + "/json")
+		localImageInfoRaw, _ := tools.SockGetRequest("images/" + image + "/json")
 		if err != nil {
 			log.Printf("[APP  ] %v", err)
 			continue
@@ -1042,7 +1042,7 @@ func installApp(imageName string) (string, error) {
 
 	/*-----------*/
 
-	// out, err = tools.SockPostReqest( dockerSocketAddress, "images/create", "{\"Image\": \""+ imageName +"\"}")
+	// out, err = tools.SockPostRequest( dockerSocketAddress, "images/create", "{\"Image\": \""+ imageName +"\"}")
 	//cmd := "docker create " + imageName
 	//containerID, err := tools.ExecCommand(cmd, true)
 	config := &types.ContainerCreateConfig{
@@ -1060,7 +1060,7 @@ func installApp(imageName string) (string, error) {
 		return msg, err
 	}
 
-	// dockerJSONRaw, _ := tools.SockGetReqest( dockerSocketAddress, "containers/"+ appID +"/json" )
+	// dockerJSONRaw, _ := tools.SockGetRequest( dockerSocketAddress, "containers/"+ appID +"/json" )
 
 	// var dockerJSON struct {
 	// 	Image	string `json:"Image"`

@@ -50,7 +50,7 @@ func (JavaScriptExecutor) UnmarshalDevice(script *edge.ScriptCodec, deviceID str
 		defer cancel()
 	}
 
-	cmd := exec.CommandContext(ctx, "node")
+	cmd := exec.CommandContext(ctx, "qjs")
 	var stdin bytes.Buffer
 	var stdout bytes.Buffer
 

@@ -154,7 +154,7 @@ func RemoveCloud(id string) bool {
 	return cloud != nil
 }
 
-// FlagDevice marks the device as dirty so that it will be synced wih the clouds.
+// FlagDevice marks the device as dirty so that it will be synced with the clouds.
 func FlagDevice(deviceID string, action Action, meta edge.Meta) {
 	if len(clouds) == 0 {
 		return

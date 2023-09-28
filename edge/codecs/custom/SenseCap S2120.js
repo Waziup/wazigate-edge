@@ -3,24 +3,24 @@
 */
 function Decoder(bytes, port) {
     bytes = bytes2HexString(bytes)
-     .toLocaleUpperCase()
-   var splitArray = dataSplit(bytes)
-   var data = {};
-   for (var i = 0; i < splitArray.length; i++) {
-     var item = splitArray[i]
-     var dataId = item.dataId
-     var dataValue = item.dataValue
-     var messages = dataIdAndDataValueJudge(dataId, dataValue)
-     messages.forEach(function(message) {
-       data[message.type] = message.measurementValue;
-     })
-   }
-   return data
- }
- 
- function dataSplit(bytes) {
+        .toLocaleUpperCase()
+    var splitArray = dataSplit(bytes)
+    var data = {};
+    for (var i = 0; i < splitArray.length; i++) {
+        var item = splitArray[i]
+        var dataId = item.dataId
+        var dataValue = item.dataValue
+        var messages = dataIdAndDataValueJudge(dataId, dataValue)
+        messages.forEach(function (message) {
+            data[message.type] = message.measurementValue;
+        })
+    }
+    return data
+}
+
+function dataSplit(bytes) {
     var frameArray = []
- 
+
     for (var i = 0; i < bytes.length; i++) {
         var remainingValue = bytes
         var dataId = remainingValue.substring(0, 2)
@@ -92,9 +92,9 @@ function Decoder(bytes, port) {
         frameArray.push(dataObj)
     }
     return frameArray
- }
- 
- function dataIdAndDataValueJudge(dataId, dataValue) {
+}
+
+function dataIdAndDataValueJudge(dataId, dataValue) {
     var messages = []
     switch (dataId) {
         case '01':
@@ -124,7 +124,7 @@ function Decoder(bytes, port) {
             }, {
                 measurementValue: loraWANV2DataFormat(rainfall, 1000), measurementId: '4113', type: 'Rain Gauge'
             }, {
- 
+
                 measurementValue: loraWANV2DataFormat(airPressure, 0.1), measurementId: '4101', type: 'Barometric Pressure'
             }]
             break
@@ -251,16 +251,16 @@ function Decoder(bytes, port) {
             break
     }
     return messages
- }
- 
- /**
- *
- * data formatting
- * @param str
- * @param divisor
- * @returns {string|number}
- */
- function loraWANV2DataFormat(str, divisor) {
+}
+
+/**
+*
+* data formatting
+* @param str
+* @param divisor
+* @returns {string|number}
+*/
+function loraWANV2DataFormat(str, divisor) {
     divisor = typeof divisor === 'undefined' ? 1 : divisor;
     var strReverse = bigEndianTransform(str)
     var str2 = toBinary(strReverse)
@@ -277,28 +277,28 @@ function Decoder(bytes, port) {
         return '-' + str2 / divisor
     }
     return parseInt(str2, 2) / divisor
- }
- 
- /**
- * Handling big-endian data formats
- * @param data
- * @returns {*[]}
- */
- function bigEndianTransform(data) {
+}
+
+/**
+* Handling big-endian data formats
+* @param data
+* @returns {*[]}
+*/
+function bigEndianTransform(data) {
     var dataArray = []
     for (var i = 0; i < data.length; i += 2) {
         dataArray.push(data.substring(i, i + 2))
     }
     // array of hex
     return dataArray
- }
- 
- /**
- * Convert to an 8-digit binary number with 0s in front of the number
- * @param arr
- * @returns {string}
- */
- function toBinary(arr) {
+}
+
+/**
+* Convert to an 8-digit binary number with 0s in front of the number
+* @param arr
+* @returns {string}
+*/
+function toBinary(arr) {
     var binaryData = arr.map(function (item) {
         var data = parseInt(item, 16).toString(2);
         var dataLength = data.length;
@@ -312,33 +312,33 @@ function Decoder(bytes, port) {
     var ret = binaryData.toString()
         .replace(/,/g, '')
     return ret
- }
- 
- /**
- * sensor
- * @param str
- * @returns {{channel: number, type: number, status: number}}
- */
- function loraWANV2BitDataFormat(str) {
+}
+
+/**
+* sensor
+* @param str
+* @returns {{channel: number, type: number, status: number}}
+*/
+function loraWANV2BitDataFormat(str) {
     var strReverse = bigEndianTransform(str);
     var str2 = toBinary(strReverse);
     var channel = parseInt(str2.substring(0, 4), 2);
     var status = parseInt(str2.substring(4, 5), 2);
     var type = parseInt(str2.substring(5), 2);
-  
+
     return {
-      channel: channel,
-      status: status,
-      type: type
+        channel: channel,
+        status: status,
+        type: type
     };
-  }
- 
- /**
- * channel info
- * @param str
- * @returns {{channelTwo: number, channelOne: number}}
- */
- function loraWANV2ChannelBitFormat(str) {
+}
+
+/**
+* channel info
+* @param str
+* @returns {{channelTwo: number, channelOne: number}}
+*/
+function loraWANV2ChannelBitFormat(str) {
     var strReverse = bigEndianTransform(str)
     var str2 = toBinary(strReverse)
     var one = parseInt(str2.substring(0, 4), 2)
@@ -347,14 +347,14 @@ function Decoder(bytes, port) {
         one: one, two: two
     }
     return resultInfo
- }
- 
- /**
- * data log status bit
- * @param str
- * @returns {{total: number, level: number, isTH: number}}
- */
- function loraWANV2DataLogBitFormat(str) {
+}
+
+/**
+* data log status bit
+* @param str
+* @returns {{total: number, level: number, isTH: number}}
+*/
+function loraWANV2DataLogBitFormat(str) {
     var strReverse = bigEndianTransform(str)
     var str2 = toBinary(strReverse)
     var isTH = parseInt(str2.substring(0, 1), 2)
@@ -364,9 +364,9 @@ function Decoder(bytes, port) {
         isTH: isTH, total: total, left: left
     }
     return resultInfo
- }
- 
- function bytes2HexString(arrBytes) {
+}
+
+function bytes2HexString(arrBytes) {
     var str = ''
     for (var i = 0; i < arrBytes.length; i++) {
         var tmp
@@ -382,4 +382,4 @@ function Decoder(bytes, port) {
         str += tmp
     }
     return str
- }
+}

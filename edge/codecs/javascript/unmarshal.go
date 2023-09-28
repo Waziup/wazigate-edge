@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"os/exec"
 	"regexp"
 	"strconv"
@@ -25,14 +26,14 @@ const scriptDeadline = 0 // time.Second // 200 * time.Millisecond // 0
 const scriptFooter1 = `
 //*/
 if(typeof Decoder !== "function") {
-	process.stdout.write("\n$!\x03"+(typeof Decoder)+"\n");
-	process.exit(0);
+	std.puts("\n$!\x03"+(typeof Decoder)+"\n");
+	std.exit(0);
 }
 const o=Decoder(new Uint8Array([`
 const scriptFooter2 = `]), `
 const scriptFooter3 = `);
-process.stdout.write("\n$!\x01"+JSON.stringify(o)+"\n");
-process.exit(0);`
+std.puts("\n$!\x01"+JSON.stringify(o)+"\n");
+std.exit(0);`
 
 var outRegexp = regexp.MustCompile(`\n\$\!.+\n`)
 
@@ -50,33 +51,41 @@ func (JavaScriptExecutor) UnmarshalDevice(script *edge.ScriptCodec, deviceID str
 		defer cancel()
 	}
 
-	cmd := exec.CommandContext(ctx, "qjs")
-	var stdin bytes.Buffer
-	var stdout bytes.Buffer
+	tempScript, err := os.CreateTemp("", "codec")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(tempScript.Name())
 
-	stdin.WriteString(script.Script)
-	stdin.WriteString(scriptFooter1)
+	tempScript.WriteString(script.Script)
+	tempScript.WriteString(scriptFooter1)
 	data, err := ioutil.ReadAll(r)
 	if err != nil {
 		return err
 	}
 	for i, d := range data {
 		if i != 0 {
-			stdin.WriteString(", ")
+			tempScript.WriteString(", ")
 		}
-		stdin.WriteString(strconv.Itoa(int(d)))
+		tempScript.WriteString(strconv.Itoa(int(d)))
 	}
 
-	stdin.WriteString(scriptFooter2)
+	tempScript.WriteString(scriptFooter2)
 
 	port, _ := strconv.Atoi(headers.Get("X-LoRaWAN-FPort"))
 	// will be '0' on any error
-	stdin.WriteString(strconv.Itoa(port))
-	stdin.WriteString(scriptFooter3)
+	tempScript.WriteString(strconv.Itoa(port))
+	tempScript.WriteString(scriptFooter3)
 
-	cmd.Stdin = &stdin
+	if err := tempScript.Close(); err != nil {
+		return err
+	}
+
+	cmd := exec.CommandContext(ctx, "qjs", "--script", "--std", tempScript.Name())
+	var stdout bytes.Buffer
 	cmd.Stderr = &stdout
 	cmd.Stdout = &stdout
+
 	if err := cmd.Run(); err != nil {
 		if err == exec.ErrNotFound {
 			return errNodeUnavaliable

@@ -15,13 +15,13 @@ func (e CodeError) Error() string {
 func NewError(code int, text string) error {
 	return CodeError{
 		Code: code,
-		Text: text,
+		Text: "[ERR  ]" + text,
 	}
 }
 
 func NewErrorf(code int, format string, a ...interface{}) error {
 	return CodeError{
 		Code: code,
-		Text: fmt.Sprintf(format, a...),
+		Text: fmt.Sprintf("[ERR  ] "+format, a...),
 	}
 }

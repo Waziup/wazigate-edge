@@ -138,3 +138,6 @@ func GetCodecs() *CodecsIter {
 		dbIter:    q.Iter(),
 	}
 }
+
+// PostDeviceProfile posts an device profile to chirpstack
+//func PostDeviceProfile()

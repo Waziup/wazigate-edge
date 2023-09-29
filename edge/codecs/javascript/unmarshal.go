@@ -17,6 +17,12 @@ import (
 	"github.com/Waziup/wazigate-edge/edge"
 )
 
+type DecoderOutput struct {
+	Data     map[string]any `json:"data"`
+	Warnings []string       `json:"warnings"`
+	Errors   []string       `json:"errors"`
+}
+
 var errNodeUnavaliable = edge.NewError(500, "the Node.js 'node' cmd was not found")
 var errNoOutput = edge.NewError(500, "the script exited prematurely without producing any output")
 var errInvalidOutput = edge.NewError(500, "the script exited prematurely")
@@ -25,17 +31,83 @@ const scriptDeadline = 0 // time.Second // 200 * time.Millisecond // 0
 
 const scriptFooter1 = `
 //*/
-if(typeof Decoder !== "function") {
-	std.puts("\n$!\x03"+(typeof Decoder)+"\n");
-	std.exit(0);
+function main() {
+  const bytes = new Uint8Array([`
+const scriptFooter2 = `]);
+  const fPort = `
+const scriptFooter3 = `;
+
+  if(typeof Decoder === "function") {
+	const o = Decoder(bytes, fPort);
+    print("\n$!\x01"+JSON.stringify(o));
+    return;
+  }
+  if(typeof Decode === "function") {
+	const o = Decode(fPort, bytes);
+    print("\n$!\x01"+JSON.stringify(o));
+    return;
+  }
+  if(typeof decodeUplink ==="function") {
+	const o = decodeUplink({fPort,bytes});
+	print("\n$!\x02"+JSON.stringify(o));
+  }
+  
+
+  print("\n$!\x04");
 }
-const o=Decoder(new Uint8Array([`
-const scriptFooter2 = `]), `
-const scriptFooter3 = `);
-std.puts("\n$!\x01"+JSON.stringify(o)+"\n");
-std.exit(0);`
+main();`
 
 var outRegexp = regexp.MustCompile(`\n\$\!.+\n`)
+
+func PostSensorValues(output DecoderOutput, script *edge.ScriptCodec, device *edge.Device, deviceID string) error {
+	now := time.Now()
+	// // TEST
+	// output = DecoderOutput{
+	// 	Data: map[string]interface{}{
+	// 		"temperature": 50,   // Fahrenheit
+	// 		"windSpeed":   17.5, // knots
+	// 	},
+	// 	Warnings: []string{"1st_warning", "2nd_warning"},
+	// 	Errors:   []string{"1st_err", "2nd_err"},
+	// }
+
+OUTPUT:
+	for sensorID, value := range output.Data {
+		for _, sensor := range device.Sensors {
+			if sensor.ID == sensorID {
+				// Sensor values
+				_, err := edge.PostSensorValue(deviceID, sensorID, edge.NewValue(value, now))
+				if err != nil {
+					return edge.NewErrorf(500, "Can not create sensor value: %s", err)
+				}
+				// Meta data
+				metadata := edge.Meta{
+					"Warnings": strings.Join(output.Warnings, " "),
+					"Errors":   strings.Join(output.Errors, " "),
+				}
+				err = edge.SetSensorMeta(deviceID, sensorID, metadata)
+				if err != nil {
+					return edge.NewErrorf(500, "Can not set sensor meta: %s", err)
+				}
+				continue OUTPUT
+			}
+		}
+		err := edge.PostSensor(deviceID, &edge.Sensor{
+			ID:   sensorID,
+			Name: sensorID,
+			Meta: edge.Meta{
+				"createdBy": "ScriptCodec:" + script.ID,
+				"warnings":  nil,
+				"errors":    nil,
+			},
+			Value: value,
+		})
+		if err != nil {
+			return edge.NewErrorf(500, "Can not create sensor: %s", err)
+		}
+	}
+	return nil
+}
 
 func (JavaScriptExecutor) UnmarshalDevice(script *edge.ScriptCodec, deviceID string, headers http.Header, r io.Reader) error {
 
@@ -81,7 +153,7 @@ func (JavaScriptExecutor) UnmarshalDevice(script *edge.ScriptCodec, deviceID str
 		return err
 	}
 
-	cmd := exec.CommandContext(ctx, "qjs", "--script", "--std", tempScript.Name())
+	cmd := exec.CommandContext(ctx, "qjs", "--script", tempScript.Name())
 	var stdout bytes.Buffer
 	cmd.Stderr = &stdout
 	cmd.Stdout = &stdout
@@ -114,36 +186,27 @@ func (JavaScriptExecutor) UnmarshalDevice(script *edge.ScriptCodec, deviceID str
 		}
 		return edge.NewErrorf(500, "Err executing script: 'Decoder' is not a function, it's '%s'.\n%s", typeOfDecoder, prefix("> ", string(log)))
 
+	// Decode, Decoder
 	case 0x01:
 		outputJSON := match[4 : len(match)-1]
-		var output = map[string]interface{}{}
+		var data = map[string]interface{}{}
+
+		if err := json.Unmarshal(outputJSON, &data); err != nil {
+			return edge.NewErrorf(500, "Err executing script: 'Decoder' returned an invalid object:\n> %s.\n%s", outputJSON, prefix("> ", string(log)))
+		}
+		if PostSensorValues(DecoderOutput{Data: data}, script, device, deviceID); err != nil {
+			return edge.NewErrorf(500, "Err posting unmarshaled values to wazigate-edge:\n> %s.\n%s", outputJSON, prefix("> ", string(log)))
+		}
+
+	// DecodeUplink
+	case 0x02:
+		outputJSON := match[4 : len(match)-1]
+		var output DecoderOutput
 		if err := json.Unmarshal(outputJSON, &output); err != nil {
 			return edge.NewErrorf(500, "Err executing script: 'Decoder' returned an invalid object:\n> %s.\n%s", outputJSON, prefix("> ", string(log)))
 		}
-		now := time.Now()
-
-	OUTPUT:
-		for sensorID, value := range output {
-			for _, sensor := range device.Sensors {
-				if sensor.ID == sensorID {
-					_, err = edge.PostSensorValue(deviceID, sensorID, edge.NewValue(value, now))
-					if err != nil {
-						return edge.NewErrorf(500, "Can not create sensor value: %s", err)
-					}
-					continue OUTPUT
-				}
-			}
-			err = edge.PostSensor(deviceID, &edge.Sensor{
-				ID:   sensorID,
-				Name: sensorID,
-				Meta: edge.Meta{
-					"createdBy": "ScriptCodec:" + script.ID,
-				},
-				Value: value,
-			})
-			if err != nil {
-				return edge.NewErrorf(500, "Can not create sensor: %s", err)
-			}
+		if PostSensorValues(output, script, device, deviceID); err != nil {
+			return edge.NewErrorf(500, "Err posting unmarshaled values to wazigate-edge:\n> %s.\n%s", outputJSON, prefix("> ", string(log)))
 		}
 
 	default:

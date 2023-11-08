@@ -2,7 +2,7 @@ package edge
 
 import (
 	"embed"
-	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -75,9 +75,7 @@ func CheckCustomJSCodecsAvailable() error {
 		return err
 	}
 
-	fmt.Print("There are ", count, "custom js codec installed")
 	if count == 0 {
-
 		files, err := codecs.ReadDir("codecs/custom")
 		if err != nil {
 			return err
@@ -105,8 +103,12 @@ func CheckCustomJSCodecsAvailable() error {
 			if err != nil {
 				return err
 			}
+
+			count++
 		}
 	}
+
+	log.Printf("[     ] There are %d custom JavaScript codecs installed.", count)
 
 	return nil
 }

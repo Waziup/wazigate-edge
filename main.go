@@ -141,7 +141,7 @@ func main() {
 		}
 	}
 
-	info.Timeout = 5 * time.Second
+	info.Timeout = 30 * time.Second
 	err = edge.ConnectWithInfo(info)
 	if err != nil {
 		log.Fatalf("[DB   ] MongoDB client error: %v\n", err)

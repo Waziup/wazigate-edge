@@ -507,15 +507,26 @@ func HandleAppProxyRequest(resp http.ResponseWriter, req *http.Request, params r
 
 	socketAddr := appsDir + "/" + appID + "/proxy.sock"
 
-	proxy := http.Client{
-		Transport: &http.Transport{
-			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
-				// the proxy uses linux sockets that are created by each app
-				return net.Dial("unix", socketAddr)
-			},
-			DisableKeepAlives: true,
-		},
+	conn, err := net.Dial("unix", socketAddr)
+	if err != nil {
+		log.Printf("[APP  ] Err %v", err)
+		resp.WriteHeader(http.StatusBadGateway)
+		return
 	}
+	defer conn.Close()
+	transport := &http.Transport{
+		DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
+			// the proxy uses linux sockets that are created by each app
+			return conn, nil
+		},
+		MaxConnsPerHost:   1,
+		MaxIdleConns:      1,
+		DisableKeepAlives: true,
+	}
+	proxy := http.Client{
+		Transport: transport,
+	}
+	defer transport.CloseIdleConnections()
 
 	// remove /apps/{id} from the URI
 	proxyURI := req.URL.RequestURI()[len(appID)+6:]

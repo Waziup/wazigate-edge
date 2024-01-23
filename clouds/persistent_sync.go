@@ -345,6 +345,7 @@ func (cloud *Cloud) postDevice(device *edge.Device) (int, error) {
 		},
 		body: bytes.NewReader(body),
 	})
+	defer resp.Close()
 
 	if !resp.ok {
 		err := fmt.Errorf("Unable to push device.\nStatus: %s\n%s", resp.statusText, strings.TrimSpace(resp.text()))
@@ -365,6 +366,7 @@ func (cloud *Cloud) postDeviceName(deviceID string, name string) (int, error) {
 		},
 		body: bytes.NewReader([]byte(name)),
 	})
+	defer resp.Close()
 
 	if !resp.ok {
 		err := fmt.Errorf("Unable to change device name.\nStatus: %s\n%s", resp.statusText, strings.TrimSpace(resp.text()))
@@ -380,6 +382,7 @@ func (cloud *Cloud) postDeviceName(deviceID string, name string) (int, error) {
 			},
 			body: bytes.NewReader([]byte(name)),
 		})
+		defer resp.Close()
 
 		if !resp.ok {
 			err := fmt.Errorf("Unable to change device name.\nStatus: %s\n%s", resp.statusText, strings.TrimSpace(resp.text()))
@@ -406,6 +409,8 @@ func (cloud *Cloud) postSensor(deviceID string, sensor *edge.Sensor) (int, error
 		},
 		body: bytes.NewReader(body),
 	})
+	defer resp.Close()
+
 	if !resp.ok {
 		err := fmt.Errorf("Unable to push sensor.\nStatus: %s\n%s", resp.statusText, strings.TrimSpace(resp.text()))
 		return resp.status, err
@@ -425,6 +430,7 @@ func (cloud *Cloud) postSensorName(deviceID string, sensorID string, name string
 		},
 		body: bytes.NewReader([]byte(name)),
 	})
+	defer resp.Close()
 
 	if !resp.ok {
 		err := fmt.Errorf("Unable to change sensor name.\nStatus: %s\n%s", resp.statusText, strings.TrimSpace(resp.text()))
@@ -449,6 +455,8 @@ func (cloud *Cloud) postActuator(deviceID string, actuator *edge.Actuator) (int,
 		},
 		body: bytes.NewReader(body),
 	})
+	defer resp.Close()
+
 	if !resp.ok {
 		err := fmt.Errorf("Unable to push actuator.\nStatus: %s\n%s", resp.statusText, strings.TrimSpace(resp.text()))
 		return resp.status, err
@@ -468,6 +476,7 @@ func (cloud *Cloud) postActuatorName(deviceID string, actuatorID string, name st
 		},
 		body: bytes.NewReader([]byte(name)),
 	})
+	defer resp.Close()
 
 	if !resp.ok {
 		err := fmt.Errorf("Unable to change actuator name.\nStatus: %s\n%s", resp.statusText, strings.TrimSpace(resp.text()))
@@ -517,6 +526,8 @@ func (cloud *Cloud) postValues(deviceID string, sensorID string, values edge.Val
 		},
 		body: &buf,
 	})
+	defer resp.Close()
+
 	if !resp.ok {
 		err := fmt.Errorf("Unable to push values.\nStatus: %s\n%s", resp.statusText, strings.TrimSpace(resp.text()))
 		return noTime, 0, resp.status, err

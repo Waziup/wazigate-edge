@@ -58,6 +58,13 @@ func (resp *fetchResponse) json(data interface{}) error {
 	return err
 }
 
+func (resp *fetchResponse) Close() error {
+	if resp.body == nil {
+		return nil
+	}
+	return resp.body.Close()
+}
+
 func (resp *fetchResponse) text() string {
 	if resp.body == nil {
 		return ""

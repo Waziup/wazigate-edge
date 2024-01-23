@@ -34,6 +34,8 @@ func (cloud *Cloud) authenticate() int {
 		},
 		body: bytes.NewReader(body),
 	})
+	defer resp.Close()
+
 	if !resp.ok {
 		if resp.status <= 0 {
 			cloud.Printf("Can not connect to server.\n%s", resp.status, resp.statusText)
@@ -89,6 +91,8 @@ func (cloud *Cloud) initialSync() int {
 			},
 			body: bytes.NewReader(body),
 		})
+		defer resp.Close()
+
 		if resp.status == http.StatusUnprocessableEntity {
 			log.Printf("[UP   ] Gateway already registered.")
 			// cloud.Printf("Gateway already registered.", 200)
@@ -124,10 +128,12 @@ func (cloud *Cloud) initialSync() int {
 				"Authorization": cloud.auth,
 			},
 		})
+
 		switch resp.status {
 		case http.StatusNotFound:
 			// log.Printf("[UP   ] Device %q not found.", device.ID)
 			cloud.flag(Entity{device.ID, "", ""}, ActionCreate, noTime, meta)
+			resp.Close()
 
 		case http.StatusOK:
 			var device2 v2Device
@@ -202,6 +208,8 @@ func (cloud *Cloud) initialSync() int {
 
 		default:
 			cloud.Printf("Communication Error\nUnexpected response: %s:\n%s", 500, resp.statusText, resp.text())
+			resp.Close()
+
 			return resp.status
 		}
 	}

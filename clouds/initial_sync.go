@@ -122,7 +122,7 @@ func (cloud *Cloud) initialSync() int {
 			continue
 		}
 
-		resp = fetch(addr+"/devices/"+device.ID, fetchInit{
+		resp = fetch(addr+"/devices/"+v2IdCompat(device.ID), fetchInit{
 			method: http.MethodGet,
 			headers: map[string]string{
 				"Authorization": cloud.auth,
@@ -152,7 +152,7 @@ func (cloud *Cloud) initialSync() int {
 				// 	sensor.Time = noTime
 				// }
 				for _, s := range device2.Sensors {
-					if s.ID == sensor.ID {
+					if s.ID == v2IdCompat(sensor.ID) {
 						if sensor.Time != nil {
 							if s.Value == nil {
 								cloud.flag(Entity{device.ID, sensor.ID, ""}, ActionSync, noTime, meta)
@@ -180,7 +180,7 @@ func (cloud *Cloud) initialSync() int {
 				}
 
 				for _, s := range device2.Actuators {
-					if s.ID == acuator.ID {
+					if s.ID == v2IdCompat(acuator.ID) {
 						if s.Value != nil {
 							/*
 								if s.Value.Time == noTime {

@@ -325,12 +325,12 @@ func (cloud *Cloud) postDevice(device *edge.Device) (int, error) {
 	syncDev.Gateway = edge.LocalID()
 	syncDev.Sensors = make([]v2Sensor, len(device.Sensors))
 	for i, sensor := range device.Sensors {
-		syncDev.Sensors[i].ID = sensor.ID
+		syncDev.Sensors[i].ID = v2IdCompat(sensor.ID)
 		syncDev.Sensors[i].Name = sensor.Name
 	}
 	syncDev.Actuators = make([]v2Actuator, len(device.Actuators))
 	for i, actuator := range device.Actuators {
-		syncDev.Actuators[i].ID = actuator.ID
+		syncDev.Actuators[i].ID = v2IdCompat(actuator.ID)
 		syncDev.Actuators[i].Name = actuator.Name
 	}
 
@@ -358,7 +358,7 @@ func (cloud *Cloud) postDeviceName(deviceID string, name string) (int, error) {
 
 	addr := cloud.getRESTAddr()
 
-	resp := fetch(addr+"/devices/"+deviceID+"/name", fetchInit{
+	resp := fetch(addr+"/devices/"+v2IdCompat(deviceID)+"/name", fetchInit{
 		method: http.MethodPut,
 		headers: map[string]string{
 			"Content-Type":  "text/plain; charset=utf-8",
@@ -374,7 +374,7 @@ func (cloud *Cloud) postDeviceName(deviceID string, name string) (int, error) {
 	}
 
 	if deviceID == edge.LocalID() {
-		resp := fetch(addr+"/gateways/"+deviceID+"/name", fetchInit{
+		resp := fetch(addr+"/gateways/"+v2IdCompat(deviceID)+"/name", fetchInit{
 			method: http.MethodPut,
 			headers: map[string]string{
 				"Content-Type":  "text/plain; charset=utf-8",
@@ -395,13 +395,13 @@ func (cloud *Cloud) postDeviceName(deviceID string, name string) (int, error) {
 
 func (cloud *Cloud) postSensor(deviceID string, sensor *edge.Sensor) (int, error) {
 	var syncSensor v2Sensor
-	syncSensor.ID = sensor.ID
+	syncSensor.ID = v2IdCompat(sensor.ID)
 	syncSensor.Name = sensor.Name
 
 	addr := cloud.getRESTAddr()
 
 	body, _ := json.Marshal(syncSensor)
-	resp := fetch(addr+"/devices/"+deviceID+"/sensors", fetchInit{
+	resp := fetch(addr+"/devices/"+v2IdCompat(deviceID)+"/sensors", fetchInit{
 		method: http.MethodPost,
 		headers: map[string]string{
 			"Content-Type":  "application/json",
@@ -422,7 +422,7 @@ func (cloud *Cloud) postSensorName(deviceID string, sensorID string, name string
 
 	addr := cloud.getRESTAddr()
 
-	resp := fetch(addr+"/devices/"+deviceID+"/sensors/"+sensorID+"/name", fetchInit{
+	resp := fetch(addr+"/devices/"+v2IdCompat(deviceID)+"/sensors/"+v2IdCompat(sensorID)+"/name", fetchInit{
 		method: http.MethodPut,
 		headers: map[string]string{
 			"Content-Type":  "text/plain; charset=utf-8",
@@ -441,13 +441,13 @@ func (cloud *Cloud) postSensorName(deviceID string, sensorID string, name string
 
 func (cloud *Cloud) postActuator(deviceID string, actuator *edge.Actuator) (int, error) {
 	var syncActuator v2Actuator
-	syncActuator.ID = actuator.ID
+	syncActuator.ID = v2IdCompat(actuator.ID)
 	syncActuator.Name = actuator.Name
 
 	addr := cloud.getRESTAddr()
 
 	body, _ := json.Marshal(syncActuator)
-	resp := fetch(addr+"/devices/"+deviceID+"/actuators", fetchInit{
+	resp := fetch(addr+"/devices/"+v2IdCompat(deviceID)+"/actuators", fetchInit{
 		method: http.MethodPost,
 		headers: map[string]string{
 			"Content-Type":  "application/json",
@@ -468,7 +468,7 @@ func (cloud *Cloud) postActuatorName(deviceID string, actuatorID string, name st
 
 	addr := cloud.getRESTAddr()
 
-	resp := fetch(addr+"/devic/"+deviceID+"/actuators/"+actuatorID+"/name", fetchInit{
+	resp := fetch(addr+"/devic/"+v2IdCompat(deviceID)+"/actuators/"+v2IdCompat(actuatorID)+"/name", fetchInit{
 		method: http.MethodPut,
 		headers: map[string]string{
 			"Content-Type":  "text/plain; charset=utf-8",
@@ -518,7 +518,7 @@ func (cloud *Cloud) postValues(deviceID string, sensorID string, values edge.Val
 
 	addr := cloud.getRESTAddr()
 
-	resp := fetch(addr+"/devices/"+deviceID+"/sensors/"+sensorID+"/values", fetchInit{
+	resp := fetch(addr+"/devices/"+v2IdCompat(deviceID)+"/sensors/"+v2IdCompat(sensorID)+"/values", fetchInit{
 		method: http.MethodPost,
 		headers: map[string]string{
 			"Content-Type":  "application/json; charset=UTF-8",

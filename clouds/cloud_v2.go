@@ -1,6 +1,9 @@
 package clouds
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 type v2SensorValue struct {
 	Value        interface{} `json:"value"`
@@ -34,4 +37,8 @@ type v2Gateway struct {
 	ID         string `json:"id"`
 	Name       string `json:"name"`
 	Visibility string `json:"visibility"`
+}
+
+func v2IdCompat(id string) string {
+	return strings.ReplaceAll(id, " ", "_")
 }

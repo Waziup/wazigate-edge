@@ -9,13 +9,14 @@
             "program": "${workspaceFolder}",
             "env": {
                 "WAZIUP_LOG": "debug,date,time",
-                "WAZIUP_HTTP_ADDR": ":8080"
+                "WAZIUP_HTTP_ADDR": ":8080",
+                "WAZIGATE_HOST_ADDR": "/tmp/wazigate-host.sock"
             },
             "args": [
                 "-www",
                 "${workspaceFolder}/wazigate-dashboard"
             ],
-            "buildFlags": "-ldflags='-X main.branch=v2 -X main.version=2.0.0 -X main.buildtime=1655894260 main.buildNr=1234'"
+            "buildFlags": "-ldflags='-X main.branch=v2 -X main.version=2.0.0'" /* -X main.buildtime=1655894260 main.buildNr=1234*/
         }
     ]
 }

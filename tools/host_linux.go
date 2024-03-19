@@ -16,10 +16,17 @@ import (
 
 /*-------------------------*/
 
-// sockAddr represents the unix socket for this service
-const sockAddr = "/var/run/wazigate-host.sock" //for rpi
+const defaultSocketAddr = "/var/run/wazigate-host.sock" //for rpi
 
-//const sockAddr = "/tmp/wazigate-host.sock" //for debug
+func getSocketAddr() string {
+	if addr := os.Getenv("WAZIGATE_HOST_ADDR"); addr != "" {
+		return addr
+	}
+	return defaultSocketAddr
+}
+
+// socketAddr represents the unix socket for this service
+var socketAddr = getSocketAddr()
 
 /*-------------------------*/
 
@@ -27,7 +34,7 @@ var execPath = "/var/lib/wazigate"
 
 func ServeHost() {
 
-	if err := os.RemoveAll(sockAddr); err != nil {
+	if err := os.RemoveAll(socketAddr); err != nil {
 		log.Fatal(err)
 	}
 
@@ -35,11 +42,11 @@ func ServeHost() {
 		Handler: http.HandlerFunc(serveCommand),
 	}
 
-	unixListener, err := net.Listen("unix", sockAddr)
+	unixListener, err := net.Listen("unix", socketAddr)
 	if err != nil {
 		log.Fatal("[ERR  ] listen error:", err)
 	}
-	log.Printf("[INFO ] Serving... on socket: [%v]", sockAddr)
+	log.Printf("[INFO ] Serving... on socket: [%v]", socketAddr)
 
 	defer unixListener.Close()
 	server.Serve(unixListener)
@@ -53,7 +60,7 @@ func serveCommand(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	out, err := ExecCommand(string(cmd), true)
+	out, err := ExecCommand(string(cmd), false)
 	if err != nil {
 		log.Printf("[ERR  ] executing [ %s ] command. \n\tError: [ %s ]", cmd, err.Error())
 		http.Error(resp, err.Error(), http.StatusBadRequest)
@@ -64,9 +71,9 @@ func serveCommand(resp http.ResponseWriter, req *http.Request) {
 }
 
 func ExecCommand(cmd string, withLogs bool) (out string, err error) {
-	log.Printf("[INFO ] executing [ %s ] ", cmd)
 
 	if withLogs {
+		log.Printf("[INFO ] executing [ %s ] ", cmd)
 		log.Printf("[     ] > %s", cmd)
 	}
 	exe := exec.Command("sh", "-c", string(cmd))

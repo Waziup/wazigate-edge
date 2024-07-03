@@ -10,7 +10,6 @@ __debug_bin
 # NPM
 node_modules
 /.project
-wazigate-dashboard
 wazigate-edge
 
 # Executable

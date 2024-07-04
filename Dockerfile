@@ -4,7 +4,7 @@ COPY wazigate-dashboard/. /wazigate-dashboard
 
 WORKDIR /wazigate-dashboard/
 
-RUN npm i && npm run build
+RUN npm i --force && npm run build --force
 
 ################################################################################
 

@@ -5,7 +5,7 @@
 
 # Build wazigate-dashboard
 cd wazigate-dashboard
-npm i && npm run build
+npm i --force && npm run build --force
 cd ..
 
 # Build wazigate(-edge)

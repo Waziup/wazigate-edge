@@ -4,7 +4,7 @@ COPY wazigate-dashboard/. /wazigate-dashboard
 
 WORKDIR /wazigate-dashboard/
 
-RUN npm i && npm run build
+RUN npm i --force && npm run build --force
 
 ################################################################################
 
@@ -33,12 +33,13 @@ WORKDIR /root/
 
 COPY --from=dashboard /wazigate-dashboard/node_modules/react/umd wazigate-dashboard/node_modules/react/umd
 COPY --from=dashboard /wazigate-dashboard/node_modules/react-dom/umd wazigate-dashboard/node_modules/react-dom/umd
-COPY --from=dashboard /wazigate-dashboard/index.html \
-    #    wazigate-dashboard/dev.html \
-    /wazigate-dashboard/favicon.ico \
-    /wazigate-dashboard/wazigate.png \
-    /wazigate-dashboard/site.webmanifest \
-    wazigate-dashboard/
+
+COPY --from=dashboard /wazigate-dashboard/site.webmanifest wazigate-dashboard/
+COPY --from=dashboard /wazigate-dashboard/wazigate.png wazigate-dashboard/
+COPY --from=dashboard /wazigate-dashboard/dist/assets wazigate-dashboard/
+COPY --from=dashboard /wazigate-dashboard/dist/*.svg wazigate-dashboard/
+COPY --from=dashboard /wazigate-dashboard/dist/index.html wazigate-dashboard/
+    
 COPY --from=dashboard /wazigate-dashboard/dist wazigate-dashboard/dist
 COPY --from=dashboard /wazigate-dashboard/docs wazigate-dashboard/docs
 COPY --from=dashboard /wazigate-dashboard/admin wazigate-dashboard/admin

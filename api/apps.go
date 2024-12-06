@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"net"
@@ -541,7 +540,7 @@ func HandleAppProxyRequest(resp http.ResponseWriter, req *http.Request, params r
 		return
 	}
 
-	log.Printf("[APP  ] >> %q %s %s", appID, req.Method, proxyURI)
+	// log.Printf("[APP  ] >> %q %s %s", appID, req.Method, proxyURI)
 
 	// We need to pass these values in order to let the Apps work properly (I had issues with a Python based service)
 	proxyReq.Header = req.Header
@@ -561,12 +560,12 @@ func HandleAppProxyRequest(resp http.ResponseWriter, req *http.Request, params r
 	}
 	resp.WriteHeader(proxyResp.StatusCode)
 
-	var written int64
+	// var written int64
 	if proxyResp.Body != nil {
-		written, _ = io.Copy(resp, proxyResp.Body)
+		// written, _ = io.Copy(resp, proxyResp.Body)
 		proxyResp.Body.Close()
 	}
-	log.Printf("[APP  ] << %d %s (%d B)", proxyResp.StatusCode, proxyResp.Status, written)
+	// log.Printf("[APP  ] << %d %s (%d B)", proxyResp.StatusCode, proxyResp.Status, written)
 }
 
 /*-----------------------------*/

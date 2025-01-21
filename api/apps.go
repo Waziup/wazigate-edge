@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-
+	"io"
 	"github.com/Waziup/wazigate-edge/tools"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -562,7 +562,7 @@ func HandleAppProxyRequest(resp http.ResponseWriter, req *http.Request, params r
 
 	// var written int64
 	if proxyResp.Body != nil {
-		// written, _ = io.Copy(resp, proxyResp.Body)
+		io.Copy(resp, proxyResp.Body)
 		proxyResp.Body.Close()
 	}
 	// log.Printf("[APP  ] << %d %s (%d B)", proxyResp.StatusCode, proxyResp.Status, written)

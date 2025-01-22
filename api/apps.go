@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net"
@@ -12,8 +13,9 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
-	"io"
+
 	"github.com/Waziup/wazigate-edge/tools"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -497,22 +499,51 @@ func DeleteApp(resp http.ResponseWriter, req *http.Request, params routing.Param
 
 /*-----------------------------*/
 
+var hopHeaders = []string{
+	"Connection",
+	"Keep-Alive",
+	"Proxy-Authenticate",
+	"Proxy-Authorization",
+	"Transfer-Encoding",
+	"Trailer",
+	"TE",
+	"Upgrade",
+}
+
+func isHopHeader(header string) bool {
+	for _, h := range hopHeaders {
+		if header == h {
+			return true
+		}
+	}
+	return false
+}
+
 // HandleAppProxyRequest implements GET, POST, PUT and DELETE /apps/{app_id}/*file_path
 func HandleAppProxyRequest(resp http.ResponseWriter, req *http.Request, params routing.Params) {
 
-	//TODO: We need a security mechanism here in order to prevent calls to internal parts
+	appId := params.ByName("app_id")
 
-	appID := params.ByName("app_id")
+	// read in the request body
+	reqBody, err := io.ReadAll(req.Body)
+	if err != nil {
+		log.Printf("[ERR  ] %v", err)
+		resp.WriteHeader(http.StatusBadRequest)
+		return
+	}
 
-	socketAddr := appsDir + "/" + appID + "/proxy.sock"
-
+	// connecting to the app's proxy socket
+	socketAddr := appsDir + "/" + appId + "/proxy.sock"
 	conn, err := net.Dial("unix", socketAddr)
 	if err != nil {
 		log.Printf("[APP  ] Err %v", err)
 		resp.WriteHeader(http.StatusBadGateway)
 		return
 	}
+	// the connection will be closed when the function returns
 	defer conn.Close()
+
+	// building a http transport that uses the unix socket
 	transport := &http.Transport{
 		DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
 			// the proxy uses linux sockets that are created by each app
@@ -525,47 +556,64 @@ func HandleAppProxyRequest(resp http.ResponseWriter, req *http.Request, params r
 	proxy := http.Client{
 		Transport: transport,
 	}
-	defer transport.CloseIdleConnections()
+	defer proxy.CloseIdleConnections()
+
+	// now we can send the request to the app's proxy
 
 	// remove /apps/{id} from the URI
-	proxyURI := req.URL.RequestURI()[len(appID)+6:]
-
+	proxyURI := req.URL.RequestURI()[len(appId)+6:]
 	proxyURL := "http://localhost" + proxyURI
-
-	proxyReq, err := http.NewRequest(req.Method, proxyURL, req.Body)
+	proxyReq, err := http.NewRequest(req.Method, proxyURL, bytes.NewReader(reqBody))
 	if err != nil {
 		log.Printf("[APP  ] Err %v", err)
 		resp.WriteHeader(http.StatusBadRequest)
-		resp.Write([]byte(handleAppProxyError(appID, err.Error()))) //Showing a nice user friendly error msg
+		resp.Write([]byte(handleAppProxyError(appId, err.Error()))) //Showing a nice user friendly error msg
 		return
 	}
 
-	// log.Printf("[APP  ] >> %q %s %s", appID, req.Method, proxyURI)
+	// we do a single request per connection to be very clean about open socket connections
+	proxyReq.Header.Set("Connection", "close")
 
-	// We need to pass these values in order to let the Apps work properly (I had issues with a Python based service)
-	proxyReq.Header = req.Header
-	proxyReq.TransferEncoding = []string{"identity"}
-	proxyReq.ContentLength = req.ContentLength
+	proxyReq.ContentLength = int64(len(reqBody))
+	proxyReq.Host = req.Host
+	// copy the headers from the original request to the proxy request
+	for key, value := range req.Header {
+		if !isHopHeader(key) {
+			proxyReq.Header[key] = value
+		}
+	}
 
+	// doing the request to the app's proxy now
 	proxyResp, err := proxy.Do(proxyReq)
 	if err != nil {
 		log.Printf("[APP  ] Err %v", err)
 		resp.WriteHeader(http.StatusBadGateway)
-		resp.Write([]byte(handleAppProxyError(appID, err.Error())))
+		resp.Write([]byte(handleAppProxyError(appId, err.Error())))
+		return
+	}
+	defer proxyResp.Body.Close()
+	proxyRespBody, err := io.ReadAll(proxyResp.Body)
+	if err != nil {
+		log.Printf("[APP  ] Err %v", err)
+		resp.WriteHeader(http.StatusBadGateway)
 		return
 	}
 
+	// copy the headers from the proxy response to the response
 	for key, value := range proxyResp.Header {
-		resp.Header()[key] = value
+		if !isHopHeader(key) {
+			resp.Header()[key] = value
+		}
 	}
+
+	resp.Header().Set("Content-Length", strconv.Itoa(len(proxyRespBody)))
+
+	// copy the status code and write the response
 	resp.WriteHeader(proxyResp.StatusCode)
 
-	// var written int64
-	if proxyResp.Body != nil {
-		io.Copy(resp, proxyResp.Body)
-		proxyResp.Body.Close()
+	if _, err := resp.Write(proxyRespBody); err != nil {
+		log.Printf("[APP  ] Err %v", err)
 	}
-	// log.Printf("[APP  ] << %d %s (%d B)", proxyResp.StatusCode, proxyResp.Status, written)
 }
 
 /*-----------------------------*/

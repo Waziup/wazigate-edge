@@ -257,6 +257,8 @@ func postDevices(resp http.ResponseWriter, req *http.Request) {
 	encoder := json.NewEncoder(resp)
 	resp.Header().Set("Content-Type", "application/json")
 	encoder.Encode(device.ID)
+
+	tools.SetRequestBody(req, &device)
 }
 
 ////////////////////

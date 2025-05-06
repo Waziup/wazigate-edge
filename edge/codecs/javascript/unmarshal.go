@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
@@ -14,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Waziup/wazigate-edge/clouds"
 	"github.com/Waziup/wazigate-edge/edge"
 )
 
@@ -76,10 +76,13 @@ OUTPUT:
 		for _, sensor := range device.Sensors {
 			if sensor.ID == sensorID {
 				// Sensor values
-				_, err := edge.PostSensorValue(deviceID, sensorID, edge.NewValue(value, now))
+				meta, err := edge.PostSensorValue(deviceID, sensorID, edge.NewValue(value, now))
 				if err != nil {
 					return edge.NewErrorf(500, "Can not create sensor value: %s", err)
 				}
+
+				clouds.FlagSensor(deviceID, sensorID, clouds.ActionSync, now, meta)
+
 				// Meta data
 				metadata := edge.Meta{
 					"Warnings": strings.Join(output.Warnings, " "),
@@ -92,7 +95,7 @@ OUTPUT:
 				continue OUTPUT
 			}
 		}
-		err := edge.PostSensor(deviceID, &edge.Sensor{
+		sensor := &edge.Sensor{
 			ID:   sensorID,
 			Name: sensorID,
 			Meta: edge.Meta{
@@ -101,10 +104,12 @@ OUTPUT:
 				"errors":    nil,
 			},
 			Value: value,
-		})
+		}
+		err := edge.PostSensor(deviceID, sensor)
 		if err != nil {
 			return edge.NewErrorf(500, "Can not create sensor: %s", err)
 		}
+		clouds.FlagSensor(deviceID, sensor.ID, clouds.ActionCreate, now, sensor.Meta)
 	}
 	return nil
 }
@@ -131,7 +136,7 @@ func (JavaScriptExecutor) UnmarshalDevice(script *edge.ScriptCodec, deviceID str
 
 	tempScript.WriteString(script.Script)
 	tempScript.WriteString(scriptFooter1)
-	data, err := ioutil.ReadAll(r)
+	data, err := io.ReadAll(r)
 	if err != nil {
 		return err
 	}

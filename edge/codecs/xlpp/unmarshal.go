@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Waziup/wazigate-edge/clouds"
 	"github.com/Waziup/wazigate-edge/edge"
 	"github.com/waziup/xlpp"
 )
@@ -56,7 +57,7 @@ func createActuator(device *edge.Device, channel int, t xlpp.Type) error {
 		}
 	}
 	d := actuatorMapping[t]
-	return edge.PostActuator(device.ID, &edge.Actuator{
+	actuator := &edge.Actuator{
 		Name: typeName(xlpp.Registry[t]()),
 		Meta: edge.Meta{
 			"kind":      d.Kind,
@@ -65,21 +66,30 @@ func createActuator(device *edge.Device, channel int, t xlpp.Type) error {
 			"xlppChan":  channel,
 			"createdBy": "codec:xlpp",
 		},
-	})
+	}
+	err := edge.PostActuator(device.ID, actuator)
+	if err != nil {
+		return err
+	}
+	var noTime time.Time
+	clouds.FlagActuator(device.ID, actuator.ID, clouds.ActionCreate, noTime, actuator.Meta)
+	return nil
 }
 
 func createSensor(device *edge.Device, channel int, value xlpp.Value, t time.Time) error {
 	for _, sensor := range device.Sensors {
 		if xlppChan(sensor.Meta) == channel {
 			v := edge.NewValue(value, t)
-			if _, err := edge.PostSensorValue(device.ID, sensor.ID, v); err != nil {
+			meta, err := edge.PostSensorValue(device.ID, sensor.ID, v)
+			if err != nil {
 				return err
 			}
+			clouds.FlagSensor(device.ID, sensor.ID, clouds.ActionSync, v.Time, meta)
 			return nil
 		}
 	}
 	d := sensorMapping[value.XLPPType()]
-	return edge.PostSensor(device.ID, &edge.Sensor{
+	sensor := &edge.Sensor{
 		Name:  typeName(value),
 		Value: value,
 		Time:  &t,
@@ -90,7 +100,14 @@ func createSensor(device *edge.Device, channel int, value xlpp.Value, t time.Tim
 			"xlppChan":  channel,
 			"createdBy": "codec:xlpp",
 		},
-	})
+	}
+	err := edge.PostSensor(device.ID, sensor)
+	if err != nil {
+		return err
+	}
+	var noTime time.Time
+	clouds.FlagSensor(device.ID, sensor.ID, clouds.ActionCreate, noTime, sensor.Meta)
+	return nil
 }
 
 func typeName(v interface{}) (name string) {

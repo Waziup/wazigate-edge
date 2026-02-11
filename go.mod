@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
-	github.com/docker/docker v28.5.2+incompatible
+	github.com/docker/docker v24.0.9+incompatible
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
 	github.com/go-chi/chi/v5 v5.0.8
 	github.com/gorilla/websocket v1.4.2

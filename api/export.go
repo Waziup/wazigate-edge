@@ -513,7 +513,7 @@ func exportForMl(allRecords [][]string, duration time.Duration, clear bool, from
 	fmt.Println("The choosen duration for the individual time bins was set to:", duration)
 	fmt.Println("The timespan was set from:", from.String(), " to:", to.String())
 	fmt.Println("From is before to: ", from.Before(to), " :)")
-	fmt.Println("Add ten min: ", from.Add(duration), "\n")
+	fmt.Println("Add ten min: ", from.Add(duration))
 	fmt.Println("Length of all_records", len(allRecords))
 
 	// Create tabletop
